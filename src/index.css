@@ -1,0 +1,49 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    --gold: #b08d43;
+    --gold-light: #d4af37;
+    --dark-brown: #3d2e21;
+    --deep-brown: #4e3b2b;
+    --bg-cream: #fdfaf3;
+    --islamic-green: #0a5d38;
+  }
+
+  body {
+    font-family: 'Noto Sans Arabic', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+  }
+}
+
+/* Beautiful modern UI font matching the user chat text */
+.font-lalezar,
+.font-chat,
+.font-modern {
+  font-family: 'Noto Sans Arabic', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  letter-spacing: normal;
+}
+
+.font-urdu {
+  font-family: 'Noto Sans Arabic', 'Noto Nastaliq Urdu', system-ui, -apple-system, sans-serif;
+  letter-spacing: normal;
+}
+
+.font-arabic {
+  font-family: 'Noto Sans Arabic', 'Amiri', serif;
+}
+
+/* Custom scrollbars */
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+::-webkit-scrollbar-track {
+  background: #2a2018;
+}
+::-webkit-scrollbar-thumb {
+  background: #b08d43;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #d4af37;
+}
