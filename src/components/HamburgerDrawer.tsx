@@ -19,8 +19,11 @@ import {
   ChevronLeft,
   Sun,
   Moon,
-  RotateCw
+  RotateCw,
+  Smartphone,
+  Download
 } from 'lucide-react';
+import { usePWAInstall } from '../utils/usePWAInstall';
 
 interface Props {
   isOpen: boolean;
@@ -55,6 +58,9 @@ export const HamburgerDrawer: React.FC<Props> = ({
   onRefreshBlogger,
   isRefreshingBlogger = false,
 }) => {
+  const { isInstalled, install, isInstallable } = usePWAInstall();
+  const [showInstallHelp, setShowInstallHelp] = React.useState(false);
+
   if (!isOpen) return null;
 
   return (
@@ -83,9 +89,11 @@ export const HamburgerDrawer: React.FC<Props> = ({
               }`}
             >
               <div className="flex items-center gap-2.5">
-                <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#b08d43] to-[#8c6d2b] flex items-center justify-center text-white shadow-md border border-[#d4af37]/40 font-lalezar text-base font-bold">
-                  فلاح
-                </div>
+                <img
+                  src={`${import.meta.env.BASE_URL}app-logo.webp`}
+                  alt="خانقاہ دارالفلاح لوگو"
+                  className="w-10 h-10 rounded-full shadow-md border-2 border-[#d4af37] object-cover shrink-0"
+                />
                 <div>
                   <h3 className="text-lg font-bold font-lalezar leading-tight">
                     خانقاہ دارالفلاح
@@ -145,6 +153,37 @@ export const HamburgerDrawer: React.FC<Props> = ({
                     {isRefreshingBlogger ? 'لوڈ جاری...' : 'Refresh'}
                   </span>
                 </button>
+              </div>
+            )}
+
+            {/* Install App to Mobile Button */}
+            {!isInstalled && (
+              <div className="px-3 pt-2 space-y-1.5">
+                <button
+                  onClick={async () => {
+                    if (isInstallable) {
+                      await install();
+                      onClose();
+                    } else {
+                      setShowInstallHelp((prev) => !prev);
+                    }
+                  }}
+                  className="w-full flex items-center justify-between p-2 rounded-xl bg-gradient-to-r from-emerald-700 to-emerald-900 text-white font-lalezar text-xs border border-emerald-500/50 shadow-md active:scale-95 transition-all"
+                >
+                  <div className="flex items-center gap-2">
+                    <Smartphone className="w-4 h-4 text-emerald-300" />
+                    <span>موبائل میں ایپ انسٹال کریں</span>
+                  </div>
+                  <span className="text-[10px] bg-[#25D366] text-white px-2 py-0.5 rounded-full font-sans font-bold flex items-center gap-1">
+                    <Download className="w-2.5 h-2.5" />
+                    Install
+                  </span>
+                </button>
+                {showInstallHelp && (
+                  <div className="p-2 rounded-lg bg-emerald-950/60 border border-emerald-500/40 text-[11px] text-emerald-100 leading-relaxed">
+                    کروم براؤزر کے اوپر دائیں کونے میں <strong>تین نقطوں (⋮)</strong> پر کلک کر کے <strong>&quot;Add to Home screen&quot;</strong> یا <strong>&quot;Install app&quot;</strong> منتخب کریں۔
+                  </div>
+                )}
               </div>
             )}
 

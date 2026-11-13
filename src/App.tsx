@@ -23,6 +23,7 @@ import {
   BLOGGER_HOME_URL 
 } from './data/appConfig';
 import { useBloggerTabs } from './utils/bloggerService';
+import { PWAInstallBanner } from './components/PWAInstallBanner';
 import { DownloadCloud } from 'lucide-react';
 
 export default function App() {
@@ -112,6 +113,9 @@ export default function App() {
         isDark={isDark}
         onToggleTheme={toggleTheme}
       />
+
+      {/* PWA 1-Click Android App Install Banner */}
+      <PWAInstallBanner isDark={isDark} />
 
       {/* Dynamic Blogger Posts & Library Tabs Bar (Automatically pulls all posts from Blogger + Instant Sync) */}
       <PostsTabBar

@@ -432,9 +432,11 @@ export const AboutAppModal: React.FC<{ isOpen: boolean; onClose: () => void; isD
     <BaseModal isOpen={isOpen} onClose={onClose} title="ایپلیکیشن کے بارے میں (About App)" isDark={isDark}>
       <div className="space-y-4 font-lalezar text-sm">
         <div className={`text-center p-4 border border-[#b08d43]/50 rounded-2xl ${isDark ? 'bg-[#382618]' : 'bg-amber-100/70'}`}>
-          <div className="w-16 h-16 mx-auto mb-2 rounded-2xl bg-[#b08d43] text-white flex items-center justify-center shadow-lg font-lalezar text-2xl font-bold">
-            فلاح
-          </div>
+          <img
+            src={`${import.meta.env.BASE_URL}app-logo.webp`}
+            alt="خانقاہ دارالفلاح لوگو"
+            className="w-20 h-20 mx-auto mb-2 rounded-full border-2 border-[#d4af37] shadow-xl object-cover"
+          />
           <h3 className="text-2xl font-bold">خانقاہ دارالفلاح</h3>
           <p className="text-xs text-[#b08d43] font-sans">Khanqah Darul Falah Mobile Application</p>
           <div className="inline-block px-3 py-1 bg-[#b08d43]/20 border border-[#b08d43]/50 rounded-full text-xs text-[#b08d43] mt-2 font-sans font-bold">

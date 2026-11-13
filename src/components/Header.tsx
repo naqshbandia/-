@@ -44,9 +44,14 @@ export const Header: React.FC<Props> = ({
           <Menu className="w-6 h-6" />
         </button>
 
-        {/* Center: App Name in beautiful Lalezar font */}
-        <div className="flex items-center justify-center text-center px-2 flex-1">
-          <h1 className="text-xl font-bold font-lalezar tracking-wide truncate">
+        {/* Center: App Name with Official Emblem Logo */}
+        <div className="flex items-center justify-center text-center px-2 flex-1 gap-2">
+          <img
+            src={`${import.meta.env.BASE_URL}app-logo.webp`}
+            alt="خانقاہ دارالفلاح لوگو"
+            className="w-7 h-7 sm:w-8 sm:h-8 rounded-full shadow-sm border border-[#d4af37]/70 object-cover shrink-0"
+          />
+          <h1 className="text-lg sm:text-xl font-bold font-lalezar tracking-wide truncate">
             {ANDROID_APP_NAME_URDU}
           </h1>
         </div>

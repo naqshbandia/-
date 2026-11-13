@@ -10,16 +10,31 @@
     <meta property="og:type" content="website" />
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="theme-color" content="#3d2e21" />
+    <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="دارالفلاح" />
+    <meta name="application-name" content="دارالفلاح" />
+    <link rel="apple-touch-icon" href="%BASE_URL%apple-touch-icon.png" />
+    <link rel="icon" type="image/png" sizes="192x192" href="%BASE_URL%app-icon-192.png" />
+    <link rel="icon" type="image/png" sizes="64x64" href="%BASE_URL%favicon.png" />
+    <link rel="icon" type="image/x-icon" href="%BASE_URL%favicon.ico" />
+    <meta property="og:image" content="%BASE_URL%app-icon-512.png" />
+    <meta name="twitter:image" content="%BASE_URL%app-icon-512.png" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Arabic:wght@300;400;500;600;700;800;900&family=Rubik:wght@400;500;600;700&family=Noto+Nastaliq+Urdu:wght@400;600;700&display=swap" rel="stylesheet" />
-    <link rel="icon" type="image/x-icon" href="https://khanqahdarulfalah.blogspot.com/favicon.ico" />
+    <script>
+      window.__deferredPWAInstallPrompt = null;
+      window.addEventListener('beforeinstallprompt', function (e) {
+        e.preventDefault();
+        window.__deferredPWAInstallPrompt = e;
+        window.dispatchEvent(new CustomEvent('pwa-installable'));
+      });
+    </script>
   </head>
   <body class="bg-[#1e1712] text-slate-100 select-none antialiased">
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
-
