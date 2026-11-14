@@ -2,10 +2,19 @@ export const ANDROID_PACKAGE_NAME = "com.khanqahdarulfalah.app";
 export const ANDROID_APP_NAME = "Khanqah Darul Falah";
 export const ANDROID_APP_NAME_URDU = "خانقاہ دارالفلاح";
 
+// Official Verified Android APK Download Link on Archive.org
+export const OFFICIAL_APK_URL = "https://archive.org/download/khanqah-darul-falah/%20khanqah%20Darul%20falah.apk";
+
+// Official Sheikh / Khanqah Top Title Calligraphy Banner
+export const SHEIKH_TITLE_BANNER_URL = "https://archive.org/download/20260422_20260422_1213/%D8%B4%DB%8C%D8%AE%20%D8%B5%D8%A7%D8%AD%D8%A8%20%D9%84%D9%88%DA%AF%D9%88%20%D9%84%DA%A9%DA%91%DB%8C%20%D9%88%D8%A7%D9%84%D8%A7.png";
+
 // Direct Clean URLs (with ZERO empty gap and instant loading)
 export const GOLD_LIBRARY_URL = "https://naqshbandia.github.io/index.html/Gold%20file%20location.html";
 export const NEWS_UPDATES_URL = "https://naqshbandia.github.io/index.html/News-Updates.html";
 export const URDU_BOOKS_URL = "https://naqshbandia.github.io/index.html/Urdu-Books-Library.html";
+export const HAFTAWAR_BAYANAT_URL = "https://naqshbandia.github.io/index.html/Haftawar-Bayanat.html";
+export const ISLAMI_MAJALIS_URL = "https://naqshbandia.github.io/index.html/ISLAMI_MAJALIS.html";
+export const TELAWAT_HAMD_NAAT_URL = "https://naqshbandia.github.io/index.html/telawat-Hamd-naat.html";
 
 // Blogger Official Website
 export const BLOGGER_HOME_URL = "https://khanqahdarulfalah.blogspot.com/";
@@ -62,8 +71,7 @@ export interface WhatsAppLinkItem {
   description: string;
 }
 
-export const WHATSAPP_PHONE_NUMBER = "+92 332 9106002";
-export const WHATSAPP_DIRECT_CHAT_URL = "https://api.whatsapp.com/send?phone=923329106002";
+export const WHATSAPP_DIRECT_CHAT_URL = "https://api.whatsapp.com/send?phone=923369757393";
 
 export const OFFICIAL_WHATSAPP_LINKS: WhatsAppLinkItem[] = [
   {

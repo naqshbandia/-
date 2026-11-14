@@ -6,6 +6,7 @@ interface Props {
   currentUrl: string;
   onUrlChange: (newUrl: string) => void;
   onBackRequest: () => void;
+  onGoHome?: () => void;
   isDark: boolean;
 }
 
@@ -13,6 +14,7 @@ export const WebViewContainer: React.FC<Props> = ({
   currentUrl,
   onUrlChange,
   onBackRequest,
+  onGoHome,
   isDark,
 }) => {
   const iframeRef = useRef<HTMLIFrameElement>(null);
@@ -92,6 +94,8 @@ export const WebViewContainer: React.FC<Props> = ({
       const prevUrl = historyStack[historyIndex - 1];
       setHistoryIndex((prev) => prev - 1);
       onUrlChange(prevUrl);
+    } else if (onGoHome) {
+      onGoHome();
     } else {
       // At root - simulate Android double-back to exit prevention
       const now = Date.now();
@@ -115,7 +119,11 @@ export const WebViewContainer: React.FC<Props> = ({
   };
 
   const handleGoHome = () => {
-    onUrlChange(GOLD_LIBRARY_URL);
+    if (onGoHome) {
+      onGoHome();
+    } else {
+      onUrlChange(GOLD_LIBRARY_URL);
+    }
   };
 
   // If on Blogger Dynamic Views homepage, trim the top empty search gap if needed

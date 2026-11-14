@@ -1,35 +1,54 @@
 @import "tailwindcss";
+@custom-variant dark (&:where(.dark, .dark *));
 
 @layer base {
   :root {
+    --primary-green: #064326;
+    --accent-gold: #d4af37;
+    --led-green: #00ff99;
+    --bg-light: #f4f7f6;
     --gold: #b08d43;
     --gold-light: #d4af37;
-    --dark-brown: #3d2e21;
-    --deep-brown: #4e3b2b;
-    --bg-cream: #fdfaf3;
-    --islamic-green: #0a5d38;
+    --dark-brown: #064326;
+    --deep-brown: #0c2c1b;
+    --bg-cream: #f4f7f6;
+    --islamic-green: #064326;
   }
 
   body {
-    font-family: 'Noto Sans Arabic', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+    font-family: 'Tajawal', 'Noto Sans Arabic', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   }
 }
 
-/* Beautiful modern UI font matching the user chat text */
+/* Clean modern Islamic typography matching Tajawal + Noto Sans Arabic */
 .font-lalezar,
 .font-chat,
 .font-modern {
-  font-family: 'Noto Sans Arabic', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-family: 'Tajawal', 'Noto Sans Arabic', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   letter-spacing: normal;
 }
 
 .font-urdu {
-  font-family: 'Noto Sans Arabic', 'Noto Nastaliq Urdu', system-ui, -apple-system, sans-serif;
+  font-family: 'Tajawal', 'Noto Sans Arabic', 'Noto Nastaliq Urdu', system-ui, -apple-system, sans-serif;
   letter-spacing: normal;
 }
 
 .font-arabic {
-  font-family: 'Noto Sans Arabic', 'Amiri', serif;
+  font-family: 'Noto Sans Arabic', 'Tajawal', serif;
+}
+
+/* Offline-safe subtle Islamic geometric lattice background */
+.islamic-panel-pattern {
+  background-color: #03150c;
+  background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' stroke='%23d4af37' stroke-opacity='0.09' stroke-width='1'%3E%3Cpath d='M30 0L60 30L30 60L0 30Z'/%3E%3Ccircle cx='30' cy='30' r='12'/%3E%3C/g%3E%3C/svg%3E");
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }
 
 /* Custom scrollbars */
@@ -38,7 +57,7 @@
   height: 5px;
 }
 ::-webkit-scrollbar-track {
-  background: #2a2018;
+  background: rgba(6, 67, 38, 0.12);
 }
 ::-webkit-scrollbar-thumb {
   background: #b08d43;

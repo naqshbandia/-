@@ -1,7 +1,26 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
-import { Search, X, BookOpen, Calendar, Play, Download, Filter, Folder, FolderDown, Check, Loader2 } from 'lucide-react';
+import {
+  Search,
+  X,
+  BookOpen,
+  Calendar,
+  Play,
+  Download,
+  Filter,
+  Folder,
+  FolderDown,
+  Loader2,
+  Share2,
+} from 'lucide-react';
 import { BAYANAT_DATABASE, BLOG_POSTS, BayanItem, BlogPostItem } from '../data/bayanatData';
+import { BloggerPostTab } from '../data/appConfig';
 import { downloadSingleBayan, downloadFolderBayanat, subscribeToDownloads } from '../utils/downloadHelper';
+import {
+  normalizeSearchText,
+  shareBayanOnWhatsApp,
+  isBayanNew,
+  formatBayanDateUrdu,
+} from '../utils/archiveService';
 
 interface Props {
   isOpen: boolean;
@@ -10,9 +29,11 @@ interface Props {
   onPlayAudio?: (bayan: BayanItem) => void;
   onNotify?: (message: string) => void;
   isDark: boolean;
+  bayanatList?: BayanItem[];
+  bloggerTabs?: BloggerPostTab[];
 }
 
-export type UnifiedSearchResult = 
+export type UnifiedSearchResult =
   | { type: 'post'; data: BlogPostItem }
   | { type: 'bayan'; data: BayanItem };
 
@@ -24,17 +45,6 @@ export interface FolderGroup {
   items: BayanItem[];
 }
 
-function normalizeText(text: string): string {
-  return text
-    .toLowerCase()
-    .replace(/[يى]/g, 'ی')
-    .replace(/[ك]/g, 'ک')
-    .replace(/[هھة]/g, 'ہ')
-    .replace(/[\u064B-\u065F]/g, '')
-    .replace(/_/g, ' ')
-    .trim();
-}
-
 export const SmartSearchBar: React.FC<Props> = ({
   isOpen,
   onClose,
@@ -42,11 +52,19 @@ export const SmartSearchBar: React.FC<Props> = ({
   onPlayAudio,
   onNotify,
   isDark,
+  bayanatList = BAYANAT_DATABASE,
+  bloggerTabs = [],
 }) => {
   const [query, setQuery] = useState('');
-  const [selectedFilter, setSelectedFilter] = useState<'all' | 'folders' | 'bayanat' | 'islahi' | 'dars' | 'posts'>('all');
+  const [selectedFilter, setSelectedFilter] = useState<
+    'all' | 'folders' | 'bayanat' | 'islahi' | 'dars' | 'posts'
+  >('all');
   const [downloadingFolderId, setDownloadingFolderId] = useState<string | null>(null);
-  const [folderProgress, setFolderProgress] = useState<{ current: number; total: number; title: string } | null>(null);
+  const [folderProgress, setFolderProgress] = useState<{
+    current: number;
+    total: number;
+    title: string;
+  } | null>(null);
   const [activeDownloadIds, setActiveDownloadIds] = useState<Set<string>>(new Set());
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -63,10 +81,32 @@ export const SmartSearchBar: React.FC<Props> = ({
     }
   }, [isOpen]);
 
+  // Merge hardcoded BLOG_POSTS + live Blogger posts without duplicates
+  const allPosts = useMemo<BlogPostItem[]>(() => {
+    const map = new Map<string, BlogPostItem>();
+    for (const p of BLOG_POSTS) {
+      map.set(p.url, p);
+    }
+    for (const t of bloggerTabs) {
+      if (!map.has(t.url)) {
+        map.set(t.url, {
+          id: t.id,
+          title: t.title,
+          urduTitle: t.title,
+          url: t.url,
+          published: t.published ? t.published.slice(0, 10) : '',
+          description: t.snippet || 'خانقاہ دارالفلاح پوسٹ / اعلان / اشتہار',
+          category: t.iconName === 'news' ? 'اعلان و اشتہار' : 'بلاگر پوسٹ',
+        });
+      }
+    }
+    return Array.from(map.values());
+  }, [bloggerTabs]);
+
   // Compute Folders
   const foldersList = useMemo<FolderGroup[]>(() => {
     const map = new Map<string, FolderGroup>();
-    for (const b of BAYANAT_DATABASE) {
+    for (const b of bayanatList) {
       if (!map.has(b.collectionId)) {
         map.set(b.collectionId, {
           id: b.collectionId,
@@ -79,23 +119,24 @@ export const SmartSearchBar: React.FC<Props> = ({
       map.get(b.collectionId)!.items.push(b);
     }
     return Array.from(map.values());
-  }, []);
+  }, [bayanatList]);
 
   const searchResults = useMemo(() => {
-    const q = normalizeText(query);
-    if (!q) {
-      if (selectedFilter === 'all') return [];
+    const q = normalizeSearchText(query);
+    if (!q && selectedFilter === 'all') {
+      return [];
     }
 
     const results: UnifiedSearchResult[] = [];
 
-    // Search Posts
+    // Search Posts & Announcements / Ishtihar
     if (selectedFilter === 'all' || selectedFilter === 'posts') {
-      for (const post of BLOG_POSTS) {
-        const titleMatch = normalizeText(post.title).includes(q) || normalizeText(post.urduTitle).includes(q);
-        const descMatch = normalizeText(post.description).includes(q);
-        const catMatch = normalizeText(post.category).includes(q);
-        const dateMatch = post.published.includes(q);
+      for (const post of allPosts) {
+        const titleMatch =
+          normalizeTextMatch(post.title, q) || normalizeTextMatch(post.urduTitle, q);
+        const descMatch = normalizeTextMatch(post.description, q);
+        const catMatch = normalizeTextMatch(post.category, q);
+        const dateMatch = normalizeTextMatch(post.published, q);
 
         if (!q || titleMatch || descMatch || catMatch || dateMatch) {
           results.push({ type: 'post', data: post });
@@ -103,16 +144,27 @@ export const SmartSearchBar: React.FC<Props> = ({
       }
     }
 
-    // Search Bayanat
+    // Search Bayanat by title, folder, filename, date (mtime & Urdu date), and location
     if (selectedFilter !== 'posts' && selectedFilter !== 'folders') {
-      for (const bayan of BAYANAT_DATABASE) {
+      for (const bayan of bayanatList) {
         if (selectedFilter === 'islahi' && bayan.category !== 'Islahi') continue;
         if (selectedFilter === 'dars' && bayan.category !== 'Dars') continue;
 
-        const titleMatch = normalizeText(bayan.title).includes(q);
-        const collectionMatch = normalizeText(bayan.collectionUrdu).includes(q) || normalizeText(bayan.collectionTitle).includes(q);
-        const filenameMatch = normalizeText(bayan.filename).includes(q);
-        const dateMatch = (bayan.mtime || '').includes(q) || bayan.title.includes(q);
+        const urduDate = formatBayanDateUrdu(bayan);
+        const isoDate = bayan.mtime
+          ? new Date(parseInt(bayan.mtime, 10) * 1000).toISOString().slice(0, 10)
+          : '';
+
+        const titleMatch =
+          normalizeTextMatch(bayan.title, q) || normalizeTextMatch(bayan.urduTitle, q);
+        const collectionMatch =
+          normalizeTextMatch(bayan.collectionUrdu, q) ||
+          normalizeTextMatch(bayan.collectionTitle, q);
+        const filenameMatch = normalizeTextMatch(bayan.filename, q);
+        const dateMatch =
+          normalizeTextMatch(urduDate, q) ||
+          normalizeTextMatch(isoDate, q) ||
+          (bayan.mtime || '').includes(q);
 
         if (!q || titleMatch || collectionMatch || filenameMatch || dateMatch) {
           results.push({ type: 'bayan', data: bayan });
@@ -121,7 +173,7 @@ export const SmartSearchBar: React.FC<Props> = ({
     }
 
     return results;
-  }, [query, selectedFilter]);
+  }, [query, selectedFilter, allPosts, bayanatList]);
 
   if (!isOpen) return null;
 
@@ -142,6 +194,11 @@ export const SmartSearchBar: React.FC<Props> = ({
     await downloadSingleBayan(bayan, (msg) => {
       if (onNotify) onNotify(msg);
     });
+  };
+
+  const handleShareSingle = (e: React.MouseEvent, bayan: BayanItem) => {
+    e.stopPropagation();
+    shareBayanOnWhatsApp(bayan);
   };
 
   const handleDownloadWholeFolder = async (e: React.MouseEvent, folder: FolderGroup) => {
@@ -171,31 +228,31 @@ export const SmartSearchBar: React.FC<Props> = ({
 
   return (
     <div
-      className={`absolute top-0 left-0 right-0 z-40 border-b-2 border-[#b08d43] shadow-2xl animate-in slide-in-from-top-3 duration-200 transition-colors ${
-        isDark ? 'bg-[#251910] text-amber-100' : 'bg-[#fcf9f2] text-[#2c1f15]'
+      className={`absolute top-0 left-0 right-0 z-40 border-b-2 border-[#d4af37] shadow-2xl animate-in slide-in-from-top-3 duration-200 transition-colors ${
+        isDark ? 'bg-[#081b11] text-emerald-50' : 'bg-[#f4f7f6] text-[#11261b]'
       }`}
       dir="rtl"
     >
-      <div className="max-w-4xl mx-auto p-3">
+      <div className="max-w-5xl mx-auto p-3">
         {/* Search Input Box */}
         <div
-          className={`flex items-center gap-2 border border-[#b08d43]/60 rounded-xl px-3 py-2 shadow-inner transition-colors ${
-            isDark ? 'bg-[#181009]' : 'bg-white'
+          className={`flex items-center gap-2 border border-[#d4af37]/70 rounded-xl px-3 py-2 shadow-inner transition-colors ${
+            isDark ? 'bg-[#05120b]' : 'bg-white'
           }`}
         >
-          <Search className="w-5 h-5 text-[#b08d43] shrink-0" />
+          <Search className="w-5 h-5 text-[#064326] dark:text-[#d4af37] shrink-0" />
           <input
             ref={inputRef}
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="بیان، عنوان، تاریخ، مقام (مثلاً: حسن خیل، اصلاحی، ذکر، دارالہدیٰ) تلاش کریں..."
+            placeholder="بیان کا نام، فولڈر، تاریخ (2026)، مقام (مسجد اسلام دین، دارالہدیٰ) یا اشتہار تلاش کریں..."
             className="w-full bg-transparent border-none outline-hidden text-sm font-lalezar leading-normal placeholder-gray-400"
           />
           {query && (
             <button
               onClick={() => setQuery('')}
-              className="p-1 rounded-md text-amber-400 hover:text-white"
+              className="p-1 rounded-md text-[#b08d43] hover:text-emerald-600 cursor-pointer"
               title="صاف کریں"
             >
               <X className="w-4 h-4" />
@@ -203,7 +260,7 @@ export const SmartSearchBar: React.FC<Props> = ({
           )}
           <button
             onClick={onClose}
-            className="px-3 py-1 bg-[#b08d43] hover:bg-[#8c6d2b] text-white text-xs rounded-lg font-lalezar tracking-wide shadow-sm"
+            className="px-3 py-1.5 bg-[#064326] hover:bg-[#095c34] text-white text-xs rounded-lg font-lalezar font-bold tracking-wide shadow-xs cursor-pointer"
           >
             بند کریں
           </button>
@@ -211,7 +268,7 @@ export const SmartSearchBar: React.FC<Props> = ({
 
         {/* Folder Download Ongoing Banner */}
         {folderProgress && (
-          <div className="mt-2 p-2.5 bg-emerald-950 border border-emerald-500 rounded-xl flex items-center justify-between text-xs text-emerald-200 font-lalezar animate-pulse">
+          <div className="mt-2 p-2.5 bg-emerald-950 border border-emerald-500 rounded-xl flex items-center justify-between text-xs text-emerald-200 font-lalezar">
             <div className="flex items-center gap-2">
               <Loader2 className="w-4 h-4 animate-spin text-emerald-400" />
               <span>
@@ -224,104 +281,41 @@ export const SmartSearchBar: React.FC<Props> = ({
           </div>
         )}
 
-        {/* Quick Filter Badges */}
+        {/* Quick Filter Tabs */}
         <div className="flex items-center gap-1.5 mt-2 overflow-x-auto pb-1 text-xs font-lalezar no-scrollbar">
-          <span className="text-amber-500 text-[11px] shrink-0 flex items-center gap-1 pl-1">
+          <span className="text-[#8c6514] dark:text-[#d4af37] text-[11px] shrink-0 flex items-center gap-1 pl-1 font-bold">
             <Filter className="w-3.5 h-3.5" />
             فلٹر:
           </span>
-          <button
-            onClick={() => setSelectedFilter('all')}
-            className={`px-3 py-1 rounded-lg shrink-0 transition-all ${
-              selectedFilter === 'all'
-                ? 'bg-[#b08d43] text-white shadow-sm'
-                : isDark
-                ? 'bg-[#1e140d] text-amber-200/70 border border-[#b08d43]/30'
-                : 'bg-amber-100/70 text-[#3d2e21] border border-[#b08d43]/30'
-            }`}
-          >
-            سب مواد
-          </button>
-
-          {/* Dedicated Folders Tab */}
-          <button
-            onClick={() => setSelectedFilter('folders')}
-            className={`px-3 py-1 rounded-lg shrink-0 transition-all flex items-center gap-1.5 ${
-              selectedFilter === 'folders'
-                ? 'bg-[#b08d43] text-white shadow-sm'
-                : isDark
-                ? 'bg-[#1e140d] text-amber-200/70 border border-[#b08d43]/30'
-                : 'bg-amber-100/70 text-[#3d2e21] border border-[#b08d43]/30'
-            }`}
-          >
-            <Folder className="w-3.5 h-3.5" />
-            فولڈرز ڈاؤنلوڈ ({foldersList.length})
-          </button>
-
-          <button
-            onClick={() => setSelectedFilter('bayanat')}
-            className={`px-3 py-1 rounded-lg shrink-0 transition-all ${
-              selectedFilter === 'bayanat'
-                ? 'bg-[#b08d43] text-white shadow-sm'
-                : isDark
-                ? 'bg-[#1e140d] text-amber-200/70 border border-[#b08d43]/30'
-                : 'bg-amber-100/70 text-[#3d2e21] border border-[#b08d43]/30'
-            }`}
-          >
-            تمام بیانات ({BAYANAT_DATABASE.length})
-          </button>
-
-          <button
-            onClick={() => setSelectedFilter('islahi')}
-            className={`px-3 py-1 rounded-lg shrink-0 transition-all ${
-              selectedFilter === 'islahi'
-                ? 'bg-[#b08d43] text-white shadow-sm'
-                : isDark
-                ? 'bg-[#1e140d] text-amber-200/70 border border-[#b08d43]/30'
-                : 'bg-amber-100/70 text-[#3d2e21] border border-[#b08d43]/30'
-            }`}
-          >
-            اصلاحی مجالس
-          </button>
-
-          <button
-            onClick={() => setSelectedFilter('dars')}
-            className={`px-3 py-1 rounded-lg shrink-0 transition-all ${
-              selectedFilter === 'dars'
-                ? 'bg-[#b08d43] text-white shadow-sm'
-                : isDark
-                ? 'bg-[#1e140d] text-amber-200/70 border border-[#b08d43]/30'
-                : 'bg-amber-100/70 text-[#3d2e21] border border-[#b08d43]/30'
-            }`}
-          >
-            دروسِ قرآن
-          </button>
-
-          <button
-            onClick={() => setSelectedFilter('posts')}
-            className={`px-3 py-1 rounded-lg shrink-0 transition-all ${
-              selectedFilter === 'posts'
-                ? 'bg-[#b08d43] text-white shadow-sm'
-                : isDark
-                ? 'bg-[#1e140d] text-amber-200/70 border border-[#b08d43]/30'
-                : 'bg-amber-100/70 text-[#3d2e21] border border-[#b08d43]/30'
-            }`}
-          >
-            کتب و اعلانات
-          </button>
-        </div>
-
-        {/* FOLDERS VIEW (Download entire folders) */}
-        {selectedFilter === 'folders' && (
-          <div className="mt-2 max-h-[60vh] overflow-y-auto space-y-2">
-            <div
-              className={`p-2 rounded-lg text-xs font-lalezar ${
-                isDark ? 'bg-[#1e140d] text-amber-300' : 'bg-amber-100/60 text-[#3d2e21]'
+          {(
+            [
+              ['all', 'سب مواد'],
+              ['folders', `فولڈرز (${foldersList.length})`],
+              ['bayanat', `تمام بیانات (${bayanatList.length})`],
+              ['islahi', 'اصلاحی مجالس'],
+              ['dars', 'دروسِ قرآن'],
+              ['posts', 'کتب و اشتہارات'],
+            ] as const
+          ).map(([key, label]) => (
+            <button
+              key={key}
+              onClick={() => setSelectedFilter(key)}
+              className={`px-3 py-1.5 rounded-lg shrink-0 transition-all cursor-pointer font-bold ${
+                selectedFilter === key
+                  ? 'bg-[#064326] text-white shadow-xs ring-1 ring-[#d4af37]'
+                  : isDark
+                  ? 'bg-[#0e2418] text-emerald-100/80 border border-[#d4af37]/25'
+                  : 'bg-white text-[#064326] border border-emerald-900/15'
               }`}
             >
-              کسی بھی فولڈر کے تمام بیانات ایک ساتھ موبائل میموری میں ڈاؤنلوڈ کرنے کے لیے &quot;پورا فولڈر ڈاؤنلوڈ کریں&quot; دبائیں۔
-            </div>
+              {label}
+            </button>
+          ))}
+        </div>
 
+        {/* FOLDERS VIEW */}
+        {selectedFilter === 'folders' && (
+          <div className="mt-2 max-h-[60vh] overflow-y-auto space-y-2">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               {foldersList.map((folder) => {
                 const isDownloading = downloadingFolderId === folder.id;
@@ -330,29 +324,27 @@ export const SmartSearchBar: React.FC<Props> = ({
                     key={folder.id}
                     className={`p-3 rounded-xl border transition-all flex flex-col justify-between ${
                       isDark
-                        ? 'bg-[#18110b] border-[#b08d43]/40 hover:border-[#b08d43]'
-                        : 'bg-white border-[#b08d43]/30 shadow-sm hover:border-[#b08d43]'
+                        ? 'bg-[#0d2217] border-[#d4af37]/30 hover:border-[#d4af37]'
+                        : 'bg-white border-emerald-900/15 shadow-xs hover:border-[#d4af37]'
                     }`}
                   >
                     <div>
                       <div className="flex items-center justify-between mb-1">
-                        <span className="text-xs px-2 py-0.5 rounded-full bg-emerald-900/40 text-emerald-300 font-sans border border-emerald-600/30">
+                        <span className="text-xs font-bold text-[#064326] dark:text-[#00ff99]">
                           {folder.items.length} بیانات
                         </span>
-                        <Folder className="w-5 h-5 text-[#b08d43]" />
+                        <Folder className="w-5 h-5 text-[#d4af37]" />
                       </div>
                       <h4 className="text-base font-bold font-lalezar leading-tight mb-1">
                         {folder.urdu}
                       </h4>
-                      <p className="text-[10px] text-gray-400 font-sans line-clamp-1">
-                        {folder.title}
-                      </p>
+                      <p className="text-[11px] opacity-65 font-sans line-clamp-1">{folder.title}</p>
                     </div>
 
                     <button
                       onClick={(e) => handleDownloadWholeFolder(e, folder)}
                       disabled={isDownloading}
-                      className="mt-3 w-full py-2 px-3 bg-gradient-to-r from-[#b08d43] to-[#8c6d2b] hover:from-[#c29c4c] hover:to-[#9f7d33] text-white font-lalezar text-xs rounded-lg shadow flex items-center justify-center gap-1.5 active:scale-95 transition-all disabled:opacity-60"
+                      className="mt-3 w-full py-2 px-3 bg-[#064326] hover:bg-[#095c34] text-white font-lalezar text-xs rounded-lg shadow flex items-center justify-center gap-1.5 active:scale-95 transition-all disabled:opacity-60 cursor-pointer"
                     >
                       {isDownloading ? (
                         <>
@@ -361,7 +353,7 @@ export const SmartSearchBar: React.FC<Props> = ({
                         </>
                       ) : (
                         <>
-                          <FolderDown className="w-3.5 h-3.5" />
+                          <FolderDown className="w-3.5 h-3.5 text-[#d4af37]" />
                           <span>پورا فولڈر ڈاؤنلوڈ کریں ({folder.items.length} فائلیں)</span>
                         </>
                       )}
@@ -373,27 +365,27 @@ export const SmartSearchBar: React.FC<Props> = ({
           </div>
         )}
 
-        {/* RESULTS OVERLAY LIST (Individual Bayanat with direct 1-click Download button) */}
+        {/* RESULTS OVERLAY LIST */}
         {selectedFilter !== 'folders' && (query.trim().length > 0 || selectedFilter !== 'all') && (
           <div
-            className={`mt-2 max-h-[60vh] overflow-y-auto border border-[#b08d43]/40 rounded-xl divide-y divide-[#b08d43]/20 shadow-xl ${
-              isDark ? 'bg-[#18110b]' : 'bg-white'
+            className={`mt-2 max-h-[60vh] overflow-y-auto border border-[#d4af37]/40 rounded-xl divide-y divide-emerald-900/10 dark:divide-white/10 shadow-xl ${
+              isDark ? 'bg-[#0a1d13]' : 'bg-white'
             }`}
           >
             <div
-              className={`px-3 py-1.5 text-xs font-lalezar flex justify-between items-center sticky top-0 z-10 border-b border-[#b08d43]/20 ${
-                isDark ? 'bg-[#20150d] text-[#d4af37]' : 'bg-amber-100/90 text-[#3d2e21]'
+              className={`px-3 py-1.5 text-xs font-lalezar flex justify-between items-center sticky top-0 z-10 border-b border-[#d4af37]/25 ${
+                isDark ? 'bg-[#062214] text-[#d4af37]' : 'bg-[#ebf2ee] text-[#064326]'
               }`}
             >
-              <span>دستیاب نتائج: {searchResults.length}</span>
-              <span className="text-[10px] font-sans opacity-70">
-                براہ راست میموری میں ڈاؤنلوڈ کے لیے ڈاؤنلوڈ بٹن دبائیں
+              <span className="font-bold">دستیاب نتائج: {searchResults.length}</span>
+              <span className="text-[10px] opacity-75">
+                اسی صفحے سے ڈاؤنلوڈ یا واٹس ایپ پر شیئر کریں
               </span>
             </div>
 
             {searchResults.length === 0 ? (
-              <div className="p-6 text-center text-gray-400 font-lalezar text-base">
-                کوئی نتیجہ نہیں ملا۔ دوسرا لفظ یا تاریخ تلاش کیجیے۔
+              <div className="p-6 text-center opacity-70 font-lalezar text-base">
+                کوئی نتیجہ نہیں ملا۔ دوسرا لفظ، تاریخ یا مقام تلاش کیجیے۔
               </div>
             ) : (
               searchResults.map((item, idx) => {
@@ -404,26 +396,30 @@ export const SmartSearchBar: React.FC<Props> = ({
                       key={`post-${post.id}-${idx}`}
                       onClick={() => handleSelectPost(post.url)}
                       className={`p-3 cursor-pointer transition-colors flex items-start justify-between gap-3 group ${
-                        isDark ? 'hover:bg-[#281b11]' : 'hover:bg-amber-50/80'
+                        isDark ? 'hover:bg-[#112e1f]' : 'hover:bg-emerald-50/70'
                       }`}
                     >
                       <div className="flex items-start gap-2.5 min-w-0 flex-1">
-                        <div className="w-8 h-8 rounded-lg bg-amber-900/40 border border-[#b08d43]/40 text-[#d4af37] flex items-center justify-center shrink-0 mt-0.5">
+                        <div className="w-8 h-8 rounded-lg bg-[#064326]/10 dark:bg-[#d4af37]/15 text-[#064326] dark:text-[#d4af37] flex items-center justify-center shrink-0 mt-0.5">
                           <BookOpen className="w-4 h-4" />
                         </div>
                         <div className="min-w-0 flex-1">
-                          <h4 className="text-base font-bold font-lalezar leading-tight group-hover:text-[#b08d43] transition-colors">
+                          <h4 className="text-sm sm:text-base font-bold font-lalezar leading-tight">
                             {post.urduTitle || post.title}
                           </h4>
-                          <p className="text-xs text-gray-400 font-sans line-clamp-1 mt-0.5">
+                          <p className="text-xs opacity-70 font-sans line-clamp-1 mt-0.5">
                             {post.description}
                           </p>
-                          <div className="flex items-center gap-3 text-[10px] text-amber-500/70 mt-1 font-sans">
-                            <span className="flex items-center gap-1">
-                              <Calendar className="w-3 h-3" />
-                              {post.published}
+                          <div className="flex items-center gap-2 text-[11px] opacity-75 mt-1">
+                            {post.published && (
+                              <span className="flex items-center gap-1 tabular-nums">
+                                <Calendar className="w-3 h-3" />
+                                {post.published}
+                              </span>
+                            )}
+                            <span className="text-[#064326] dark:text-[#d4af37] font-bold">
+                              پوسٹ کھولیں
                             </span>
-                            <span className="text-[#b08d43] font-lalezar">پوسٹ کھولیں</span>
                           </div>
                         </div>
                       </div>
@@ -431,63 +427,85 @@ export const SmartSearchBar: React.FC<Props> = ({
                   );
                 } else {
                   const bayan = item.data;
+                  const isNew = isBayanNew(bayan);
+                  const dateLabel = formatBayanDateUrdu(bayan);
                   return (
                     <div
                       key={`bayan-${bayan.id}-${idx}`}
                       onClick={() => handleSelectBayan(bayan)}
                       className={`p-2.5 cursor-pointer transition-colors flex items-center justify-between gap-2 group ${
-                        isDark ? 'hover:bg-[#281b11]' : 'hover:bg-amber-50/80'
+                        isDark ? 'hover:bg-[#112e1f]' : 'hover:bg-emerald-50/70'
                       }`}
                     >
-                      {/* Left side in RTL: Title & Info */}
                       <div className="flex items-center gap-2.5 min-w-0 flex-1">
                         <button
                           onClick={() => handleSelectBayan(bayan)}
-                          className="w-8 h-8 rounded-full bg-emerald-900/60 border border-emerald-600/50 text-emerald-400 flex items-center justify-center shrink-0 hover:scale-105 active:scale-95 transition-transform"
+                          className="w-9 h-9 rounded-full bg-[#064326] text-white flex items-center justify-center shrink-0 hover:bg-[#095c34] active:scale-95 transition-transform cursor-pointer"
                           title="سنیں"
                         >
-                          <Play className="w-3.5 h-3.5 fill-emerald-400 ml-0.5" />
+                          <Play className="w-4 h-4 fill-white ml-0.5" />
                         </button>
                         <div className="min-w-0 flex-1">
-                          <h4 className="text-base font-bold font-lalezar leading-tight group-hover:text-[#b08d43] transition-colors truncate">
-                            {bayan.urduTitle || bayan.title}
-                          </h4>
-                          <div className="flex items-center gap-2 text-[11px] text-gray-400 mt-0.5">
-                            <span className="font-lalezar text-[#b08d43] truncate">
+                          <div className="flex items-center gap-1.5">
+                            {isNew && (
+                              <span className="px-1.5 py-0.5 rounded bg-[#d4af37] text-[#051a0f] text-[10px] font-bold shrink-0">
+                                نیا
+                              </span>
+                            )}
+                            <h4 className="text-sm sm:text-base font-bold font-lalezar leading-tight truncate">
+                              {bayan.urduTitle || bayan.title}
+                            </h4>
+                          </div>
+                          <div className="flex flex-wrap items-center gap-2 text-[11px] opacity-75 mt-0.5">
+                            <span className="text-[#064326] dark:text-[#d4af37] font-semibold truncate">
                               {bayan.collectionUrdu}
                             </span>
+                            {dateLabel && (
+                              <>
+                                <span aria-hidden="true">·</span>
+                                <span className="tabular-nums">{dateLabel}</span>
+                              </>
+                            )}
                             {bayan.length && (
-                              <span className="font-sans text-[10px]">
-                                {Math.floor(parseFloat(bayan.length) / 60)} منٹ
-                              </span>
+                              <>
+                                <span aria-hidden="true">·</span>
+                                <span className="tabular-nums">
+                                  {Math.max(1, Math.floor(parseFloat(bayan.length) / 60))} منٹ
+                                </span>
+                              </>
                             )}
                           </div>
                         </div>
                       </div>
 
-                      {/* Right side in RTL: Direct 1-Click Download Button into Device Memory */}
-                      <button
-                        onClick={(e) => handleDownloadSingle(e, bayan)}
-                        disabled={activeDownloadIds.has(bayan.id)}
-                        className={`px-3 py-1.5 active:scale-95 text-white font-lalezar text-xs rounded-lg shadow-sm flex items-center gap-1.5 shrink-0 transition-all ${
-                          activeDownloadIds.has(bayan.id)
-                            ? 'bg-amber-600 cursor-wait opacity-90'
-                            : 'bg-[#25D366] hover:bg-[#1faa4e]'
-                        }`}
-                        title="موبائل میموری میں خودکار ڈاؤنلوڈ کریں (بغیر کوئی اور پیج کھولے)"
-                      >
-                        {activeDownloadIds.has(bayan.id) ? (
-                          <>
+                      <div className="flex items-center gap-1.5 shrink-0" dir="ltr">
+                        <button
+                          onClick={(e) => handleShareSingle(e, bayan)}
+                          className="p-2 rounded-lg bg-[#25D366] hover:bg-[#1faa4e] text-white shadow-xs active:scale-95 transition-all cursor-pointer"
+                          title="واٹس ایپ پر شیئر کریں"
+                        >
+                          <Share2 className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          onClick={(e) => handleDownloadSingle(e, bayan)}
+                          disabled={activeDownloadIds.has(bayan.id)}
+                          className={`px-2.5 py-1.5 active:scale-95 text-white font-lalezar text-xs rounded-lg shadow-xs flex items-center gap-1 transition-all cursor-pointer ${
+                            activeDownloadIds.has(bayan.id)
+                              ? 'bg-amber-600 cursor-wait opacity-90'
+                              : 'bg-[#064326] hover:bg-[#095c34]'
+                          }`}
+                          title="موبائل میموری میں خودکار ڈاؤنلوڈ کریں"
+                        >
+                          {activeDownloadIds.has(bayan.id) ? (
                             <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                            <span>ڈاؤنلوڈ جاری...</span>
-                          </>
-                        ) : (
-                          <>
-                            <Download className="w-3.5 h-3.5" />
-                            <span>ڈاؤنلوڈ</span>
-                          </>
-                        )}
-                      </button>
+                          ) : (
+                            <>
+                              <Download className="w-3.5 h-3.5" />
+                              <span className="hidden xs:inline">ڈاؤنلوڈ</span>
+                            </>
+                          )}
+                        </button>
+                      </div>
                     </div>
                   );
                 }
@@ -499,3 +517,9 @@ export const SmartSearchBar: React.FC<Props> = ({
     </div>
   );
 };
+
+function normalizeTextMatch(haystack: string | undefined, needle: string): boolean {
+  if (!needle) return true;
+  if (!haystack) return false;
+  return normalizeSearchText(haystack).includes(needle);
+}

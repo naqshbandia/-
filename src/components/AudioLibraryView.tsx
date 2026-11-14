@@ -38,7 +38,8 @@ import {
   downloadFolderBayanat, 
   subscribeToDownloads 
 } from '../utils/downloadHelper';
-import { OFFICIAL_WHATSAPP_LINKS } from '../data/appConfig';
+import { OFFICIAL_WHATSAPP_LINKS, OFFICIAL_APK_URL, SHEIKH_TITLE_BANNER_URL, WHATSAPP_DIRECT_CHAT_URL } from '../data/appConfig';
+import { shareBayanOnWhatsApp, isBayanNew, normalizeSearchText } from '../utils/archiveService';
 
 interface Props {
   onPlayAudio: (bayan: BayanItem) => void;
@@ -47,6 +48,7 @@ interface Props {
   onSwitchToWebView?: () => void;
   isDark: boolean;
   currentPlayingBayanId?: string | null;
+  bayanatList?: BayanItem[];
 }
 
 export interface FolderInfo {
@@ -58,17 +60,6 @@ export interface FolderInfo {
   items: BayanItem[];
 }
 
-function normalizeText(text: string): string {
-  return text
-    .toLowerCase()
-    .replace(/[يى]/g, 'ی')
-    .replace(/[ك]/g, 'ک')
-    .replace(/[هھة]/g, 'ہ')
-    .replace(/[\u064B-\u065F]/g, '')
-    .replace(/_/g, ' ')
-    .trim();
-}
-
 const ITEMS_PER_PAGE = 30;
 
 export const AudioLibraryView: React.FC<Props> = ({
@@ -78,6 +69,7 @@ export const AudioLibraryView: React.FC<Props> = ({
   onSwitchToWebView,
   isDark,
   currentPlayingBayanId,
+  bayanatList = BAYANAT_DATABASE,
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedFolderId, setSelectedFolderId] = useState<string>('all');
@@ -115,7 +107,7 @@ export const AudioLibraryView: React.FC<Props> = ({
   // Compute folder groups
   const folderGroups = useMemo<FolderInfo[]>(() => {
     const map = new Map<string, FolderInfo>();
-    for (const b of BAYANAT_DATABASE) {
+    for (const b of bayanatList) {
       if (!map.has(b.collectionId)) {
         map.set(b.collectionId, {
           id: b.collectionId,
@@ -131,13 +123,13 @@ export const AudioLibraryView: React.FC<Props> = ({
       group.items.push(b);
     }
     return Array.from(map.values());
-  }, []);
+  }, [bayanatList]);
 
   // Filtered bayanat
   const filteredBayanat = useMemo(() => {
-    const q = normalizeText(searchQuery);
+    const q = normalizeSearchText(searchQuery);
 
-    return BAYANAT_DATABASE.filter((bayan) => {
+    return bayanatList.filter((bayan) => {
       // Folder filter
       if (selectedFolderId !== 'all' && bayan.collectionId !== selectedFolderId) {
         return false;
@@ -153,15 +145,15 @@ export const AudioLibraryView: React.FC<Props> = ({
 
       // Query filter
       if (q) {
-        const titleMatch = normalizeText(bayan.title).includes(q) || normalizeText(bayan.urduTitle).includes(q);
-        const folderMatch = normalizeText(bayan.collectionUrdu).includes(q) || normalizeText(bayan.collectionTitle).includes(q);
-        const filenameMatch = normalizeText(bayan.filename).includes(q);
+        const titleMatch = normalizeSearchText(bayan.title).includes(q) || normalizeSearchText(bayan.urduTitle).includes(q);
+        const folderMatch = normalizeSearchText(bayan.collectionUrdu).includes(q) || normalizeSearchText(bayan.collectionTitle).includes(q);
+        const filenameMatch = normalizeSearchText(bayan.filename).includes(q);
         return titleMatch || folderMatch || filenameMatch;
       }
 
       return true;
     });
-  }, [searchQuery, selectedFolderId, selectedCategory]);
+  }, [searchQuery, selectedFolderId, selectedCategory, bayanatList]);
 
   // Reset page when filter changes
   useEffect(() => {
@@ -272,14 +264,13 @@ export const AudioLibraryView: React.FC<Props> = ({
 
             {/* Android App Pill Button */}
             <a
-              href="https://archive.org/download/khanqah-darul-falah/%20Khanqah%20Darul%20falah.apk"
-              target="_blank"
-              rel="noreferrer"
+              href={OFFICIAL_APK_URL}
+              download="khanqah-Darul-falah.apk"
               className="inline-flex items-center gap-1.5 bg-[#422c1d] border border-[#d4af37]/70 hover:bg-[#523825] text-white text-xs font-semibold px-3 py-1.5 rounded-full shadow-md active:scale-95 transition-all"
               title="اینڈرائڈ ایپ ڈاؤنلوڈ کریں"
             >
               <Smartphone className="w-3.5 h-3.5 text-amber-300" />
-              <span className="font-sans font-bold">App</span>
+              <span className="font-sans font-bold">App (APK)</span>
             </a>
           </div>
 
@@ -457,10 +448,10 @@ export const AudioLibraryView: React.FC<Props> = ({
           </button>
         </div>
 
-        {/* Authentic Wood-Carved Calligraphy Banner Image (Exactly matching Screenshot 2) */}
+        {/* Authentic Wood-Carved Calligraphy Banner Image */}
         <div className="mt-3 rounded-2xl overflow-hidden border-2 border-[#b08d43] shadow-xl bg-[#3d2e21]">
           <img 
-            src="https://archive.org/download/20260422_20260422_1213/%D8%B4%DB%8C%D8%AE%20%D8%B5%D8%A7%D8%AD%D8%A8%20%D9%84%D9%88%DA%AF%D9%88%20%D9%84%DA%A9%DA%91%DB%8C%20%D9%88%D8%A7%D9%84%D8%A7.png" 
+            src={SHEIKH_TITLE_BANNER_URL} 
             alt="پیر طریقت رہبر شریعت ولی کامل استاد العلماء حضرت شیخ پیر محمد جمشید نقشبندی مجددی صاحب دامت برکاتہم العالیہ" 
             className="w-full h-auto object-cover block"
             loading="eager"
@@ -687,16 +678,23 @@ export const AudioLibraryView: React.FC<Props> = ({
 
                   {/* Title and details */}
                   <div className="min-w-0 flex-1">
-                    <h3
-                      onClick={() => onPlayAudio(bayan)}
-                      className={`text-base font-bold leading-snug cursor-pointer transition-colors ${
-                        isPlayingThis
-                          ? 'text-[#d4af37]'
-                          : 'group-hover:text-[#b08d43]'
-                      }`}
-                    >
-                      {bayan.urduTitle || bayan.title}
-                    </h3>
+                    <div className="flex items-center gap-1.5">
+                      {isBayanNew(bayan) && (
+                        <span className="px-1.5 py-0.5 rounded bg-[#d4af37] text-[#051a0f] text-[10px] font-bold shrink-0">
+                          نیا
+                        </span>
+                      )}
+                      <h3
+                        onClick={() => onPlayAudio(bayan)}
+                        className={`text-base font-bold leading-snug cursor-pointer transition-colors ${
+                          isPlayingThis
+                            ? 'text-[#d4af37]'
+                            : 'group-hover:text-[#b08d43]'
+                        }`}
+                      >
+                        {bayan.urduTitle || bayan.title}
+                      </h3>
+                    </div>
 
                     <div className="flex flex-wrap items-center gap-2 mt-1 text-xs">
                       {/* Collection / Folder Badge */}
@@ -732,12 +730,24 @@ export const AudioLibraryView: React.FC<Props> = ({
                   </div>
                 </div>
 
-                {/* Action Buttons: Play + INSTANT DOWNLOAD (No other page opened) */}
+                {/* Action Buttons: Play + INSTANT DOWNLOAD + WhatsApp Share */}
                 <div className="flex items-center gap-2 shrink-0 self-end sm:self-center" dir="ltr">
+                  {/* WhatsApp Share Button */}
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      shareBayanOnWhatsApp(bayan);
+                    }}
+                    className="p-2 rounded-xl bg-[#25D366] hover:bg-[#1faa4e] text-white shadow-sm transition-all active:scale-95 cursor-pointer"
+                    title="واٹس ایپ پر دوستوں کو شیئر کریں"
+                  >
+                    <Share2 className="w-3.5 h-3.5" />
+                  </button>
+
                   {/* Play Button */}
                   <button
                     onClick={() => onPlayAudio(bayan)}
-                    className={`px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all active:scale-95 ${
+                    className={`px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all active:scale-95 cursor-pointer ${
                       isPlayingThis
                         ? 'bg-[#b08d43] text-white shadow-sm ring-1 ring-amber-300'
                         : isDark
@@ -754,10 +764,10 @@ export const AudioLibraryView: React.FC<Props> = ({
                   <button
                     onClick={(e) => handleDownloadSingle(e, bayan)}
                     disabled={isDownloadingThis}
-                    className={`px-3.5 py-1.5 rounded-xl text-xs font-bold shadow-sm flex items-center gap-1.5 transition-all active:scale-95 ${
+                    className={`px-3.5 py-1.5 rounded-xl text-xs font-bold shadow-sm flex items-center gap-1.5 transition-all active:scale-95 cursor-pointer ${
                       isDownloadingThis
                         ? 'bg-amber-600 text-white cursor-wait opacity-90'
-                        : 'bg-[#25D366] hover:bg-[#1faa4e] text-white shadow-emerald-900/20 hover:shadow-md'
+                        : 'bg-[#064326] hover:bg-[#095c34] text-white shadow-emerald-900/20 hover:shadow-md'
                     }`}
                     title="فورا موبائل میموری میں ڈاؤنلوڈ کریں (بغیر کوئی اور پیج کھولے)"
                   >
@@ -939,10 +949,10 @@ export const AudioLibraryView: React.FC<Props> = ({
               }`}>
                 <div>
                   <p className="font-bold font-lalezar text-sm text-emerald-400">براہِ راست واٹس ایپ رابطہ</p>
-                  <p className="text-xs text-emerald-200 font-sans" dir="ltr">+92 332 9106002</p>
+                  <p className="text-xs text-emerald-200 font-sans">شیخ صاحب سے براہِ راست واٹس ایپ میسج</p>
                 </div>
                 <a
-                  href="https://api.whatsapp.com/send?phone=923329106002"
+                  href={WHATSAPP_DIRECT_CHAT_URL}
                   target="_blank"
                   rel="noreferrer"
                   className="px-3 py-1.5 bg-[#25D366] hover:bg-[#1faa4e] text-white text-xs font-bold rounded-lg shadow-xs flex items-center gap-1.5 transition-all active:scale-95"

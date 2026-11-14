@@ -15,13 +15,17 @@ import {
   ChevronRight,
   ChevronLeft,
   Pause,
-  Play
+  Play,
+  Home
 } from 'lucide-react';
 import { BloggerPostTab, BLOGGER_HOME_URL } from '../data/appConfig';
 
 interface Props {
   currentUrl: string;
   onSelectTab: (url: string) => void;
+  activeView?: 'dashboard' | 'library' | 'webview';
+  onSelectDashboard?: () => void;
+  onSelectLibrary?: () => void;
   isDark: boolean;
   tabs: BloggerPostTab[];
   isRefreshing?: boolean;
@@ -31,6 +35,9 @@ interface Props {
 export const PostsTabBar: React.FC<Props> = ({ 
   currentUrl, 
   onSelectTab, 
+  activeView = 'dashboard',
+  onSelectDashboard,
+  onSelectLibrary,
   isDark, 
   tabs,
   isRefreshing = false,
@@ -182,19 +189,19 @@ export const PostsTabBar: React.FC<Props> = ({
     <div
       className={`w-full border-b select-none transition-colors relative z-20 ${
         isDark
-          ? 'bg-[#291b11] border-[#b08d43]/30 text-amber-100'
-          : 'bg-[#ede3cf] border-[#b08d43]/40 text-[#3d2e21]'
+          ? 'bg-[#082c1a] border-[#d4af37]/30 text-amber-100'
+          : 'bg-[#ebf2ee] border-emerald-900/10 text-[#064326]'
       }`}
       dir="rtl"
     >
-      <div className="flex items-center justify-between px-1.5 py-1 gap-1">
+      <div className="flex items-center justify-between px-1.5 py-1 gap-1 max-w-5xl mx-auto">
         {/* Right Manual Nudge Arrow Button */}
         <button
           onClick={() => handleManualNudge('right')}
           className={`p-1 rounded-md shrink-0 transition-all active:scale-90 ${
             isDark 
-              ? 'text-amber-300/80 hover:text-white hover:bg-[#382618]' 
-              : 'text-[#8c6d2b] hover:text-[#3d2e21] hover:bg-[#dfd3bc]'
+              ? 'text-amber-300/80 hover:text-white hover:bg-[#0e3f27]' 
+              : 'text-[#064326] hover:bg-emerald-100'
           }`}
           title="دائیں سلائیڈ کریں (Slide Right)"
           aria-label="دائیں سلائیڈ کریں"
@@ -213,10 +220,6 @@ export const PostsTabBar: React.FC<Props> = ({
             pauseTemporarily(2000);
           }}
         >
-          {/* Subtle edge fade shadows */}
-          <div className="absolute right-0 top-0 bottom-0 w-3 pointer-events-none z-10 bg-gradient-to-l from-[#291b11]/80 to-transparent dark:from-[#291b11]/80" />
-          <div className="absolute left-0 top-0 bottom-0 w-3 pointer-events-none z-10 bg-gradient-to-r from-[#291b11]/80 to-transparent dark:from-[#291b11]/80" />
-
           <div
             ref={containerRef}
             onMouseDown={handleMouseDown}
@@ -238,26 +241,64 @@ export const PostsTabBar: React.FC<Props> = ({
             className="flex items-center gap-1.5 overflow-x-auto no-scrollbar scroll-smooth py-0.5 px-2 cursor-grab active:cursor-grabbing"
             style={{ WebkitOverflowScrolling: 'touch' }}
           >
+            {/* Permanent Home Dashboard Tab */}
+            {onSelectDashboard && (
+              <button
+                onClick={() => {
+                  onSelectDashboard();
+                  pauseTemporarily(3000);
+                }}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-lalezar text-xs tracking-wide shrink-0 transition-all active:scale-95 cursor-pointer ${
+                  activeView === 'dashboard'
+                    ? 'bg-[#064326] text-white shadow-xs font-bold ring-1 ring-[#d4af37]'
+                    : isDark
+                    ? 'text-emerald-100 bg-[#0d2116] border border-[#d4af37]/25 hover:bg-[#133322]'
+                    : 'text-[#064326] bg-white border border-emerald-900/15 hover:bg-emerald-50'
+                }`}
+              >
+                <Home className={`w-3.5 h-3.5 ${activeView === 'dashboard' ? 'text-[#d4af37]' : 'text-[#064326] dark:text-[#d4af37]'}`} />
+                <span className="whitespace-nowrap font-bold">ہوم ڈیش بورڈ</span>
+              </button>
+            )}
+
+            {/* Native Audio Library Tab */}
+            {onSelectLibrary && (
+              <button
+                onClick={() => {
+                  onSelectLibrary();
+                  pauseTemporarily(3000);
+                }}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-lalezar text-xs tracking-wide shrink-0 transition-all active:scale-95 cursor-pointer ${
+                  activeView === 'library'
+                    ? 'bg-[#064326] text-white shadow-xs font-bold ring-1 ring-[#d4af37]'
+                    : isDark
+                    ? 'text-emerald-100 bg-[#0d2116] border border-[#d4af37]/25 hover:bg-[#133322]'
+                    : 'text-[#064326] bg-white border border-emerald-900/15 hover:bg-emerald-50'
+                }`}
+              >
+                <Headphones className={`w-3.5 h-3.5 ${activeView === 'library' ? 'text-[#d4af37]' : 'text-[#0a5d38] dark:text-emerald-400'}`} />
+                <span className="whitespace-nowrap font-bold">فوری آڈیو لائبریری</span>
+              </button>
+            )}
+
             {tabs.map((tab) => {
-              const active = isTabActive(tab.url);
+              const active = activeView === 'webview' && isTabActive(tab.url);
               const isAppTab = tab.iconName === 'app';
 
               return (
                 <button
                   key={tab.id}
                   onClick={(e) => handleTabClick(tab.url, e)}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-lalezar text-xs tracking-wide shrink-0 transition-all active:scale-95 shadow-2xs ${
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-lalezar text-xs tracking-wide shrink-0 transition-all active:scale-95 cursor-pointer ${
                     active
-                      ? isAppTab
-                        ? 'bg-gradient-to-r from-emerald-600 to-teal-700 text-white shadow-sm font-bold ring-1 ring-emerald-400'
-                        : 'bg-gradient-to-r from-[#b08d43] to-[#8c6d2b] text-white shadow-sm font-bold ring-1 ring-amber-300/40'
+                      ? 'bg-[#064326] text-white shadow-xs font-bold ring-1 ring-[#d4af37]'
                       : isAppTab
                       ? isDark
                         ? 'bg-emerald-950/60 text-emerald-300 border border-emerald-600/40 hover:bg-emerald-900/60'
                         : 'bg-emerald-100 text-emerald-900 border border-emerald-400/50 hover:bg-emerald-200'
                       : isDark
-                      ? 'text-amber-200/90 bg-[#1f140c]/80 border border-[#b08d43]/20 hover:text-white hover:bg-[#382618]'
-                      : 'text-[#3d2e21]/90 bg-[#fbf7ee] border border-[#b08d43]/30 hover:text-[#3d2e21] hover:bg-[#e8dcbf]'
+                      ? 'text-amber-100/90 bg-[#0d2116] border border-[#d4af37]/25 hover:text-white hover:bg-[#133322]'
+                      : 'text-[#064326] bg-white border border-emerald-900/15 hover:bg-emerald-50'
                   }`}
                   title={tab.title}
                 >

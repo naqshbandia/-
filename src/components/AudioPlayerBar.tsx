@@ -1,7 +1,8 @@
 import React, { useRef, useState, useEffect } from 'react';
-import { Play, Pause, Volume2, VolumeX, Download, X, Loader2 } from 'lucide-react';
+import { Play, Pause, Volume2, VolumeX, Download, X, Loader2, Share2 } from 'lucide-react';
 import { BayanItem } from '../data/bayanatData';
 import { downloadSingleBayan, subscribeToDownloads } from '../utils/downloadHelper';
+import { shareBayanOnWhatsApp } from '../utils/archiveService';
 
 interface Props {
   currentBayan: BayanItem | null;
@@ -150,10 +151,10 @@ export const AudioPlayerBar: React.FC<Props> = ({ currentBayan, onClose, onNotif
             <button
               onClick={handleDownload}
               disabled={activeDownloadIds.has(currentBayan.id)}
-              className={`px-2.5 py-1 text-white font-lalezar text-xs rounded-md shadow flex items-center gap-1 transition-all active:scale-95 ${
+              className={`px-2.5 py-1 text-white font-lalezar text-xs rounded-md shadow flex items-center gap-1 transition-all active:scale-95 cursor-pointer ${
                 activeDownloadIds.has(currentBayan.id)
                   ? 'bg-amber-600 cursor-wait opacity-90'
-                  : 'bg-[#25D366] hover:bg-[#1faa4e]'
+                  : 'bg-[#064326] hover:bg-[#095c34]'
               }`}
               title="موبائل میموری میں خودکار ڈاؤنلوڈ کریں (بغیر کوئی اور پیج کھولے)"
             >
@@ -170,9 +171,19 @@ export const AudioPlayerBar: React.FC<Props> = ({ currentBayan, onClose, onNotif
               )}
             </button>
 
+            {/* WhatsApp Share Button */}
+            <button
+              onClick={() => shareBayanOnWhatsApp(currentBayan)}
+              className="px-2.5 py-1 bg-[#25D366] hover:bg-[#1faa4e] text-white font-lalezar text-xs rounded-md shadow flex items-center gap-1 transition-all active:scale-95 cursor-pointer"
+              title="واٹس ایپ پر دوستوں کو بھیجیں"
+            >
+              <Share2 className="w-3.5 h-3.5" />
+              <span className="hidden xs:inline">شیئر</span>
+            </button>
+
             <button
               onClick={onClose}
-              className="p-1.5 rounded text-red-500 hover:text-red-400"
+              className="p-1.5 rounded text-red-500 hover:text-red-400 cursor-pointer"
               title="پلیئر بند کریں"
             >
               <X className="w-4 h-4" />

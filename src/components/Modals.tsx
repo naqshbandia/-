@@ -1,6 +1,6 @@
 import React from 'react';
-import { X, MessageCircle, Youtube, Facebook, ExternalLink, User, Sparkles, Copy, Check } from 'lucide-react';
-import { ANDROID_PACKAGE_NAME, OFFICIAL_WEBSITE_URL, OFFICIAL_WHATSAPP_LINKS } from '../data/appConfig';
+import { X, MessageCircle, Youtube, Facebook, ExternalLink, User, Sparkles, ShieldCheck, FileText } from 'lucide-react';
+import { ANDROID_PACKAGE_NAME, OFFICIAL_WEBSITE_URL, OFFICIAL_WHATSAPP_LINKS, WHATSAPP_DIRECT_CHAT_URL } from '../data/appConfig';
 
 interface ModalProps {
   isOpen: boolean;
@@ -16,24 +16,23 @@ export const BaseModal: React.FC<ModalProps> = ({ isOpen, onClose, title, isDark
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs animate-in fade-in duration-200" dir="rtl">
       <div 
-        className={`border-2 border-[#b08d43] rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden text-right flex flex-col max-h-[90vh] transition-colors ${
-          isDark ? 'bg-[#251910] text-amber-100' : 'bg-[#fdfaf3] text-[#2c1f15]'
+        className={`border-2 border-[#d4af37] rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden text-right flex flex-col max-h-[90vh] transition-colors ${
+          isDark ? 'bg-[#0c2116] text-emerald-50' : 'bg-white text-[#11261b]'
         }`}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Modal Header */}
         <div
-          className={`border-b border-[#b08d43]/50 px-5 py-3.5 flex items-center justify-between ${
-            isDark ? 'bg-[#382618]' : 'bg-[#f0e3cc]'
+          className={`border-b border-[#d4af37]/40 px-5 py-3.5 flex items-center justify-between ${
+            isDark ? 'bg-[#062e1b]' : 'bg-[#ebf2ee]'
           }`}
         >
-          <h3 className="text-xl font-bold font-lalezar tracking-wide flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-[#b08d43]"></span>
+          <h3 className="text-lg sm:text-xl font-bold font-lalezar tracking-wide flex items-center gap-2 text-[#064326] dark:text-[#d4af37]">
             {title}
           </h3>
           <button
             onClick={onClose}
-            className="p-1 rounded-lg text-amber-500 hover:text-[#b08d43] hover:bg-[#b08d43]/20 transition-colors"
+            className="p-1.5 rounded-lg text-[#b08d43] hover:bg-[#d4af37]/20 transition-colors cursor-pointer"
             title="بند کریں"
           >
             <X className="w-5 h-5" />
@@ -47,13 +46,13 @@ export const BaseModal: React.FC<ModalProps> = ({ isOpen, onClose, title, isDark
 
         {/* Modal Footer */}
         <div
-          className={`border-t border-[#b08d43]/30 px-5 py-3 flex justify-end ${
-            isDark ? 'bg-[#1b120a]' : 'bg-[#f7f0e1]'
+          className={`border-t border-[#d4af37]/30 px-5 py-3 flex justify-end ${
+            isDark ? 'bg-[#08170f]' : 'bg-[#f4f7f6]'
           }`}
         >
           <button
             onClick={onClose}
-            className="px-5 py-1.5 bg-gradient-to-r from-[#b08d43] to-[#8c6d2b] hover:from-[#c29c4c] hover:to-[#9f7d33] text-white font-lalezar text-sm rounded-lg shadow-md transition-all active:scale-95"
+            className="px-5 py-1.5 bg-[#064326] hover:bg-[#095c34] text-white font-lalezar text-sm rounded-lg shadow-xs border border-[#d4af37]/50 transition-all active:scale-95 cursor-pointer"
           >
             ٹھیک ہے (بند کریں)
           </button>
@@ -224,7 +223,7 @@ export const ContactModal: React.FC<{
 
         {/* Direct WhatsApp Call/Chat */}
         <a
-          href="https://api.whatsapp.com/send?phone=923329106002"
+          href={WHATSAPP_DIRECT_CHAT_URL}
           target="_blank"
           rel="noreferrer"
           className="flex items-center justify-between p-3 bg-emerald-950/70 hover:bg-emerald-900/80 border border-emerald-600/60 rounded-xl transition-all"
@@ -235,7 +234,7 @@ export const ContactModal: React.FC<{
             </div>
             <div>
               <p className="font-bold text-emerald-300 font-lalezar text-base">براہ راست واٹس ایپ رابطہ</p>
-              <p className="text-xs text-emerald-200 font-sans" dir="ltr">+92 332 9106002</p>
+              <p className="text-xs text-emerald-200 font-sans">شیخ صاحب سے واٹس ایپ پر رابطہ کریں</p>
             </div>
           </div>
           <ExternalLink className="w-4 h-4 text-emerald-400" />
@@ -403,10 +402,10 @@ export const WhatsAppGroupsModal: React.FC<{
         }`}>
           <div>
             <p className="font-bold font-lalezar text-sm text-emerald-400">براہِ راست واٹس ایپ رابطہ</p>
-            <p className="text-xs text-emerald-200 font-sans" dir="ltr">+92 332 9106002</p>
+            <p className="text-xs text-emerald-200 font-sans">شیخ صاحب سے براہِ راست واٹس ایپ میسج</p>
           </div>
           <a
-            href="https://api.whatsapp.com/send?phone=923329106002"
+            href={WHATSAPP_DIRECT_CHAT_URL}
             target="_blank"
             rel="noreferrer"
             className="px-3 py-1.5 bg-[#25D366] hover:bg-[#1faa4e] text-white text-xs font-bold rounded-lg shadow-xs flex items-center gap-1.5 transition-all active:scale-95"
@@ -461,9 +460,79 @@ export const AboutAppModal: React.FC<{ isOpen: boolean; onClose: () => void; isD
 
         <div className="space-y-2">
           <p className="text-xs leading-relaxed opacity-85 font-sans">
-            یہ ایپلیکیشن اصل ویب سائٹ کے تمام صفحات، آڈیو فولڈرز، مجالس، کتب اور بیانات کو بغیر کسی ردوبدل کے اصلی حالت میں پیش کرتی ہے، نیز اس میں اسمارٹ سرچ بار، لال زار فونٹ، فولڈر ڈاؤنلوڈ اور نارمل/ڈارک تھیم کی سہولت شامل ہے۔
+            یہ ایپلیکیشن اصل ویب سائٹ کے تمام صفحات، آڈیو فولڈرز، مجالس، کتب اور بیانات کو بغیر کسی ردوبدل کے اصلی حالت میں پیش کرتی ہے، نیز اس میں اسمارٹ سرچ بار، فولڈر ڈاؤنلوڈ اور نارمل/ڈارک تھیم کی سہولت شامل ہے۔
           </p>
         </div>
+      </div>
+    </BaseModal>
+  );
+};
+
+// 9. شرائط و ضوابط (Terms & Conditions)
+export const TermsModal: React.FC<{ isOpen: boolean; onClose: () => void; isDark?: boolean }> = ({
+  isOpen,
+  onClose,
+  isDark = true,
+}) => {
+  return (
+    <BaseModal isOpen={isOpen} onClose={onClose} title="شرائط و ضوابط (Terms & Conditions)" isDark={isDark}>
+      <div className="space-y-3.5 text-xs sm:text-sm leading-relaxed">
+        <div className={`p-3 rounded-xl border border-[#d4af37]/40 flex items-center gap-2.5 ${isDark ? 'bg-[#081b11]' : 'bg-[#ebf2ee]'}`}>
+          <FileText className="w-5 h-5 text-[#064326] dark:text-[#d4af37] shrink-0" />
+          <p className="font-bold text-[#064326] dark:text-[#d4af37]">
+            خانقاہ دارالفلاح ڈیجیٹل سروسز کے استعمال کے اصول و ضوابط
+          </p>
+        </div>
+
+        <ul className="space-y-2 list-disc list-inside opacity-90">
+          <li>
+            <strong>مقصدِ اشاعت:</strong> اس ایپ اور ویب سائٹ میں موجود تمام اصلاحی بیانات، دروسِ قرآن، مجالسِ ذکر اور کتب خالصتاً دینی، علمی اور اصلاحی فائدے کے لیے بلا معاوضہ فراہم کی گئی ہیں۔
+          </li>
+          <li>
+            <strong>ثوابِ جاریہ کے لیے شیئرنگ:</strong> آپ کسی بھی بیان یا کتاب کو مکمل امانت داری اور اصل عنوان کے ساتھ سالکین و احباب میں واٹس ایپ یا دیگر ذرائع سے شیئر کر سکتے ہیں۔
+          </li>
+          <li>
+            <strong>رد و بدل کی ممانعت:</strong> کسی بھی آڈیو بیان یا تحریر میں کاٹ چھانٹ، تحریف یا غلط نسبت کرنے کی شرعاً اور اخلاقاً اجازت نہیں۔
+          </li>
+          <li>
+            <strong>آرکائیو و آن لائن لنکس:</strong> تمام آڈیوز Archive.org اور خانقاہ کے آفیشل بلاگ سے منسلک ہیں، جنہیں آپ 1-کلک کے ذریعے اپنے موبائل میں آف لائن سننے کے لیے محفوظ کر سکتے ہیں۔
+          </li>
+        </ul>
+      </div>
+    </BaseModal>
+  );
+};
+
+// 10. پرائیویسی پالیسی (Privacy Policy)
+export const PrivacyPolicyModal: React.FC<{ isOpen: boolean; onClose: () => void; isDark?: boolean }> = ({
+  isOpen,
+  onClose,
+  isDark = true,
+}) => {
+  return (
+    <BaseModal isOpen={isOpen} onClose={onClose} title="پرائیویسی پالیسی (Privacy Policy)" isDark={isDark}>
+      <div className="space-y-3.5 text-xs sm:text-sm leading-relaxed">
+        <div className={`p-3 rounded-xl border border-emerald-600/40 flex items-center gap-2.5 ${isDark ? 'bg-emerald-950/40' : 'bg-emerald-50'}`}>
+          <ShieldCheck className="w-5 h-5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+          <p className="font-bold text-emerald-800 dark:text-emerald-300">
+            آپ کی معلومات کی مکمل حفاظت اور رازداری کی یقین دہانی
+          </p>
+        </div>
+
+        <ul className="space-y-2 list-disc list-inside opacity-90">
+          <li>
+            <strong>کوئی ذاتی ڈیٹا اکٹھا نہیں کیا جاتا:</strong> خانقاہ دارالفلاح ایپ صارفین سے کوئی اشتہاری ڈیٹا، لوکیشن ٹریکنگ یا خفیہ معلومات اکٹھی نہیں کرتی۔
+          </li>
+          <li>
+            <strong>مقامی اسٹوریج (Local Storage):</strong> آپ کا تھیم انتخاب (لائٹ/ڈارک)، محفوظ شدہ نوٹیفیکیشن ای میل، اور اوقاتِ نماز کا کیش صرف آپ کے اپنے موبائل میں محفوظ رہتا ہے۔
+          </li>
+          <li>
+            <strong>اشتہارات سے پاک ماحول:</strong> یہ ایپلیکیشن مکمل طور پر غیر تجارتی اور اشتہارات سے پاک ہے تاکہ سالکین یکسوئی کے ساتھ دینی بیانات سن سکیں۔
+          </li>
+          <li>
+            <strong>رابطہ:</strong> پرائیویسی سے متعلق کسی بھی سوال کے لیے ایپ میں موجود آفیشل واٹس ایپ رابطہ بٹن کے ذریعے رابطہ کیا جا سکتا ہے۔
+          </li>
+        </ul>
       </div>
     </BaseModal>
   );

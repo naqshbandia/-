@@ -5,10 +5,11 @@
 
 import React, { useState, useEffect } from 'react';
 import { Header } from './components/Header';
-import { PostsTabBar } from './components/PostsTabBar';
 import { SmartSearchBar } from './components/SmartSearchBar';
 import { HamburgerDrawer } from './components/HamburgerDrawer';
 import { WebViewContainer } from './components/WebViewContainer';
+import { AudioLibraryView } from './components/AudioLibraryView';
+import { SmartDashboardHome } from './components/SmartDashboardHome';
 import { AudioPlayerBar } from './components/AudioPlayerBar';
 import {
   IntroKhanqahModal,
@@ -16,6 +17,8 @@ import {
   ContactModal,
   AboutAppModal,
   WhatsAppGroupsModal,
+  TermsModal,
+  PrivacyPolicyModal,
 } from './components/Modals';
 import { BayanItem } from './data/bayanatData';
 import { 
@@ -23,27 +26,37 @@ import {
   BLOGGER_HOME_URL 
 } from './data/appConfig';
 import { useBloggerTabs } from './utils/bloggerService';
+import { useArchiveBayanat } from './utils/archiveService';
 import { PWAInstallBanner } from './components/PWAInstallBanner';
 import { DownloadCloud } from 'lucide-react';
 
 export default function App() {
-  // Start on the Authentic Original Audio Library Gold Page as the #1 Home Page
+  // Home Screen defaults to the clean Islamic Smart Dashboard
+  const [activeView, setActiveView] = useState<'dashboard' | 'library' | 'webview'>('dashboard');
   const [currentUrl, setCurrentUrl] = useState(GOLD_LIBRARY_URL);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
 
   // Dynamic Blogger Posts & Libraries (automatically updates when new posts are published on Blogger)
   const { tabs, isRefreshing, refreshPosts } = useBloggerTabs();
+
+  // Dynamic Archive.org Bayanat sync (merges static DB with live metadata & mtime sorting)
+  const { bayanat, isSyncingArchive, syncArchive } = useArchiveBayanat();
   
-  // Theme state: Normal (Light) vs Dark
+  // Theme state: Default to clean Islamic Light theme (matches the Smart Dashboard aesthetic)
   const [isDark, setIsDark] = useState<boolean>(() => {
     try {
-      const saved = localStorage.getItem('khanqah_app_theme');
-      return saved ? saved === 'dark' : true;
+      const saved = localStorage.getItem('khanqah_app_theme_v2');
+      return saved ? saved === 'dark' : false;
     } catch {
-      return true;
+      return false;
     }
   });
+
+  // Sync Tailwind dark class on document root
+  useEffect(() => {
+    document.documentElement.classList.toggle('dark', isDark);
+  }, [isDark]);
 
   // Toast notification message
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -54,6 +67,8 @@ export default function App() {
   const [isContactOpen, setIsContactOpen] = useState(false);
   const [isAboutOpen, setIsAboutOpen] = useState(false);
   const [isWhatsAppGroupsOpen, setIsWhatsAppGroupsOpen] = useState(false);
+  const [isTermsOpen, setIsTermsOpen] = useState(false);
+  const [isPrivacyOpen, setIsPrivacyOpen] = useState(false);
 
   // Audio player state
   const [currentBayan, setCurrentBayan] = useState<BayanItem | null>(null);
@@ -62,7 +77,7 @@ export default function App() {
     setIsDark((prev) => {
       const next = !prev;
       try {
-        localStorage.setItem('khanqah_app_theme', next ? 'dark' : 'light');
+        localStorage.setItem('khanqah_app_theme_v2', next ? 'dark' : 'light');
       } catch {}
       return next;
     });
@@ -89,6 +104,7 @@ export default function App() {
 
   const handleNavigateUrl = (url: string) => {
     setCurrentUrl(url);
+    setActiveView('webview');
   };
 
   const handlePlayAudio = (bayan: BayanItem) => {
@@ -97,37 +113,30 @@ export default function App() {
 
   const handleManualRefresh = () => {
     refreshPosts(showNotification);
+    syncArchive();
   };
 
   return (
     <div
       className={`h-screen w-screen flex flex-col select-none overflow-hidden transition-colors duration-200 ${
-        isDark ? 'bg-[#1e1712] text-amber-50' : 'bg-[#fdfaf3] text-[#2c1f15]'
+        isDark ? 'bg-[#09150f] text-emerald-50' : 'bg-[#f4f7f6] text-[#11261b]'
       }`}
     >
-      {/* Sleek single line header: Three-line Menu, App Title (Lalezar font), Theme Toggle, Search */}
+      {/* Sleek single line header */}
       <Header
         onToggleMenu={() => setIsMenuOpen((prev) => !prev)}
         onToggleSearch={() => setIsSearchOpen((prev) => !prev)}
         isSearchOpen={isSearchOpen}
         isDark={isDark}
         onToggleTheme={toggleTheme}
+        isDashboard={activeView === 'dashboard'}
+        onGoHome={() => setActiveView('dashboard')}
       />
 
       {/* PWA 1-Click Android App Install Banner */}
-      <PWAInstallBanner isDark={isDark} />
+      <PWAInstallBanner isDark={isDark} onNotify={showNotification} />
 
-      {/* Dynamic Blogger Posts & Library Tabs Bar (Automatically pulls all posts from Blogger + Instant Sync) */}
-      <PostsTabBar
-        currentUrl={currentUrl}
-        onSelectTab={handleNavigateUrl}
-        isDark={isDark}
-        tabs={tabs}
-        isRefreshing={isRefreshing}
-        onRefresh={handleManualRefresh}
-      />
-
-      {/* Smart Search Bar (With Lalezar font, 1-click Direct Memory Download, and Folder Downloads) */}
+      {/* Smart Search Bar */}
       <div className="relative">
         <SmartSearchBar
           isOpen={isSearchOpen}
@@ -136,41 +145,75 @@ export default function App() {
           onPlayAudio={handlePlayAudio}
           onNotify={showNotification}
           isDark={isDark}
+          bayanatList={bayanat}
+          bloggerTabs={tabs}
         />
       </div>
 
-      {/* Main Content Area: Authentic Original Website & Audio Library in WebView */}
+      {/* Main Content Area: Smart Islamic Dashboard / Audio Library / WebView */}
       <main className="flex-1 w-full relative overflow-hidden flex flex-col">
-        <WebViewContainer
-          currentUrl={currentUrl}
-          onUrlChange={setCurrentUrl}
-          onBackRequest={() => setIsAboutOpen(true)}
-          isDark={isDark}
-        />
+        {activeView === 'dashboard' ? (
+          <SmartDashboardHome
+            isDark={isDark}
+            bayanatList={bayanat}
+            bloggerTabs={tabs}
+            isSyncingArchive={isSyncingArchive}
+            onRefreshAll={handleManualRefresh}
+            onOpenUrl={handleNavigateUrl}
+            onOpenLibrary={() => setActiveView('library')}
+            onOpenWhatsAppGroups={() => setIsWhatsAppGroupsOpen(true)}
+            onOpenIntroKhanqah={() => setIsIntroKhanqahOpen(true)}
+            onOpenIntroSheikh={() => setIsIntroSheikhOpen(true)}
+            onOpenContact={() => setIsContactOpen(true)}
+            onOpenTerms={() => setIsTermsOpen(true)}
+            onOpenPrivacy={() => setIsPrivacyOpen(true)}
+            onPlayAudio={handlePlayAudio}
+            onNotify={showNotification}
+            currentPlayingBayanId={currentBayan?.id || null}
+          />
+        ) : activeView === 'library' ? (
+          <AudioLibraryView
+            onPlayAudio={handlePlayAudio}
+            onNotify={showNotification}
+            onNavigateUrl={handleNavigateUrl}
+            onSwitchToWebView={() => handleNavigateUrl(GOLD_LIBRARY_URL)}
+            isDark={isDark}
+            currentPlayingBayanId={currentBayan?.id || null}
+            bayanatList={bayanat}
+          />
+        ) : (
+          <WebViewContainer
+            currentUrl={currentUrl}
+            onUrlChange={setCurrentUrl}
+            onBackRequest={() => setIsAboutOpen(true)}
+            onGoHome={() => setActiveView('dashboard')}
+            isDark={isDark}
+          />
+        )}
       </main>
 
-      {/* 3-Line Hamburger Drawer (Urdu menu, theme toggle, refresh) */}
+      {/* 3-Line Hamburger Drawer */}
       <HamburgerDrawer
         isOpen={isMenuOpen}
         onClose={() => setIsMenuOpen(false)}
+        onGoHome={() => setActiveView('dashboard')}
         onOpenIntroKhanqah={() => setIsIntroKhanqahOpen(true)}
         onOpenIntroSheikh={() => setIsIntroSheikhOpen(true)}
-        onOpenAllBayanat={() => {
-          handleNavigateUrl(GOLD_LIBRARY_URL);
-        }}
-        onOpenIslahiBayanat={() => {
-          handleNavigateUrl(GOLD_LIBRARY_URL);
-        }}
+        onOpenAllBayanat={() => setActiveView('library')}
+        onOpenIslahiBayanat={() => handleNavigateUrl(GOLD_LIBRARY_URL)}
+        onOpenUrl={handleNavigateUrl}
         onOpenWhatsAppGroups={() => setIsWhatsAppGroupsOpen(true)}
         onOpenContact={() => setIsContactOpen(true)}
         onOpenWebsite={() => {
           handleNavigateUrl(BLOGGER_HOME_URL);
         }}
+        onOpenTerms={() => setIsTermsOpen(true)}
+        onOpenPrivacy={() => setIsPrivacyOpen(true)}
         onOpenAbout={() => setIsAboutOpen(true)}
         isDark={isDark}
         onToggleTheme={toggleTheme}
         onRefreshBlogger={handleManualRefresh}
-        isRefreshingBlogger={isRefreshing}
+        isRefreshingBlogger={isRefreshing || isSyncingArchive}
       />
 
       {/* Floating Audio Player with 1-Click Memory Download */}
@@ -184,10 +227,10 @@ export default function App() {
       {/* Real-time Download & Sync Toast Notification */}
       {toastMessage && (
         <div
-          className="fixed top-20 left-1/2 -translate-x-1/2 z-50 bg-[#0a5d38] text-white px-5 py-2.5 rounded-full shadow-2xl border border-emerald-400 flex items-center gap-2.5 font-lalezar text-sm animate-in slide-in-from-top-3 duration-200"
+          className="fixed top-20 left-1/2 -translate-x-1/2 z-50 bg-[#064326] text-white px-5 py-2.5 rounded-full shadow-2xl border border-[#d4af37] flex items-center gap-2.5 font-lalezar text-sm animate-in slide-in-from-top-3 duration-200"
           dir="rtl"
         >
-          <DownloadCloud className="w-5 h-5 text-emerald-200 shrink-0 animate-bounce" />
+          <DownloadCloud className="w-5 h-5 text-[#00ff99] shrink-0" />
           <span className="truncate max-w-xs sm:max-w-md">{toastMessage}</span>
         </div>
       )}
@@ -221,6 +264,18 @@ export default function App() {
       <AboutAppModal
         isOpen={isAboutOpen}
         onClose={() => setIsAboutOpen(false)}
+        isDark={isDark}
+      />
+
+      <TermsModal
+        isOpen={isTermsOpen}
+        onClose={() => setIsTermsOpen(false)}
+        isDark={isDark}
+      />
+
+      <PrivacyPolicyModal
+        isOpen={isPrivacyOpen}
+        onClose={() => setIsPrivacyOpen(false)}
         isDark={isDark}
       />
     </div>

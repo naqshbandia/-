@@ -109,6 +109,13 @@ export async function fetchLiveBloggerPosts(): Promise<BloggerPostTab[]> {
           const id = entry.id?.$t || targetUrl;
           const icon = detectIconName(rawTitle, content);
           const formattedTitle = formatTabTitle(rawTitle);
+          const cleanSnippet = content
+            .replace(/<style[\s\S]*?<\/style>/gi, ' ')
+            .replace(/<script[\s\S]*?<\/script>/gi, ' ')
+            .replace(/<[^>]+>/g, ' ')
+            .replace(/\s+/g, ' ')
+            .trim()
+            .slice(0, 120);
 
           dynamicTabs.push({
             id,
@@ -117,6 +124,7 @@ export async function fetchLiveBloggerPosts(): Promise<BloggerPostTab[]> {
             iconName: icon,
             isLivePost: true,
             published: entry.published?.$t,
+            snippet: cleanSnippet || undefined,
           });
         }
 
