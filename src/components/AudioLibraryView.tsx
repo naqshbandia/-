@@ -49,6 +49,7 @@ interface Props {
   isDark: boolean;
   currentPlayingBayanId?: string | null;
   bayanatList?: BayanItem[];
+  initialFolderId?: string;
 }
 
 export interface FolderInfo {
@@ -70,11 +71,17 @@ export const AudioLibraryView: React.FC<Props> = ({
   isDark,
   currentPlayingBayanId,
   bayanatList = BAYANAT_DATABASE,
+  initialFolderId = 'all',
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedFolderId, setSelectedFolderId] = useState<string>('all');
+  const [selectedFolderId, setSelectedFolderId] = useState<string>(initialFolderId);
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [currentPage, setCurrentPage] = useState(1);
+
+  useEffect(() => {
+    setSelectedFolderId(initialFolderId || 'all');
+    setCurrentPage(1);
+  }, [initialFolderId]);
   const [activeDownloadIds, setActiveDownloadIds] = useState<Set<string>>(new Set());
 
   // Folder batch download state

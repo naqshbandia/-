@@ -15,7 +15,6 @@ import {
   Clock,
   CheckCircle2,
   MapPin,
-  RotateCw,
   ArrowLeft,
   Search,
   X,
@@ -39,10 +38,10 @@ import {
   HAFTAWAR_BAYANAT_URL,
   ISLAMI_MAJALIS_URL,
   TELAWAT_HAMD_NAAT_URL,
-  BLOGGER_HOME_URL,
   OFFICIAL_APK_URL,
   SHEIKH_TITLE_BANNER_URL,
   WHATSAPP_DIRECT_CHAT_URL,
+  DEVELOPER_WHATSAPP_URL,
   BloggerPostTab,
 } from '../data/appConfig';
 import { BAYANAT_DATABASE, BLOG_POSTS, BayanItem, BlogPostItem } from '../data/bayanatData';
@@ -71,8 +70,6 @@ interface Props {
   isDark: boolean;
   bayanatList?: BayanItem[];
   bloggerTabs?: BloggerPostTab[];
-  isSyncingArchive?: boolean;
-  onRefreshAll?: () => void;
   onOpenUrl: (url: string) => void;
   onOpenLibrary: () => void;
   onOpenWhatsAppGroups: () => void;
@@ -115,8 +112,6 @@ export const SmartDashboardHome: React.FC<Props> = ({
   isDark,
   bayanatList = BAYANAT_DATABASE,
   bloggerTabs = [],
-  isSyncingArchive = false,
-  onRefreshAll,
   onOpenUrl,
   onOpenLibrary,
   onOpenWhatsAppGroups,
@@ -266,8 +261,8 @@ export const SmartDashboardHome: React.FC<Props> = ({
           urduTitle: t.title,
           url: t.url,
           published: t.published ? t.published.slice(0, 10) : '',
-          description: t.snippet || 'بلاگر پوسٹ / اعلان و اشتہار',
-          category: t.iconName === 'news' ? 'اعلان و اشتہار' : 'بلاگر پوسٹ',
+          description: t.snippet || 'اعلان و اشتہار',
+          category: t.iconName === 'news' ? 'اعلان و اشتہار' : 'اسلامی پوسٹ',
         });
       }
     }
@@ -421,7 +416,7 @@ export const SmartDashboardHome: React.FC<Props> = ({
       list.push({
         id: `blogger-folder-${tab.id}`,
         label: tab.title,
-        subLabel: tab.snippet || (tab.isLivePost ? 'بلاگر پوسٹ' : 'آفیشل بلاگ'),
+        subLabel: tab.snippet || 'خانقاہ دارالفلاح',
         icon: IconComp,
         accent: 'text-[#8c6514] dark:text-[#d4af37]',
         publishedDate: dateStr,
@@ -623,9 +618,9 @@ export const SmartDashboardHome: React.FC<Props> = ({
           )}
         </section>
 
-        {/* 3. Smart Islamic Display Panel: Clock + 3 Prayer Tabs + Auto-Silent + Beep Notifications + Mixlr Fallback */}
+        {/* 3. Smart Islamic Display Box: Clock + 3 Prayer Tabs + Live Bayan */}
         <section className="islamic-panel-pattern border-2 border-[#d4af37] rounded-3xl p-4 sm:p-5 text-white shadow-xl space-y-4">
-          {/* Top Metadata & Controls Bar */}
+          {/* Top Metadata Bar */}
           <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-amber-200/90 border-b border-[#d4af37]/25 pb-2.5">
             <div className="flex items-center gap-1.5">
               <MapPin className="w-3.5 h-3.5 text-[#d4af37]" />
@@ -639,15 +634,11 @@ export const SmartDashboardHome: React.FC<Props> = ({
               </button>
             </div>
 
-            <button
-              onClick={fetchPrayerTimes}
-              disabled={isLoadingPrayers}
-              className="flex items-center gap-1 px-2.5 py-1 rounded-xl bg-white/5 hover:bg-white/15 text-[11px] text-[#d4af37] hover:text-amber-200 transition-colors cursor-pointer"
-              title="اوقاتِ نماز تازہ کریں"
-            >
-              <RotateCw className={`w-3.5 h-3.5 ${isLoadingPrayers ? 'animate-spin' : ''}`} />
-              <span>تازہ کریں</span>
-            </button>
+            {isLoadingPrayers ? (
+              <span className="text-[11px] text-emerald-200/75">اوقاتِ نماز اپڈیٹ ہو رہے ہیں...</span>
+            ) : (
+              <span className="text-[11px] text-[#00ff99]/85 font-semibold">خانقاہ دارالفلاح</span>
+            )}
           </div>
 
           {/* Live Clock & Hijri Date */}
@@ -910,130 +901,22 @@ export const SmartDashboardHome: React.FC<Props> = ({
             )}
           </div>
 
-          {/* Mixlr Live Fallback Box: Latest Uploaded Archive Bayanat */}
+          {/* Mixlr Live Bayan Status & Notification Box (Inside Clock Box) */}
           <div className="rounded-2xl bg-black/25 border border-[#d4af37]/45 p-3.5 sm:p-4 space-y-3">
-            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-white/10 pb-2.5">
-              <div className="flex items-center gap-2">
-                <Radio className="w-4 h-4 text-[#d4af37]" />
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-[#d4af37]/15 text-[#d4af37] flex items-center justify-center shrink-0">
+                  <Radio className="w-5 h-5" />
+                </div>
                 <div>
                   <h2 className="text-sm sm:text-base font-bold text-[#d4af37]">
-                    لائیو بیان اس وقت نشر نہیں ہو رہا — تازہ ترین اپلوڈ شدہ بیانات
+                    لائیو بیان (Mixlr)
                   </h2>
-                  <p className="text-[11px] text-emerald-100/75">
-                    آرکائیو فولڈرز میں سب سے آخر میں شامل کیے گئے بیانات (7 دن تک &quot;نیا&quot; نشان کے ساتھ)
+                  <p className="text-xs text-emerald-100/80">
+                    اس وقت کوئی لائیو بیان نشر نہیں ہو رہا — نشر ہوتے ہی یہاں ظاہر ہوگا
                   </p>
                 </div>
               </div>
-              <div className="flex items-center gap-2">
-                {onRefreshAll && (
-                  <button
-                    onClick={onRefreshAll}
-                    disabled={isSyncingArchive}
-                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-[11px] text-[#00ff99] transition-colors cursor-pointer"
-                  >
-                    <RotateCw className={`w-3 h-3 ${isSyncingArchive ? 'animate-spin' : ''}`} />
-                    <span>تازہ کریں</span>
-                  </button>
-                )}
-                <button
-                  onClick={onOpenLibrary}
-                  className="inline-flex items-center gap-1 text-xs font-bold text-[#d4af37] hover:underline cursor-pointer whitespace-nowrap"
-                >
-                  <span>تمام فولڈرز</span>
-                  <ArrowLeft className="w-3.5 h-3.5" />
-                </button>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
-              {latestUploadedBayanat.map((bayan) => {
-                const isPlaying = currentPlayingBayanId === bayan.id;
-                const isDownloading = activeDownloadIds.has(bayan.id);
-                const isNew = isBayanNew(bayan);
-                const dateLabel = formatBayanDateUrdu(bayan);
-
-                return (
-                  <div
-                    key={bayan.id}
-                    className={`p-3 rounded-2xl border flex items-center justify-between gap-2.5 transition-all ${
-                      isPlaying
-                        ? 'bg-[#0f3822] border-[#00ff99]'
-                        : 'bg-white/[0.06] border-[#d4af37]/30 hover:border-[#d4af37]'
-                    }`}
-                  >
-                    <button
-                      onClick={() => onPlayAudio(bayan)}
-                      className="flex-1 min-w-0 text-right cursor-pointer"
-                    >
-                      <div className="flex items-center gap-1.5">
-                        {isNew && (
-                          <span className="px-1.5 py-0.5 rounded bg-[#00ff99] text-[#051a0f] text-[10px] font-extrabold shrink-0">
-                            نیا
-                          </span>
-                        )}
-                        <p className="text-xs sm:text-sm font-bold text-white truncate">
-                          {bayan.urduTitle || bayan.title}
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-1.5 text-[11px] text-emerald-100/75 mt-1 truncate">
-                        <span className="text-[#d4af37] font-semibold truncate">
-                          {bayan.collectionUrdu}
-                        </span>
-                        {dateLabel && (
-                          <>
-                            <span aria-hidden="true">·</span>
-                            <span className="tabular-nums shrink-0">{dateLabel}</span>
-                          </>
-                        )}
-                        {bayan.length && (
-                          <>
-                            <span aria-hidden="true">·</span>
-                            <span className="inline-flex items-center gap-0.5 tabular-nums shrink-0">
-                              <Clock className="w-3 h-3" />
-                              {Math.max(1, Math.floor(parseFloat(bayan.length) / 60))} منٹ
-                            </span>
-                          </>
-                        )}
-                      </div>
-                    </button>
-
-                    <div className="flex items-center gap-1.5 shrink-0">
-                      <button
-                        onClick={() => onPlayAudio(bayan)}
-                        className={`min-w-[38px] min-h-[38px] rounded-xl flex items-center justify-center transition-all active:scale-95 cursor-pointer ${
-                          isPlaying
-                            ? 'bg-[#00ff99] text-[#051a0f]'
-                            : 'bg-[#d4af37] hover:bg-[#e3bf4a] text-[#051a0f]'
-                        }`}
-                        title="بیان سنیں"
-                      >
-                        <Play className="w-4 h-4 fill-current" />
-                      </button>
-
-                      <button
-                        onClick={() => downloadSingleBayan(bayan, onNotify)}
-                        disabled={isDownloading}
-                        className="min-w-[38px] min-h-[38px] rounded-xl bg-white/10 hover:bg-emerald-600 text-white flex items-center justify-center transition-all active:scale-95 cursor-pointer disabled:opacity-60"
-                        title="ڈاؤنلوڈ کریں (اسی صفحے پر)"
-                      >
-                        {isDownloading ? (
-                          <Loader2 className="w-4 h-4 animate-spin" />
-                        ) : (
-                          <Download className="w-4 h-4" />
-                        )}
-                      </button>
-
-                      <button
-                        onClick={() => shareBayanOnWhatsApp(bayan)}
-                        className="min-w-[38px] min-h-[38px] rounded-xl bg-[#25D366] hover:bg-[#1faa4e] text-white flex items-center justify-center transition-all active:scale-95 cursor-pointer"
-                        title="واٹس ایپ پر شیئر کریں"
-                      >
-                        <Share2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </div>
-                );
-              })}
             </div>
 
             {/* Compact Live Notification Email Bar */}
@@ -1102,41 +985,154 @@ export const SmartDashboardHome: React.FC<Props> = ({
           </div>
         </section>
 
-        {/* 4. Dynamic Grid Folders (All Automatic Blogger Posts + Core Audio/Book Folders) */}
-        <section className="space-y-3">
-          <div className="flex flex-wrap items-center justify-between gap-2 px-1">
-            <div>
-              <h2 className="text-base sm:text-lg font-bold text-[#064326] dark:text-[#d4af37]">
-                فولڈرز اور بلاگر پوسٹس
-              </h2>
-              <p className="text-[11px] opacity-70">
-                بلاگر پر اپلوڈ ہونے والی ہر نئی پوسٹ اور آرکائیو فولڈرز خودکار طور پر یہاں ظاہر ہوتے ہیں
-              </p>
-            </div>
-            <div className="flex items-center gap-2">
-              {onRefreshAll && (
-                <button
-                  onClick={onRefreshAll}
-                  className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-xl border text-xs font-bold transition-colors cursor-pointer ${
-                    isDark
-                      ? 'bg-[#0e2217] border-[#d4af37]/30 text-[#d4af37] hover:bg-[#143021]'
-                      : 'bg-white border-emerald-900/15 text-[#064326] hover:bg-emerald-50'
-                  }`}
-                >
-                  <RotateCw className="w-3.5 h-3.5" />
-                  <span>بلاگر تازہ کریں</span>
-                </button>
-              )}
-              <button
-                onClick={() => onOpenUrl(BLOGGER_HOME_URL)}
-                className="text-xs font-bold text-[#064326] dark:text-[#00ff99] hover:underline cursor-pointer"
+        {/* 3B. Separate Beautiful Box: Latest Uploaded Bayanat */}
+        <section
+          className={`rounded-3xl border-2 border-[#d4af37]/60 p-4 sm:p-5 shadow-md space-y-3.5 transition-colors ${
+            isDark
+              ? 'bg-[#0b1f14] text-emerald-50'
+              : 'bg-white text-[#11261b]'
+          }`}
+        >
+          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#d4af37]/25 pb-2.5">
+            <div className="flex items-center gap-2.5">
+              <div
+                className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${
+                  isDark ? 'bg-[#d4af37]/15 text-[#d4af37]' : 'bg-[#ebf2ee] text-[#064326]'
+                }`}
               >
-                مکمل بلاگ کھولیں
-              </button>
+                <Headphones className="w-5 h-5" />
+              </div>
+              <div>
+                <h2 className="text-sm sm:text-base font-bold text-[#064326] dark:text-[#d4af37]">
+                  تازہ ترین اپلوڈ شدہ بیانات
+                </h2>
+                <p className="text-[11px] opacity-75">
+                  سب سے آخر میں شامل کیے گئے بیانات (7 دن تک &quot;نیا&quot; نشان کے ساتھ)
+                </p>
+              </div>
             </div>
+
+            <button
+              onClick={onOpenLibrary}
+              className="inline-flex items-center gap-1 text-xs font-bold text-[#064326] dark:text-[#00ff99] hover:underline cursor-pointer whitespace-nowrap"
+            >
+              <span>تمام بیانات دیکھیں</span>
+              <ArrowLeft className="w-3.5 h-3.5" />
+            </button>
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2.5 sm:gap-3.5">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
+            {latestUploadedBayanat.map((bayan) => {
+              const isPlaying = currentPlayingBayanId === bayan.id;
+              const isDownloading = activeDownloadIds.has(bayan.id);
+              const isNew = isBayanNew(bayan);
+              const dateLabel = formatBayanDateUrdu(bayan);
+
+              return (
+                <div
+                  key={bayan.id}
+                  className={`p-3 rounded-2xl border flex items-center justify-between gap-2.5 transition-all ${
+                    isPlaying
+                      ? isDark
+                        ? 'bg-[#0f3822] border-[#00ff99]'
+                        : 'bg-[#ebf2ee] border-[#064326]'
+                      : isDark
+                      ? 'bg-[#0e2418] border-[#d4af37]/30 hover:border-[#d4af37]'
+                      : 'bg-[#f8faf9] border-emerald-900/15 hover:border-[#d4af37]'
+                  }`}
+                >
+                  <button
+                    onClick={() => onPlayAudio(bayan)}
+                    className="flex-1 min-w-0 text-right cursor-pointer"
+                  >
+                    <div className="flex items-center gap-1.5">
+                      {isNew && (
+                        <span className="px-1.5 py-0.5 rounded bg-[#064326] dark:bg-[#00ff99] text-white dark:text-[#051a0f] text-[10px] font-extrabold shrink-0">
+                          نیا
+                        </span>
+                      )}
+                      <p className="text-xs sm:text-sm font-bold truncate">
+                        {bayan.urduTitle || bayan.title}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-1.5 text-[11px] opacity-75 mt-1 truncate">
+                      <span className="text-[#8c6514] dark:text-[#d4af37] font-semibold truncate">
+                        {bayan.collectionUrdu}
+                      </span>
+                      {dateLabel && (
+                        <>
+                          <span aria-hidden="true">·</span>
+                          <span className="tabular-nums shrink-0">{dateLabel}</span>
+                        </>
+                      )}
+                      {bayan.length && (
+                        <>
+                          <span aria-hidden="true">·</span>
+                          <span className="inline-flex items-center gap-0.5 tabular-nums shrink-0">
+                            <Clock className="w-3 h-3" />
+                            {Math.max(1, Math.floor(parseFloat(bayan.length) / 60))} منٹ
+                          </span>
+                        </>
+                      )}
+                    </div>
+                  </button>
+
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <button
+                      onClick={() => onPlayAudio(bayan)}
+                      className={`min-w-[38px] min-h-[38px] rounded-xl flex items-center justify-center transition-all active:scale-95 cursor-pointer ${
+                        isPlaying
+                          ? 'bg-[#00ff99] text-[#051a0f]'
+                          : 'bg-[#064326] hover:bg-[#095c34] text-white dark:bg-[#d4af37] dark:text-[#051a0f]'
+                      }`}
+                      title="بیان سنیں"
+                    >
+                      <Play className="w-4 h-4 fill-current" />
+                    </button>
+
+                    <button
+                      onClick={() => downloadSingleBayan(bayan, onNotify)}
+                      disabled={isDownloading}
+                      className={`min-w-[38px] min-h-[38px] rounded-xl flex items-center justify-center transition-all active:scale-95 cursor-pointer disabled:opacity-60 ${
+                        isDark
+                          ? 'bg-white/10 hover:bg-emerald-600 text-white'
+                          : 'bg-emerald-900/10 hover:bg-[#064326] text-[#064326] hover:text-white'
+                      }`}
+                      title="ڈاؤنلوڈ کریں (اسی صفحے پر)"
+                    >
+                      {isDownloading ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <Download className="w-4 h-4" />
+                      )}
+                    </button>
+
+                    <button
+                      onClick={() => shareBayanOnWhatsApp(bayan)}
+                      className="min-w-[38px] min-h-[38px] rounded-xl bg-[#25D366] hover:bg-[#1faa4e] text-white flex items-center justify-center transition-all active:scale-95 cursor-pointer"
+                      title="واٹس ایپ پر شیئر کریں"
+                    >
+                      <Share2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </section>
+
+        {/* 4. Dynamic Grid Folders (All Blogger Posts + Core Folders without technical labels) */}
+        <section className="space-y-3">
+          <div className="px-1">
+            <h2 className="text-base sm:text-lg font-bold text-[#064326] dark:text-[#d4af37]">
+              فولڈرز اور اسلامی لائبریری
+            </h2>
+            <p className="text-[11px] opacity-70">
+              تمام بیانات، کتب، اعلانات اور خانقاہ کے شعبہ جات خودکار طور پر یہاں ظاہر ہوتے ہیں
+            </p>
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2.5 sm:gap-3.5">
             {coreFolders.map((item) => {
               const IconComponent = item.icon;
               return (
@@ -1203,7 +1199,7 @@ export const SmartDashboardHome: React.FC<Props> = ({
           </div>
         </section>
 
-        {/* 5. Clean 4-Column Website-Style Footer Cards */}
+        {/* 5. Clean Website-Style Footer Cards */}
         <footer
           className={`rounded-3xl border-2 border-[#d4af37]/35 p-4 sm:p-5 space-y-4 ${
             isDark
@@ -1311,7 +1307,7 @@ export const SmartDashboardHome: React.FC<Props> = ({
                 <p className="text-xs opacity-80 leading-relaxed">
                   آفیشل واٹس ایپ، سوشل میڈیا اور اینڈرائڈ ایپ لنکس:
                 </p>
-                <div className="flex items-center gap-2 pt-0.5">
+                <div className="flex flex-wrap items-center gap-2 pt-0.5">
                   <a
                     href={WHATSAPP_DIRECT_CHAT_URL}
                     target="_blank"
@@ -1360,13 +1356,40 @@ export const SmartDashboardHome: React.FC<Props> = ({
             </div>
           </div>
 
-          <div className="pt-3 border-t border-emerald-900/10 dark:border-white/10 text-center text-xs space-y-0.5">
-            <p className="font-bold text-[#064326] dark:text-[#d4af37]">
-              خانقاہ دارالفلاح · تمام حقوق محفوظ ہیں © 2026
-            </p>
-            <p className="text-[11px] opacity-75">
-              Developed by <b>Abu-HamadGrfx</b>
-            </p>
+          <div className="pt-3 border-t border-emerald-900/10 dark:border-white/10 text-center text-xs space-y-2.5">
+            <div className="flex justify-center">
+              <a
+                href={DEVELOPER_WHATSAPP_URL}
+                target="_blank"
+                rel="noreferrer"
+                className={`inline-flex items-center justify-center gap-1.5 px-3.5 py-1.5 rounded-xl border text-[11px] font-bold transition-all active:scale-95 cursor-pointer ${
+                  isDark
+                    ? 'bg-[#0e291b] border-[#25D366]/50 text-[#00ff99] hover:bg-[#25D366] hover:text-white'
+                    : 'bg-[#ebf2ee] border-[#25D366]/50 text-[#064326] hover:bg-[#25D366] hover:text-white'
+                }`}
+              >
+                <MessageCircle className="w-3.5 h-3.5 shrink-0" />
+                <span>رہنمائی یا مشورہ کے لیے اور کاروباری ویب سائٹس یا ایپ بنانے کے لیے یہاں کلک کریں</span>
+              </a>
+            </div>
+            <div className="space-y-1">
+              <p className="font-bold text-[#064326] dark:text-[#d4af37]">
+                خانقاہ دارالفلاح · تمام حقوق محفوظ ہیں © 2026
+              </p>
+              <a
+                href={DEVELOPER_WHATSAPP_URL}
+                target="_blank"
+                rel="noreferrer"
+                dir="ltr"
+                className="inline-flex items-center gap-1.5 text-[11px] font-medium hover:text-[#25D366] transition-colors cursor-pointer"
+                title="واٹس ایپ پر براہِ راست رابطہ کریں"
+              >
+                <span className="opacity-75">Developed by</span>
+                <b className="text-[#064326] dark:text-[#00ff99] underline decoration-[#d4af37]/70 underline-offset-4">
+                  Abu-HamadGrfx
+                </b>
+              </a>
+            </div>
           </div>
         </footer>
       </div>

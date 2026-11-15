@@ -36,11 +36,12 @@ export default function App() {
   const [currentUrl, setCurrentUrl] = useState(GOLD_LIBRARY_URL);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [selectedLibraryFolderId, setSelectedLibraryFolderId] = useState<string>('all');
 
   // Dynamic Blogger Posts & Libraries (automatically updates when new posts are published on Blogger)
   const { tabs, isRefreshing, refreshPosts } = useBloggerTabs();
 
-  // Dynamic Archive.org Bayanat sync (merges static DB with live metadata & mtime sorting)
+  // Dynamic Archive.org Bayanat sync (auto-discovers latest bayanat across all collections)
   const { bayanat, isSyncingArchive, syncArchive } = useArchiveBayanat();
   
   // Theme state: Default to clean Islamic Light theme (matches the Smart Dashboard aesthetic)
@@ -57,6 +58,18 @@ export default function App() {
   useEffect(() => {
     document.documentElement.classList.toggle('dark', isDark);
   }, [isDark]);
+
+  // Keep Desktop Mode permanently active across the app
+  useEffect(() => {
+    document.documentElement.classList.add('desktop-mode');
+    const viewportMeta = document.querySelector('meta[name="viewport"]');
+    if (viewportMeta) {
+      viewportMeta.setAttribute(
+        'content',
+        'width=768, initial-scale=0.5, minimum-scale=0.25, maximum-scale=3.0, user-scalable=yes, viewport-fit=cover'
+      );
+    }
+  }, []);
 
   // Toast notification message
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -111,9 +124,23 @@ export default function App() {
     setCurrentBayan(bayan);
   };
 
+  // Silent automatic background sync every 10 minutes + on tab focus
+  useEffect(() => {
+    const interval = setInterval(() => {
+      refreshPosts();
+      syncArchive();
+    }, 10 * 60 * 1000);
+    return () => clearInterval(interval);
+  }, [refreshPosts, syncArchive]);
+
   const handleManualRefresh = () => {
     refreshPosts(showNotification);
     syncArchive();
+  };
+
+  const handleOpenLibraryFolder = (folderId = 'all') => {
+    setSelectedLibraryFolderId(folderId);
+    setActiveView('library');
   };
 
   return (
@@ -157,10 +184,8 @@ export default function App() {
             isDark={isDark}
             bayanatList={bayanat}
             bloggerTabs={tabs}
-            isSyncingArchive={isSyncingArchive}
-            onRefreshAll={handleManualRefresh}
             onOpenUrl={handleNavigateUrl}
-            onOpenLibrary={() => setActiveView('library')}
+            onOpenLibrary={() => handleOpenLibraryFolder('all')}
             onOpenWhatsAppGroups={() => setIsWhatsAppGroupsOpen(true)}
             onOpenIntroKhanqah={() => setIsIntroKhanqahOpen(true)}
             onOpenIntroSheikh={() => setIsIntroSheikhOpen(true)}
@@ -180,6 +205,7 @@ export default function App() {
             isDark={isDark}
             currentPlayingBayanId={currentBayan?.id || null}
             bayanatList={bayanat}
+            initialFolderId={selectedLibraryFolderId}
           />
         ) : (
           <WebViewContainer
@@ -199,7 +225,7 @@ export default function App() {
         onGoHome={() => setActiveView('dashboard')}
         onOpenIntroKhanqah={() => setIsIntroKhanqahOpen(true)}
         onOpenIntroSheikh={() => setIsIntroSheikhOpen(true)}
-        onOpenAllBayanat={() => setActiveView('library')}
+        onOpenAllBayanat={() => handleOpenLibraryFolder('all')}
         onOpenIslahiBayanat={() => handleNavigateUrl(GOLD_LIBRARY_URL)}
         onOpenUrl={handleNavigateUrl}
         onOpenWhatsAppGroups={() => setIsWhatsAppGroupsOpen(true)}

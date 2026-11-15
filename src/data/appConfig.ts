@@ -72,6 +72,7 @@ export interface WhatsAppLinkItem {
 }
 
 export const WHATSAPP_DIRECT_CHAT_URL = "https://api.whatsapp.com/send?phone=923369757393";
+export const DEVELOPER_WHATSAPP_URL = "https://api.whatsapp.com/send?phone=923329106002";
 
 export const OFFICIAL_WHATSAPP_LINKS: WhatsAppLinkItem[] = [
   {

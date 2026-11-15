@@ -1,13 +1,29 @@
 import { useState, useEffect, useCallback } from 'react';
 import { BAYANAT_DATABASE, BayanItem } from '../data/bayanatData';
 
-const ARCHIVE_CACHE_KEY = 'khanqah_archive_live_bayanat_v1';
+const ARCHIVE_CACHE_KEY = 'khanqah_archive_live_bayanat_v2';
+const ARCHIVE_FOLDERS_CACHE_KEY = 'khanqah_archive_folders_v2';
+const ARCHIVE_UPLOADER_EMAIL = 'khanqahdarulfalah@gmail.com';
 const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
 
-export const ARCHIVE_COLLECTIONS: Record<
-  string,
-  { title: string; urdu: string; category: BayanItem['category'] }
-> = {
+export interface ArchiveCollectionMeta {
+  title: string;
+  urdu: string;
+  category: BayanItem['category'];
+}
+
+export interface ArchiveFolderSummary {
+  id: string;
+  title: string;
+  urdu: string;
+  mediatype: 'audio' | 'texts' | 'movies' | string;
+  category: BayanItem['category'];
+  addeddate?: string;
+  itemCount: number;
+  archiveUrl: string;
+}
+
+export const ARCHIVE_COLLECTIONS: Record<string, ArchiveCollectionMeta> = {
   'noor-e-nisbat': {
     title: 'Sulook ila Allah ke Aasaan Usool',
     urdu: 'سلوک الی اللہ کے آسان اصول',
@@ -53,7 +69,32 @@ export const ARCHIVE_COLLECTIONS: Record<
     urdu: 'خصوصی بیانات و مواعظ',
     category: 'Islahi',
   },
+  '20260220_20260220_0620': {
+    title: 'Ramzan ul Mubarak ke Aham Masail',
+    urdu: 'رمضان المبارک کے اہم مسائل',
+    category: 'Dars',
+  },
+  'wa-0112_202511': {
+    title: 'Shukook o Shubahat ka Izaala',
+    urdu: 'شکوک و شبہات کا ازالہ',
+    category: 'Islahi',
+  },
+  '1-2_20250901': {
+    title: 'Seerat-un-Nabi Dars 1-2',
+    urdu: 'سیرت النبی ﷺ درس نمبر 1-2',
+    category: 'Dars',
+  },
 };
+
+function inferCategoryFromTitle(title: string): BayanItem['category'] {
+  const lower = title.toLowerCase();
+  if (lower.includes('سلوک') || lower.includes('نسبت') || lower.includes('sulook')) return 'Sulook';
+  if (lower.includes('ذکر') || lower.includes('zikr') || lower.includes('مجلس')) return 'Zikr';
+  if (lower.includes('درس') || lower.includes('قرآن') || lower.includes('سیرت') || lower.includes('رمضان')) return 'Dars';
+  if (lower.includes('حمد') || lower.includes('نعت') || lower.includes('تلاوت')) return 'Hamd';
+  if (lower.includes('فضیلت') || lower.includes('دعا')) return 'Fazilat';
+  return 'Islahi';
+}
 
 export function getBayanTimestampMs(bayan: BayanItem): number {
   const mtimeNum = parseInt(bayan.mtime || '0', 10);
@@ -156,9 +197,36 @@ function mergeAndSortBayanat(liveItems: BayanItem[]): BayanItem[] {
   );
 }
 
-async function fetchCollectionMetadata(collectionId: string): Promise<BayanItem[]> {
-  const info = ARCHIVE_COLLECTIONS[collectionId];
-  if (!info) return [];
+interface DiscoveredArchiveDoc {
+  identifier: string;
+  title: string;
+  mediatype: string;
+  addeddate?: string;
+}
+
+async function discoverUploaderItems(): Promise<DiscoveredArchiveDoc[]> {
+  const url = `https://archive.org/advancedsearch.php?q=uploader:${encodeURIComponent(
+    ARCHIVE_UPLOADER_EMAIL
+  )}&fl%5B%5D=identifier&fl%5B%5D=title&fl%5B%5D=mediatype&fl%5B%5D=addeddate&sort%5B%5D=addeddate+desc&rows=50&output=json`;
+
+  const res = await fetch(url);
+  if (!res.ok) return [];
+  const json = await res.json();
+  const docs: any[] = Array.isArray(json?.response?.docs) ? json.response.docs : [];
+  return docs
+    .map((d) => ({
+      identifier: String(d?.identifier || '').trim(),
+      title: String(d?.title || d?.identifier || '').trim(),
+      mediatype: String(d?.mediatype || 'audio').trim(),
+      addeddate: d?.addeddate ? String(d.addeddate) : undefined,
+    }))
+    .filter((d) => d.identifier.length > 0);
+}
+
+async function fetchCollectionMetadata(
+  collectionId: string,
+  meta: ArchiveCollectionMeta
+): Promise<BayanItem[]> {
   const res = await fetch(`https://archive.org/metadata/${collectionId}`);
   if (!res.ok) return [];
   const json = await res.json();
@@ -167,7 +235,8 @@ async function fetchCollectionMetadata(collectionId: string): Promise<BayanItem[
 
   for (const f of files) {
     const name = String(f?.name || '');
-    if (!name.toLowerCase().endsWith('.mp3')) continue;
+    const lower = name.toLowerCase();
+    if (!lower.endsWith('.mp3') || lower.endsWith('_64kb.mp3')) continue;
     const baseName = name.replace(/\.mp3$/i, '').trim();
     const encodedName = name
       .split('/')
@@ -176,9 +245,9 @@ async function fetchCollectionMetadata(collectionId: string): Promise<BayanItem[
     items.push({
       id: `live-${collectionId}-${baseName}`,
       collectionId,
-      collectionTitle: info.title,
-      collectionUrdu: info.urdu,
-      category: info.category,
+      collectionTitle: meta.title,
+      collectionUrdu: meta.urdu,
+      category: meta.category,
       filename: name,
       title: baseName,
       urduTitle: baseName,
@@ -189,6 +258,22 @@ async function fetchCollectionMetadata(collectionId: string): Promise<BayanItem[
     });
   }
   return items;
+}
+
+function buildDefaultFolders(bayanat: BayanItem[]): ArchiveFolderSummary[] {
+  const counts = new Map<string, number>();
+  for (const b of bayanat) {
+    counts.set(b.collectionId, (counts.get(b.collectionId) || 0) + 1);
+  }
+  return Object.entries(ARCHIVE_COLLECTIONS).map(([id, info]) => ({
+    id,
+    title: info.title,
+    urdu: info.urdu,
+    mediatype: 'audio',
+    category: info.category,
+    itemCount: counts.get(id) || 0,
+    archiveUrl: `https://archive.org/details/${id}`,
+  }));
 }
 
 export function useArchiveBayanat() {
@@ -205,29 +290,99 @@ export function useArchiveBayanat() {
     return mergeAndSortBayanat([]);
   });
 
+  const [archiveFolders, setArchiveFolders] = useState<ArchiveFolderSummary[]>(() => {
+    try {
+      const cached = localStorage.getItem(ARCHIVE_FOLDERS_CACHE_KEY);
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch {}
+    return buildDefaultFolders(BAYANAT_DATABASE);
+  });
+
   const [isSyncingArchive, setIsSyncingArchive] = useState(false);
 
   const syncArchive = useCallback(async () => {
     setIsSyncingArchive(true);
     try {
-      const collectionIds = Object.keys(ARCHIVE_COLLECTIONS);
-      const settled = await Promise.allSettled(
-        collectionIds.map((id) => fetchCollectionMetadata(id))
-      );
-      const liveItems: BayanItem[] = [];
-      for (const r of settled) {
-        if (r.status === 'fulfilled' && r.value.length > 0) {
-          liveItems.push(...r.value);
-        }
+      // 1. Auto-discover ALL collections uploaded under khanqahdarulfalah@gmail.com
+      let discoveredDocs: DiscoveredArchiveDoc[] = [];
+      try {
+        discoveredDocs = await discoverUploaderItems();
+      } catch {}
+
+      const collectionsMap = new Map<string, ArchiveCollectionMeta & { mediatype: string; addeddate?: string }>();
+      for (const [id, meta] of Object.entries(ARCHIVE_COLLECTIONS)) {
+        collectionsMap.set(id, { ...meta, mediatype: 'audio' });
       }
+
+      for (const doc of discoveredDocs) {
+        // Skip internal software APK & pure UI image assets in folder list
+        if (doc.mediatype === 'software' || doc.mediatype === 'image') continue;
+        const existing = ARCHIVE_COLLECTIONS[doc.identifier];
+        collectionsMap.set(doc.identifier, {
+          title: existing?.title || doc.title,
+          urdu: doc.title && /[\u0600-\u06FF]/.test(doc.title) ? doc.title : (existing?.urdu || doc.title),
+          category: existing?.category || inferCategoryFromTitle(doc.title),
+          mediatype: doc.mediatype,
+          addeddate: doc.addeddate,
+        });
+      }
+
+      // 2. Fetch audio files across all audio collections
+      const audioEntries = Array.from(collectionsMap.entries()).filter(
+        ([, meta]) => meta.mediatype === 'audio'
+      );
+
+      const settled = await Promise.allSettled(
+        audioEntries.map(([id, meta]) => fetchCollectionMetadata(id, meta))
+      );
+
+      const liveItems: BayanItem[] = [];
+      const folderCounts = new Map<string, number>();
+
+      settled.forEach((r, idx) => {
+        const folderId = audioEntries[idx][0];
+        if (r.status === 'fulfilled') {
+          folderCounts.set(folderId, r.value.length);
+          if (r.value.length > 0) {
+            liveItems.push(...r.value);
+          }
+        }
+      });
+
+      const merged = liveItems.length > 0 ? mergeAndSortBayanat(liveItems) : bayanat;
       if (liveItems.length > 0) {
-        const merged = mergeAndSortBayanat(liveItems);
         setBayanat(merged);
         try {
-          // Cache only live items to keep localStorage lightweight
-          localStorage.setItem(ARCHIVE_CACHE_KEY, JSON.stringify(liveItems.slice(0, 250)));
+          localStorage.setItem(ARCHIVE_CACHE_KEY, JSON.stringify(liveItems.slice(0, 350)));
         } catch {}
       }
+
+      // Build complete folder summaries (auto-discovered audio folders + books/videos)
+      const fallbackCounts = new Map<string, number>();
+      for (const b of merged) {
+        fallbackCounts.set(b.collectionId, (fallbackCounts.get(b.collectionId) || 0) + 1);
+      }
+
+      const folderList: ArchiveFolderSummary[] = Array.from(collectionsMap.entries()).map(
+        ([id, meta]) => ({
+          id,
+          title: meta.title,
+          urdu: meta.urdu,
+          mediatype: meta.mediatype,
+          category: meta.category,
+          addeddate: meta.addeddate,
+          itemCount: folderCounts.get(id) ?? fallbackCounts.get(id) ?? 0,
+          archiveUrl: `https://archive.org/details/${id}`,
+        })
+      );
+
+      setArchiveFolders(folderList);
+      try {
+        localStorage.setItem(ARCHIVE_FOLDERS_CACHE_KEY, JSON.stringify(folderList));
+      } catch {}
     } catch {
       // Keep fallback database smoothly
     } finally {
@@ -241,6 +396,7 @@ export function useArchiveBayanat() {
 
   return {
     bayanat,
+    archiveFolders,
     isSyncingArchive,
     syncArchive,
   };

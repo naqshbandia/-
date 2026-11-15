@@ -31,6 +31,7 @@ import {
   OFFICIAL_APK_URL,
   URDU_BOOKS_URL,
   NEWS_UPDATES_URL,
+  DEVELOPER_WHATSAPP_URL,
 } from '../data/appConfig';
 
 interface Props {
@@ -445,9 +446,20 @@ export const HamburgerDrawer: React.FC<Props> = ({
                 <Facebook className="w-5 h-5 fill-[#1877F2]" />
               </a>
             </div>
-            <p className="text-[10px] opacity-65 text-center font-sans">
-              Khanqah Darul Falah © 2026 · Developed by Abu-HamadGrfx
-            </p>
+            <div className="text-[10px] text-center space-y-1">
+              <p className="opacity-75 font-sans" dir="ltr">
+                Khanqah Darul Falah © 2026 ·{' '}
+                <a
+                  href={DEVELOPER_WHATSAPP_URL}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="font-bold text-[#064326] dark:text-[#00ff99] underline decoration-[#d4af37]/70 underline-offset-2 hover:text-[#25D366]"
+                  title="واٹس ایپ پر رابطہ کریں"
+                >
+                  Developed by Abu-HamadGrfx
+                </a>
+              </p>
+            </div>
           </div>
         </div>
       </div>
