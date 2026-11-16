@@ -72,14 +72,14 @@
    Mobile Mode uses default compact Tailwind sizes without these overrides.
    ============================================================================ */
 html.desktop-mode .text-\[9px\] {
-  font-size: 11px;
-  line-height: 1.45;
+  font-size: 12px;
+  line-height: 1.00;
 }
 
-html.desktop-mode .text-\[10px\],
-html.desktop-mode .sm\:text-\[10px\] {
-  font-size: 12px;
-  line-height: 1.45;
+html.desktop-mode .text-\[12px\],
+html.desktop-mode .sm\:text-\[12px\] {
+  font-size: 13px;
+  line-height: 1.00;
 }
 
 html.desktop-mode .text-\[11px\] {
