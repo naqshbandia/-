@@ -5,8 +5,21 @@ export const ANDROID_APP_NAME_URDU = "خانقاہ دارالفلاح";
 // Official Verified Android APK Download Link on Archive.org
 export const OFFICIAL_APK_URL = "https://archive.org/download/khanqah-darul-falah/%20khanqah%20Darul%20falah.apk";
 
-// Official Sheikh / Khanqah Top Title Calligraphy Banner
+// Official WhatsApp Gift Share Link (shares the direct Archive.org APK download link)
+export const APP_GIFT_WHATSAPP_SHARE_URL = `https://wa.me/?text=${encodeURIComponent(
+  [
+    '🎁 *خانقاہ دارالفلاح — دینی تحفہ (آفیشل اینڈرائڈ ایپ)*',
+    '',
+    'شیخ الحدیث حضرت مولانا پیر محمد جمشید نقشبندی مجددی (دامت برکاتہم) کے اصلاحی بیانات، دروسِ قرآن، کتب اور اوقاتِ نماز کی آفیشل ایپ بطورِ ہدیہ قبول فرمائیں۔',
+    '',
+    '📲 *فوری ڈاؤنلوڈ اور انسٹال کرنے کے لیے اس لنک کو دبائیں:*',
+    OFFICIAL_APK_URL,
+  ].join('\n')
+)}`;
+
+// Official Sheikh / Khanqah Top Title Calligraphy Banner (Glass Crystal Card PNG)
 export const SHEIKH_TITLE_BANNER_URL = "https://archive.org/download/20260422_20260422_1213/%D8%B4%DB%8C%D8%AE%20%D8%B5%D8%A7%D8%AD%D8%A8%20%D9%84%D9%88%DA%AF%D9%88%20%D9%84%DA%A9%DA%91%DB%8C%20%D9%88%D8%A7%D9%84%D8%A7.png";
+export const SHEIKH_GLASS_BANNER_URL = `${import.meta.env.BASE_URL}sheikh-glass-banner.png`;
 
 // Direct Clean URLs (with ZERO empty gap and instant loading)
 export const GOLD_LIBRARY_URL = "https://naqshbandia.github.io/index.html/Gold%20file%20location.html";

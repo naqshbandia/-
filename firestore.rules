@@ -1,0 +1,109 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Global default-deny safety net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() > 0 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isVerifiedUser() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    function isAdmin() {
+      return isVerifiedUser() && (
+        request.auth.token.email in ['mirakhel2023@gmail.com', 'khanqahdarulfalah@gmail.com'] ||
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+      );
+    }
+
+    function isValidMode(m) {
+      return m is string && m.size() > 0 && m.size() <= 10 && m in ['auto', 'custom'];
+    }
+
+    function isValidOffset(n) {
+      return n is int && n >= 1 && n <= 120;
+    }
+
+    function isValidTime24(t) {
+      return t is string && t.size() == 5 && t.matches('^([01]\\d|2[0-3]):[0-5]\\d$');
+    }
+
+    function isValidKhanqahSchedule(data) {
+      return data.keys().hasAll([
+          'fajrMode', 'fajrOffset', 'fajrTime',
+          'dhuhrMode', 'dhuhrOffset', 'dhuhrTime',
+          'asrMode', 'asrOffset', 'asrTime',
+          'maghribMode', 'maghribOffset', 'maghribTime',
+          'ishaMode', 'ishaOffset', 'ishaTime',
+          'jummahTime', 'updatedByUid', 'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'fajrMode', 'fajrOffset', 'fajrTime',
+          'dhuhrMode', 'dhuhrOffset', 'dhuhrTime',
+          'asrMode', 'asrOffset', 'asrTime',
+          'maghribMode', 'maghribOffset', 'maghribTime',
+          'ishaMode', 'ishaOffset', 'ishaTime',
+          'jummahTime', 'updatedByUid', 'updatedAt'
+        ])
+        && isValidMode(data.fajrMode) && isValidOffset(data.fajrOffset) && isValidTime24(data.fajrTime)
+        && isValidMode(data.dhuhrMode) && isValidOffset(data.dhuhrOffset) && isValidTime24(data.dhuhrTime)
+        && isValidMode(data.asrMode) && isValidOffset(data.asrOffset) && isValidTime24(data.asrTime)
+        && isValidMode(data.maghribMode) && isValidOffset(data.maghribOffset) && isValidTime24(data.maghribTime)
+        && isValidMode(data.ishaMode) && isValidOffset(data.ishaOffset) && isValidTime24(data.ishaTime)
+        && isValidTime24(data.jummahTime)
+        && isValidId(data.updatedByUid)
+        && data.updatedByUid == request.auth.uid
+        && data.updatedAt == request.time;
+    }
+
+    match /khanqahSchedule/{scheduleId} {
+      // Single public official schedule document can be viewed by devotees; list scraping disabled
+      allow get: if isValidId(scheduleId) && scheduleId == 'official';
+      allow list: if false;
+
+      // Only verified Admins can create or update the official Khanqah Darul Falah Jama'at timings
+      allow create: if isValidId(scheduleId)
+        && scheduleId == 'official'
+        && isAdmin()
+        && isValidKhanqahSchedule(incoming());
+
+      allow update: if isValidId(scheduleId)
+        && scheduleId == 'official'
+        && isAdmin()
+        && isValidKhanqahSchedule(incoming())
+        && incoming().diff(existing()).affectedKeys().hasOnly([
+          'fajrMode', 'fajrOffset', 'fajrTime',
+          'dhuhrMode', 'dhuhrOffset', 'dhuhrTime',
+          'asrMode', 'asrOffset', 'asrTime',
+          'maghribMode', 'maghribOffset', 'maghribTime',
+          'ishaMode', 'ishaOffset', 'ishaTime',
+          'jummahTime', 'updatedByUid', 'updatedAt'
+        ]);
+
+      allow delete: if false;
+    }
+
+    match /admins/{adminUid} {
+      // A signed-in user may check only their own admin status; no client writes allowed
+      allow get: if isValidId(adminUid) && isVerifiedUser() && request.auth.uid == adminUid;
+      allow list, create, update, delete: if false;
+    }
+  }
+}

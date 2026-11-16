@@ -38,7 +38,7 @@ import {
   downloadFolderBayanat, 
   subscribeToDownloads 
 } from '../utils/downloadHelper';
-import { OFFICIAL_WHATSAPP_LINKS, OFFICIAL_APK_URL, SHEIKH_TITLE_BANNER_URL, WHATSAPP_DIRECT_CHAT_URL } from '../data/appConfig';
+import { OFFICIAL_WHATSAPP_LINKS, OFFICIAL_APK_URL, SHEIKH_GLASS_BANNER_URL, WHATSAPP_DIRECT_CHAT_URL } from '../data/appConfig';
 import { shareBayanOnWhatsApp, isBayanNew, normalizeSearchText } from '../utils/archiveService';
 
 interface Props {
@@ -455,10 +455,10 @@ export const AudioLibraryView: React.FC<Props> = ({
           </button>
         </div>
 
-        {/* Authentic Wood-Carved Calligraphy Banner Image */}
-        <div className="mt-3 rounded-2xl overflow-hidden border-2 border-[#b08d43] shadow-xl bg-[#3d2e21]">
+        {/* Glass Crystal Calligraphy Banner Image */}
+        <div className="mt-3 rounded-2xl overflow-hidden border-2 border-[#b08d43] shadow-xl bg-white dark:bg-[#0c2317]">
           <img 
-            src={SHEIKH_TITLE_BANNER_URL} 
+            src={SHEIKH_GLASS_BANNER_URL} 
             alt="پیر طریقت رہبر شریعت ولی کامل استاد العلماء حضرت شیخ پیر محمد جمشید نقشبندی مجددی صاحب دامت برکاتہم العالیہ" 
             className="w-full h-auto object-cover block"
             loading="eager"

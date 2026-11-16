@@ -1,0 +1,151 @@
+{
+  "entities": {
+    "KhanqahJamaatSchedule": {
+      "title": "Khanqah Jamaat Schedule",
+      "description": "Official congregational prayer timings for Khanqah Darul Falah managed exclusively by verified Admins.",
+      "type": "object",
+      "properties": {
+        "fajrMode": {
+          "type": "string",
+          "enum": ["auto", "custom"],
+          "maxLength": 10,
+          "description": "Auto offset after Adhan or fixed custom time for Fajr Jamaat."
+        },
+        "fajrOffset": {
+          "type": "integer",
+          "description": "Minutes after Fajr Adhan when fajrMode is auto (1-120)."
+        },
+        "fajrTime": {
+          "type": "string",
+          "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$",
+          "maxLength": 5,
+          "description": "Custom 24-hour HH:MM Fajr Jamaat time."
+        },
+        "dhuhrMode": {
+          "type": "string",
+          "enum": ["auto", "custom"],
+          "maxLength": 10,
+          "description": "Auto offset after Adhan or fixed custom time for Dhuhr Jamaat."
+        },
+        "dhuhrOffset": {
+          "type": "integer",
+          "description": "Minutes after Dhuhr Adhan when dhuhrMode is auto (1-120)."
+        },
+        "dhuhrTime": {
+          "type": "string",
+          "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$",
+          "maxLength": 5,
+          "description": "Custom 24-hour HH:MM Dhuhr Jamaat time."
+        },
+        "asrMode": {
+          "type": "string",
+          "enum": ["auto", "custom"],
+          "maxLength": 10,
+          "description": "Auto offset after Adhan or fixed custom time for Asr Jamaat."
+        },
+        "asrOffset": {
+          "type": "integer",
+          "description": "Minutes after Asr Adhan when asrMode is auto (1-120)."
+        },
+        "asrTime": {
+          "type": "string",
+          "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$",
+          "maxLength": 5,
+          "description": "Custom 24-hour HH:MM Asr Jamaat time."
+        },
+        "maghribMode": {
+          "type": "string",
+          "enum": ["auto", "custom"],
+          "maxLength": 10,
+          "description": "Auto offset after Adhan or fixed custom time for Maghrib Jamaat."
+        },
+        "maghribOffset": {
+          "type": "integer",
+          "description": "Minutes after Maghrib Adhan when maghribMode is auto (1-120)."
+        },
+        "maghribTime": {
+          "type": "string",
+          "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$",
+          "maxLength": 5,
+          "description": "Custom 24-hour HH:MM Maghrib Jamaat time."
+        },
+        "ishaMode": {
+          "type": "string",
+          "enum": ["auto", "custom"],
+          "maxLength": 10,
+          "description": "Auto offset after Adhan or fixed custom time for Isha Jamaat."
+        },
+        "ishaOffset": {
+          "type": "integer",
+          "description": "Minutes after Isha Adhan when ishaMode is auto (1-120)."
+        },
+        "ishaTime": {
+          "type": "string",
+          "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$",
+          "maxLength": 5,
+          "description": "Custom 24-hour HH:MM Isha Jamaat time."
+        },
+        "jummahTime": {
+          "type": "string",
+          "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$",
+          "maxLength": 5,
+          "description": "Fixed 24-hour HH:MM Jummah Jamaat time."
+        },
+        "updatedByUid": {
+          "type": "string",
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "maxLength": 128,
+          "description": "Firebase Auth UID of the verified Admin who published the update."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp of the last update."
+        }
+      },
+      "required": [
+        "fajrMode",
+        "fajrOffset",
+        "fajrTime",
+        "dhuhrMode",
+        "dhuhrOffset",
+        "dhuhrTime",
+        "asrMode",
+        "asrOffset",
+        "asrTime",
+        "maghribMode",
+        "maghribOffset",
+        "maghribTime",
+        "ishaMode",
+        "ishaOffset",
+        "ishaTime",
+        "jummahTime",
+        "updatedByUid",
+        "updatedAt"
+      ]
+    },
+    "AdminUser": {
+      "title": "Admin User",
+      "description": "Trusted admin marker document keyed by Firebase Auth UID.",
+      "type": "object",
+      "properties": {
+        "role": {
+          "type": "string",
+          "enum": ["admin"],
+          "maxLength": 10
+        }
+      },
+      "required": ["role"]
+    }
+  },
+  "firestore": {
+    "/khanqahSchedule/{scheduleId}": {
+      "schema": { "$ref": "#/entities/KhanqahJamaatSchedule" },
+      "description": "Stores the official Khanqah Darul Falah prayer schedule at document ID 'official'."
+    },
+    "/admins/{adminUid}": {
+      "schema": { "$ref": "#/entities/AdminUser" },
+      "description": "Stores verified administrator UIDs for RBAC authorization."
+    }
+  }
+}

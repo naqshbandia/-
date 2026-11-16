@@ -4,7 +4,7 @@
  */
 
 import React from 'react';
-import { Menu, Search, Sun, Moon, Home } from 'lucide-react';
+import { Menu, Search, Sun, Moon, Home, Monitor, Smartphone } from 'lucide-react';
 import { ANDROID_APP_NAME_URDU } from '../data/appConfig';
 
 interface Props {
@@ -13,6 +13,8 @@ interface Props {
   isSearchOpen: boolean;
   isDark: boolean;
   onToggleTheme: () => void;
+  viewMode?: 'mobile' | 'desktop';
+  onToggleViewMode?: () => void;
   isDashboard?: boolean;
   onGoHome?: () => void;
 }
@@ -23,6 +25,8 @@ export const Header: React.FC<Props> = ({
   isSearchOpen,
   isDark,
   onToggleTheme,
+  viewMode = 'desktop',
+  onToggleViewMode,
   isDashboard = true,
   onGoHome,
 }) => {
@@ -83,8 +87,36 @@ export const Header: React.FC<Props> = ({
           </h1>
         </button>
 
-        {/* Left: Theme Switcher and Search button */}
+        {/* Left: View Mode, Theme Switcher, and Search button */}
         <div className="flex items-center gap-1">
+          {onToggleViewMode && (
+            <button
+              onClick={onToggleViewMode}
+              className={`min-w-[40px] min-h-[40px] px-1.5 rounded-lg active:scale-95 transition-all flex items-center justify-center gap-1 cursor-pointer ${
+                viewMode === 'desktop'
+                  ? 'bg-[#064326] text-[#d4af37] border border-[#d4af37]/60 shadow-xs'
+                  : isDark
+                  ? 'text-[#d4af37] hover:text-white hover:bg-[#d4af37]/15'
+                  : 'text-[#064326] hover:bg-emerald-50'
+              }`}
+              title={
+                viewMode === 'desktop'
+                  ? 'موبائل موڈ پر جائیں'
+                  : 'ڈیسک ٹاپ موڈ پر جائیں'
+              }
+              aria-label="ڈیسک ٹاپ یا موبائل موڈ تبدیل کریں"
+            >
+              {viewMode === 'desktop' ? (
+                <Smartphone className="w-5 h-5" />
+              ) : (
+                <Monitor className="w-5 h-5" />
+              )}
+              <span className="text-[10px] font-bold hidden sm:inline whitespace-nowrap">
+                {viewMode === 'desktop' ? 'موبائل موڈ' : 'ڈیسک ٹاپ'}
+              </span>
+            </button>
+          )}
+
           <button
             onClick={onToggleTheme}
             className={`min-w-[40px] min-h-[40px] rounded-lg active:scale-95 transition-all flex items-center justify-center cursor-pointer ${

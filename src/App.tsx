@@ -54,22 +54,35 @@ export default function App() {
     }
   });
 
+  // View Mode state: Defaults to Desktop Mode, while allowing users to switch to Mobile Mode anytime
+  const [viewMode, setViewMode] = useState<'mobile' | 'desktop'>(() => {
+    try {
+      const saved = localStorage.getItem('khanqah_view_mode_v2');
+      return saved === 'mobile' ? 'mobile' : 'desktop';
+    } catch {
+      return 'desktop';
+    }
+  });
+
   // Sync Tailwind dark class on document root
   useEffect(() => {
     document.documentElement.classList.toggle('dark', isDark);
   }, [isDark]);
 
-  // Keep Desktop Mode permanently active across the app
+  // Sync Desktop Mode vs Mobile Mode class & viewport meta tag
   useEffect(() => {
-    document.documentElement.classList.add('desktop-mode');
+    const isDesktop = viewMode === 'desktop';
+    document.documentElement.classList.toggle('desktop-mode', isDesktop);
     const viewportMeta = document.querySelector('meta[name="viewport"]');
     if (viewportMeta) {
       viewportMeta.setAttribute(
         'content',
-        'width=768, initial-scale=0.5, minimum-scale=0.25, maximum-scale=3.0, user-scalable=yes, viewport-fit=cover'
+        isDesktop
+          ? 'width=800, initial-scale=0.8, minimum-scale=0.35, maximum-scale=6.0, user-scalable=yes, viewport-fit=cover'
+          : 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover'
       );
     }
-  }, []);
+  }, [viewMode]);
 
   // Toast notification message
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -92,6 +105,21 @@ export default function App() {
       try {
         localStorage.setItem('khanqah_app_theme_v2', next ? 'dark' : 'light');
       } catch {}
+      return next;
+    });
+  };
+
+  const toggleViewMode = () => {
+    setViewMode((prev) => {
+      const next = prev === 'desktop' ? 'mobile' : 'desktop';
+      try {
+        localStorage.setItem('khanqah_view_mode_v2', next);
+      } catch {}
+      showNotification(
+        next === 'desktop'
+          ? 'ڈیسک ٹاپ موڈ فعال کر دیا گیا ہے'
+          : 'موبائل موڈ فعال کر دیا گیا ہے'
+      );
       return next;
     });
   };
@@ -156,6 +184,8 @@ export default function App() {
         isSearchOpen={isSearchOpen}
         isDark={isDark}
         onToggleTheme={toggleTheme}
+        viewMode={viewMode}
+        onToggleViewMode={toggleViewMode}
         isDashboard={activeView === 'dashboard'}
         onGoHome={() => setActiveView('dashboard')}
       />
@@ -238,6 +268,8 @@ export default function App() {
         onOpenAbout={() => setIsAboutOpen(true)}
         isDark={isDark}
         onToggleTheme={toggleTheme}
+        viewMode={viewMode}
+        onToggleViewMode={toggleViewMode}
         onRefreshBlogger={handleManualRefresh}
         isRefreshingBlogger={isRefreshing || isSyncingArchive}
       />

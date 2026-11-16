@@ -28,6 +28,7 @@ export default defineConfig(() => {
           'app-icon-512.png',
           'app-icon-maskable.png',
           'app-logo.webp',
+          'sheikh-glass-banner.png',
         ],
         manifest: {
           id: base,
@@ -64,6 +65,7 @@ export default defineConfig(() => {
         },
         workbox: {
           globPatterns: ['**/*.{js,css,html,ico,png,svg,webp,woff,woff2}'],
+          maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
         },
         devOptions: {
           enabled: true,

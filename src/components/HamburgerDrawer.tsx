@@ -26,6 +26,8 @@ import {
   FileText,
   ShieldCheck,
   Landmark,
+  Monitor,
+  Smartphone,
 } from 'lucide-react';
 import {
   OFFICIAL_APK_URL,
@@ -51,6 +53,8 @@ interface Props {
   onOpenAbout: () => void;
   isDark: boolean;
   onToggleTheme: () => void;
+  viewMode?: 'mobile' | 'desktop';
+  onToggleViewMode?: () => void;
   onRefreshBlogger?: () => void;
   isRefreshingBlogger?: boolean;
 }
@@ -72,6 +76,8 @@ export const HamburgerDrawer: React.FC<Props> = ({
   onOpenAbout,
   isDark,
   onToggleTheme,
+  viewMode = 'desktop',
+  onToggleViewMode,
   onRefreshBlogger,
   isRefreshingBlogger = false,
 }) => {
@@ -166,6 +172,38 @@ export const HamburgerDrawer: React.FC<Props> = ({
                   </button>
                 )}
               </div>
+
+              {onToggleViewMode && (
+                <button
+                  onClick={() => {
+                    onToggleViewMode();
+                    onClose();
+                  }}
+                  className={`w-full flex items-center justify-between py-2 px-3 rounded-xl border text-xs font-bold transition-all cursor-pointer ${
+                    viewMode === 'desktop'
+                      ? 'bg-[#d4af37] text-[#051a0f] border-[#d4af37]'
+                      : isDark
+                      ? 'bg-[#0e291b] border-[#d4af37]/30 text-[#d4af37] hover:bg-[#143a27]'
+                      : 'bg-[#f4f7f6] border-emerald-900/15 text-[#064326] hover:bg-emerald-50'
+                  }`}
+                >
+                  <div className="flex items-center gap-2">
+                    {viewMode === 'desktop' ? (
+                      <Smartphone className="w-4 h-4" />
+                    ) : (
+                      <Monitor className="w-4 h-4" />
+                    )}
+                    <span>
+                      {viewMode === 'desktop'
+                        ? 'موبائل موڈ پر جائیں (نارمل سائز)'
+                        : 'ڈیسک ٹاپ موڈ آن کریں'}
+                    </span>
+                  </div>
+                  <span className="text-[10px] px-2 py-0.5 rounded bg-black/15">
+                    {viewMode === 'desktop' ? 'ڈیسک ٹاپ' : 'موبائل'}
+                  </span>
+                </button>
+              )}
 
               {/* Direct Official APK Download Button */}
               <a

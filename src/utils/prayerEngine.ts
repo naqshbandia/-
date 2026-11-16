@@ -238,7 +238,7 @@ export function resolveJamaatTime24(
 }
 
 export function getNextFarzKey(prayers: FarzTiming[], now: Date): FarzKey | null {
-  if (!prayers.length) return null;
+  if (!Array.isArray(prayers) || !prayers.length) return null;
   const currentMins = now.getHours() * 60 + now.getMinutes();
   for (const p of prayers) {
     const mins = time24ToMinutes(p.start24);

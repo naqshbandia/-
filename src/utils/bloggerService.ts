@@ -70,23 +70,48 @@ export async function fetchLiveBloggerPosts(): Promise<BloggerPostTab[]> {
   return new Promise((resolve, reject) => {
     const callbackName = '__bloggerFeedCb_' + Math.floor(Math.random() * 1000000);
     const script = document.createElement('script');
-    const timeout = setTimeout(() => {
-      cleanup();
-      reject(new Error('Blogger feed timeout'));
-    }, 9000);
+    let settled = false;
 
-    const cleanup = () => {
+    const cleanup = (isTimeoutOrError = false) => {
       clearTimeout(timeout);
       if (script.parentNode) {
         script.parentNode.removeChild(script);
       }
-      // @ts-expect-error dynamic window callback
-      delete window[callbackName];
+      if (isTimeoutOrError) {
+        // Leave a harmless no-op so a late-arriving cross-origin JSONP script never throws "Script error."
+        // @ts-expect-error dynamic window callback
+        window[callbackName] = () => {
+          try {
+            // @ts-expect-error dynamic window callback
+            delete window[callbackName];
+          } catch {}
+        };
+        setTimeout(() => {
+          try {
+            // @ts-expect-error dynamic window callback
+            delete window[callbackName];
+          } catch {}
+        }, 30000);
+      } else {
+        try {
+          // @ts-expect-error dynamic window callback
+          delete window[callbackName];
+        } catch {}
+      }
     };
+
+    const timeout = setTimeout(() => {
+      if (settled) return;
+      settled = true;
+      cleanup(true);
+      reject(new Error('Blogger feed timeout'));
+    }, 9000);
 
     // @ts-expect-error dynamic window callback
     window[callbackName] = (data: any) => {
-      cleanup();
+      if (settled) return;
+      settled = true;
+      cleanup(false);
       try {
         const entries = data?.feed?.entry || [];
         const dynamicTabs: BloggerPostTab[] = [];
@@ -150,7 +175,9 @@ export async function fetchLiveBloggerPosts(): Promise<BloggerPostTab[]> {
 
     script.src = `https://khanqahdarulfalah.blogspot.com/feeds/posts/default?alt=json-in-script&callback=${callbackName}&max-results=50&_t=${Date.now()}`;
     script.onerror = () => {
-      cleanup();
+      if (settled) return;
+      settled = true;
+      cleanup(true);
       reject(new Error('Failed to load Blogger feed script'));
     };
 

@@ -66,3 +66,65 @@
 ::-webkit-scrollbar-thumb:hover {
   background: #d4af37;
 }
+
+/* ============================================================================
+   DESKTOP MODE FONT SIZES (+2px clearer typography when Desktop Mode is ON)
+   Mobile Mode uses default compact Tailwind sizes without these overrides.
+   ============================================================================ */
+html.desktop-mode .text-\[9px\] {
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+html.desktop-mode .text-\[10px\],
+html.desktop-mode .sm\:text-\[10px\] {
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+html.desktop-mode .text-\[11px\] {
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+html.desktop-mode .text-xs,
+html.desktop-mode .sm\:text-xs {
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+html.desktop-mode .sm\:text-\[13px\] {
+  font-size: 15px;
+  line-height: 1.5;
+}
+
+html.desktop-mode .text-sm,
+html.desktop-mode .sm\:text-sm {
+  font-size: 16px;
+  line-height: 1.5;
+}
+
+html.desktop-mode .text-base,
+html.desktop-mode .sm\:text-base {
+  font-size: 18px;
+  line-height: 1.45;
+}
+
+html.desktop-mode .text-lg,
+html.desktop-mode .sm\:text-lg {
+  font-size: 20px;
+  line-height: 1.4;
+}
+
+html.desktop-mode .text-xl,
+html.desktop-mode .sm\:text-xl {
+  font-size: 22px;
+  line-height: 1.35;
+}
+
+html.desktop-mode .text-3xl,
+html.desktop-mode .sm\:text-4xl {
+  font-size: 38px;
+  line-height: 1.2;
+}
+

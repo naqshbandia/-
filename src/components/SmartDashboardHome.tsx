@@ -30,7 +30,11 @@ import {
   Pencil,
   Check,
   RotateCcw,
+  Lock,
+  LogOut,
 } from 'lucide-react';
+import { onAuthStateChanged } from 'firebase/auth';
+import { auth } from '../firebase';
 import {
   GOLD_LIBRARY_URL,
   NEWS_UPDATES_URL,
@@ -38,10 +42,10 @@ import {
   HAFTAWAR_BAYANAT_URL,
   ISLAMI_MAJALIS_URL,
   TELAWAT_HAMD_NAAT_URL,
-  OFFICIAL_APK_URL,
-  SHEIKH_TITLE_BANNER_URL,
+  SHEIKH_GLASS_BANNER_URL,
   WHATSAPP_DIRECT_CHAT_URL,
   DEVELOPER_WHATSAPP_URL,
+  APP_GIFT_WHATSAPP_SHARE_URL,
   BloggerPostTab,
 } from '../data/appConfig';
 import { BAYANAT_DATABASE, BLOG_POSTS, BayanItem, BlogPostItem } from '../data/bayanatData';
@@ -65,6 +69,14 @@ import {
   getNextFarzKey,
   formatTo12Hour,
 } from '../utils/prayerEngine';
+import {
+  loadCachedKhanqahSchedule,
+  subscribeKhanqahSchedule,
+  verifyUserIsAdmin,
+  signInKhanqahAdmin,
+  signOutKhanqahAdmin,
+  saveKhanqahOfficialSchedule,
+} from '../utils/khanqahScheduleService';
 
 interface Props {
   isDark: boolean;
@@ -125,11 +137,12 @@ export const SmartDashboardHome: React.FC<Props> = ({
   currentPlayingBayanId,
 }) => {
   const [now, setNow] = useState<Date>(() => new Date());
-  const [bannerError, setBannerError] = useState(false);
+  const [glassBannerError, setGlassBannerError] = useState(false);
   const [dashQuery, setDashQuery] = useState('');
 
   // Active Prayer Section Tab: Farz | Nawafil | Jama'at
   const [prayerTab, setPrayerTab] = useState<'farz' | 'nawafil' | 'jamaat'>('farz');
+  const [jamaatSubTab, setJamaatSubTab] = useState<'khanqah' | 'my-mosque'>('khanqah');
   const [isEditingJamaat, setIsEditingJamaat] = useState(false);
 
   // Prayer Cache State
@@ -143,7 +156,14 @@ export const SmartDashboardHome: React.FC<Props> = ({
   });
   const [isLoadingPrayers, setIsLoadingPrayers] = useState(false);
 
-  // Jama'at Schedule State
+  // User's Own Mosque Jama'at Schedule State (stored locally on user's device)
+  const [myMosqueName, setMyMosqueName] = useState<string>(() => {
+    try {
+      return localStorage.getItem('khanqah_user_mosque_name_v1') || 'میری مسجد';
+    } catch {
+      return 'میری مسجد';
+    }
+  });
   const [jamaatSchedule, setJamaatSchedule] = useState<Record<JamaatKey, JamaatScheduleItem>>(() => {
     try {
       const saved = localStorage.getItem(JAMAAT_STORAGE_KEY);
@@ -153,6 +173,20 @@ export const SmartDashboardHome: React.FC<Props> = ({
     } catch {}
     return DEFAULT_JAMAAT_SCHEDULE;
   });
+
+  // Khanqah Darul Falah Official Jama'at Schedule (real-time Firestore, Admin-only edit)
+  const [khanqahOfficialSchedule, setKhanqahOfficialSchedule] = useState<
+    Record<JamaatKey, JamaatScheduleItem>
+  >(() => loadCachedKhanqahSchedule());
+  const [khanqahDraftSchedule, setKhanqahDraftSchedule] = useState<
+    Record<JamaatKey, JamaatScheduleItem>
+  >(() => loadCachedKhanqahSchedule());
+  const [isKhanqahSyncedCloud, setIsKhanqahSyncedCloud] = useState(false);
+  const [isKhanqahAdmin, setIsKhanqahAdmin] = useState(false);
+  const [adminEmail, setAdminEmail] = useState<string | null>(null);
+  const [isEditingKhanqahAdmin, setIsEditingKhanqahAdmin] = useState(false);
+  const [isSavingKhanqahAdmin, setIsSavingKhanqahAdmin] = useState(false);
+  const [isSigningInAdmin, setIsSigningInAdmin] = useState(false);
 
   // Live Notification Form State
   const [showNotifyForm, setShowNotifyForm] = useState(false);
@@ -173,7 +207,39 @@ export const SmartDashboardHome: React.FC<Props> = ({
     return unsub;
   }, []);
 
-  // Persist Jamaat schedule
+  // Real-time Firestore listener for Official Khanqah Darul Falah Jama'at Schedule
+  useEffect(() => {
+    const unsubSchedule = subscribeKhanqahSchedule((schedule, isFromCloud) => {
+      setKhanqahOfficialSchedule(schedule);
+      setIsKhanqahSyncedCloud(isFromCloud);
+    });
+    const unsubAuth = onAuthStateChanged(auth, async (user) => {
+      if (!user) {
+        setIsKhanqahAdmin(false);
+        setAdminEmail(null);
+        setIsEditingKhanqahAdmin(false);
+        return;
+      }
+      const ok = await verifyUserIsAdmin(user);
+      setIsKhanqahAdmin(ok);
+      setAdminEmail(ok ? user.email || null : null);
+      if (!ok) {
+        setIsEditingKhanqahAdmin(false);
+      }
+    });
+    return () => {
+      unsubSchedule();
+      unsubAuth();
+    };
+  }, []);
+
+  // Persist user's local mosque name and Jamaat schedule
+  useEffect(() => {
+    try {
+      localStorage.setItem('khanqah_user_mosque_name_v1', myMosqueName);
+    } catch {}
+  }, [myMosqueName]);
+
   useEffect(() => {
     try {
       localStorage.setItem(JAMAAT_STORAGE_KEY, JSON.stringify(jamaatSchedule));
@@ -229,6 +295,69 @@ export const SmartDashboardHome: React.FC<Props> = ({
       };
     });
   }, [jamaatSchedule, prayerData]);
+
+  const khanqahCards = useMemo(() => {
+    const order: JamaatKey[] = ['Fajr', 'Dhuhr', 'Asr', 'Maghrib', 'Isha', 'Jummah'];
+    const source = isEditingKhanqahAdmin ? khanqahDraftSchedule : khanqahOfficialSchedule;
+    return order.map((key) => {
+      const item = source[key];
+      const time24 = resolveJamaatTime24(key, item, prayerData);
+      return {
+        ...item,
+        resolved24: time24,
+        resolved12: formatTo12Hour(time24),
+      };
+    });
+  }, [khanqahOfficialSchedule, khanqahDraftSchedule, isEditingKhanqahAdmin, prayerData]);
+
+  const handleOpenKhanqahAdmin = async () => {
+    if (isKhanqahAdmin) {
+      setKhanqahDraftSchedule(khanqahOfficialSchedule);
+      setIsEditingKhanqahAdmin((prev) => !prev);
+      return;
+    }
+    setIsSigningInAdmin(true);
+    try {
+      const res = await signInKhanqahAdmin();
+      if (res.isAdmin && res.user) {
+        setIsKhanqahAdmin(true);
+        setAdminEmail(res.user.email || null);
+        setKhanqahDraftSchedule(khanqahOfficialSchedule);
+        setIsEditingKhanqahAdmin(true);
+        onNotify('ایڈمن تصدیق کامیاب! اب آپ خانقاہ دارالفلاح کے اوقات تبدیل کر سکتے ہیں۔');
+      } else {
+        onNotify('معذرت! خانقاہ دارالفلاح کے اوقات صرف مجاز ایڈمن ہی اوپن اور تبدیل کر سکتے ہیں۔');
+      }
+    } catch {
+      onNotify('ایڈمن لاگ ان منسوخ ہوا یا انٹرنیٹ دستیاب نہیں۔');
+    } finally {
+      setIsSigningInAdmin(false);
+    }
+  };
+
+  const handleSaveKhanqahAdmin = async () => {
+    setIsSavingKhanqahAdmin(true);
+    try {
+      await saveKhanqahOfficialSchedule(khanqahDraftSchedule);
+      setKhanqahOfficialSchedule(khanqahDraftSchedule);
+      setIsEditingKhanqahAdmin(false);
+      onNotify('جزاک اللہ! خانقاہ دارالفلاح کے باجماعت اوقات تمام صارفین کے لیے محفوظ کر دیے گئے۔');
+    } catch {
+      onNotify('معذرت! اوقات محفوظ کرنے کی اجازت نہیں یا نیٹ ورک کا مسئلہ ہے۔');
+    } finally {
+      setIsSavingKhanqahAdmin(false);
+    }
+  };
+
+  const handleLogoutKhanqahAdmin = async () => {
+    try {
+      await signOutKhanqahAdmin();
+    } catch {}
+    setIsKhanqahAdmin(false);
+    setAdminEmail(null);
+    setIsEditingKhanqahAdmin(false);
+    onNotify('ایڈمن پینل لاک کر دیا گیا ہے۔');
+  };
 
   const formattedClock = now.toLocaleTimeString('en-US', {
     hour12: true,
@@ -436,18 +565,18 @@ export const SmartDashboardHome: React.FC<Props> = ({
       dir="rtl"
     >
       <div className="max-w-5xl mx-auto px-3.5 sm:px-6 py-4 space-y-5">
-        {/* 1. Top Sheikh Title Calligraphy Banner (Enlarged PNG Logo Showcase) */}
+        {/* 1. Top Sheikh Title Calligraphy Banner (Glass Crystal Card PNG Showcase) */}
         <section
           className={`rounded-3xl border-2 border-[#d4af37]/80 overflow-hidden shadow-md transition-colors ${
             isDark ? 'bg-[#0c2317]' : 'bg-white'
           }`}
         >
-          {!bannerError ? (
+          {!glassBannerError ? (
             <div className="w-full flex items-center justify-center bg-gradient-to-l from-[#064326]/10 via-transparent to-[#064326]/10 px-4 py-3 sm:py-4">
               <img
-                src={SHEIKH_TITLE_BANNER_URL}
-                alt="شیخ الحدیث حضرت مولانا پیر محمد جمشید نقشبندی مجددی دامت برکاتہم"
-                onError={() => setBannerError(true)}
+                src={SHEIKH_GLASS_BANNER_URL}
+                alt="پیر طریقت رہبر شریعت حضرت شیخ پیر محمد جمشید نقشبندی مجددی دامت برکاتہم"
+                onError={() => setGlassBannerError(true)}
                 className="max-h-36 sm:max-h-44 md:max-h-48 w-full max-w-2xl object-contain mx-auto drop-shadow-sm"
               />
             </div>
@@ -784,117 +913,340 @@ export const SmartDashboardHome: React.FC<Props> = ({
               )
             )}
 
-            {/* TAB 3: خانقاہ دارالفلاح جماعت کے اوقات (Editable & Persistent) */}
+            {/* TAB 3: جماعت کے اوقات (دو ذیلی بٹن: اپنی مسجد + خانقاہ دارالفلاح) */}
             {prayerTab === 'jamaat' && (
               <div className="space-y-3">
-                <div className="flex flex-wrap items-center justify-between gap-2 px-1">
-                  <span className="text-xs text-amber-200 font-semibold">
-                    خانقاہ دارالفلاح — باجماعت نماز کے اوقات
-                  </span>
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => setIsEditingJamaat((prev) => !prev)}
-                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[#d4af37]/20 hover:bg-[#d4af37]/30 border border-[#d4af37]/50 text-[#d4af37] text-[11px] font-bold cursor-pointer"
-                    >
-                      {isEditingJamaat ? <Check className="w-3.5 h-3.5" /> : <Pencil className="w-3.5 h-3.5" />}
-                      <span>{isEditingJamaat ? 'محفوظ / بند کریں' : 'اوقات تبدیل کریں'}</span>
-                    </button>
-                    {isEditingJamaat && (
-                      <button
-                        onClick={() => {
-                          setJamaatSchedule(DEFAULT_JAMAAT_SCHEDULE);
-                          onNotify('جماعت کے اوقات ڈیفالٹ سیٹنگ پر بحال کر دیے گئے۔');
-                        }}
-                        className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-[11px] text-emerald-100 cursor-pointer"
-                      >
-                        <RotateCcw className="w-3 h-3" />
-                        <span>ڈیفالٹ</span>
-                      </button>
-                    )}
-                  </div>
+                {/* Two Sub-Buttons inside Jama'at Timings */}
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    onClick={() => {
+                      setJamaatSubTab('my-mosque');
+                      setIsEditingKhanqahAdmin(false);
+                    }}
+                    className={`py-2 px-2 rounded-xl text-[11px] sm:text-xs font-bold border transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+                      jamaatSubTab === 'my-mosque'
+                        ? 'bg-[#00ff99] text-[#051a0f] border-[#00ff99] shadow-md'
+                        : 'bg-white/[0.08] text-emerald-100 border-[#d4af37]/35 hover:bg-white/15'
+                    }`}
+                  >
+                    <Pencil className="w-3.5 h-3.5 shrink-0" />
+                    <span>اپنی مسجد کے اوقات سیٹ کریں</span>
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      setJamaatSubTab('khanqah');
+                      setIsEditingJamaat(false);
+                    }}
+                    className={`py-2 px-2 rounded-xl text-[11px] sm:text-xs font-bold border transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+                      jamaatSubTab === 'khanqah'
+                        ? 'bg-[#00ff99] text-[#051a0f] border-[#00ff99] shadow-md'
+                        : 'bg-white/[0.08] text-emerald-100 border-[#d4af37]/35 hover:bg-white/15'
+                    }`}
+                  >
+                    <Landmark className="w-3.5 h-3.5 shrink-0" />
+                    <span>خانقاہ دارالفلاح کے اوقات دیکھیں</span>
+                  </button>
                 </div>
 
-                {!isEditingJamaat ? (
-                  <div className="grid grid-cols-3 sm:grid-cols-6 gap-1.5 sm:gap-2">
-                    {jamaatCards.map((item) => (
-                      <div
-                        key={item.key}
-                        className="rounded-xl py-2.5 px-1.5 text-center border bg-[#d4af37]/[0.10] border-[#d4af37]/30 text-emerald-50"
-                      >
-                        <div className="text-[11px] sm:text-xs font-bold text-[#d4af37]">
-                          {item.name}
-                        </div>
-                        <div className="text-xs sm:text-sm font-bold text-[#00ff99] tabular-nums mt-1" dir="ltr">
-                          {item.resolved12}
-                        </div>
-                        <div className="text-[9px] text-emerald-100/70 mt-0.5">
-                          {item.mode === 'custom' || item.key === 'Jummah'
-                            ? 'مقررہ وقت'
-                            : `+${item.offsetMinutes} منٹ بعد`}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 bg-black/30 p-3 rounded-2xl border border-[#d4af37]/40">
-                    {jamaatCards.map((item) => (
-                      <div
-                        key={item.key}
-                        className="flex flex-wrap items-center justify-between gap-2 p-2 rounded-xl bg-white/[0.06] border border-white/10 text-xs"
-                      >
-                        <span className="font-bold text-[#d4af37] min-w-[78px]">{item.name}</span>
-
-                        {item.key !== 'Jummah' && (
-                          <select
-                            value={item.mode}
-                            onChange={(e) => {
-                              const mode = e.target.value as 'auto' | 'custom';
-                              setJamaatSchedule((prev) => ({
-                                ...prev,
-                                [item.key]: { ...prev[item.key], mode },
-                              }));
+                {/* SUB-TAB A: User's Own Local Mosque Prayer Times (Editable for All Users) */}
+                {jamaatSubTab === 'my-mosque' && (
+                  <div className="space-y-2.5">
+                    <div className="flex flex-wrap items-center justify-between gap-2 px-1">
+                      <span className="text-xs text-amber-200 font-semibold">
+                        {myMosqueName || 'میری مسجد'} — باجماعت نماز کے اوقات
+                      </span>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => setIsEditingJamaat((prev) => !prev)}
+                          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[#d4af37]/20 hover:bg-[#d4af37]/30 border border-[#d4af37]/50 text-[#d4af37] text-[11px] font-bold cursor-pointer"
+                        >
+                          {isEditingJamaat ? <Check className="w-3.5 h-3.5" /> : <Pencil className="w-3.5 h-3.5" />}
+                          <span>{isEditingJamaat ? 'محفوظ / بند کریں' : 'اوقات تبدیل کریں'}</span>
+                        </button>
+                        {isEditingJamaat && (
+                          <button
+                            onClick={() => {
+                              setJamaatSchedule(DEFAULT_JAMAAT_SCHEDULE);
+                              setMyMosqueName('میری مسجد');
+                              onNotify('مسجد کے اوقات ڈیفالٹ سیٹنگ پر بحال کر دیے گئے۔');
                             }}
-                            className="bg-[#062214] text-white border border-[#d4af37]/40 rounded-lg px-2 py-1 text-[11px]"
+                            className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-[11px] text-emerald-100 cursor-pointer"
                           >
-                            <option value="auto">اذان کے بعد (منٹ)</option>
-                            <option value="custom">مقررہ وقت</option>
-                          </select>
-                        )}
-
-                        {item.mode === 'auto' && item.key !== 'Jummah' ? (
-                          <div className="flex items-center gap-1">
-                            <input
-                              type="number"
-                              min={1}
-                              max={120}
-                              value={item.offsetMinutes}
-                              onChange={(e) => {
-                                const val = Math.max(1, Math.min(120, parseInt(e.target.value || '10', 10)));
-                                setJamaatSchedule((prev) => ({
-                                  ...prev,
-                                  [item.key]: { ...prev[item.key], offsetMinutes: val },
-                                }));
-                              }}
-                              className="w-14 bg-white text-[#11261b] rounded-lg px-2 py-1 text-xs font-bold text-center"
-                            />
-                            <span className="text-[11px] opacity-80">منٹ</span>
-                          </div>
-                        ) : (
-                          <input
-                            type="time"
-                            value={item.customTime24}
-                            onChange={(e) => {
-                              setJamaatSchedule((prev) => ({
-                                ...prev,
-                                [item.key]: { ...prev[item.key], customTime24: e.target.value },
-                              }));
-                            }}
-                            className="bg-white text-[#11261b] rounded-lg px-2 py-1 text-xs font-bold"
-                            dir="ltr"
-                          />
+                            <RotateCcw className="w-3 h-3" />
+                            <span>ڈیفالٹ</span>
+                          </button>
                         )}
                       </div>
-                    ))}
+                    </div>
+
+                    {!isEditingJamaat ? (
+                      <div className="grid grid-cols-3 sm:grid-cols-6 gap-1.5 sm:gap-2">
+                        {jamaatCards.map((item) => (
+                          <div
+                            key={item.key}
+                            className="rounded-xl py-2.5 px-1.5 text-center border bg-[#d4af37]/[0.10] border-[#d4af37]/30 text-emerald-50"
+                          >
+                            <div className="text-[11px] sm:text-xs font-bold text-[#d4af37]">
+                              {item.name}
+                            </div>
+                            <div className="text-xs sm:text-sm font-bold text-[#00ff99] tabular-nums mt-1" dir="ltr">
+                              {item.resolved12}
+                            </div>
+                            <div className="text-[9px] text-emerald-100/70 mt-0.5">
+                              {item.mode === 'custom' || item.key === 'Jummah'
+                                ? 'مقررہ وقت'
+                                : `+${item.offsetMinutes} منٹ بعد`}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="space-y-2.5 bg-black/30 p-3 rounded-2xl border border-[#d4af37]/40">
+                        <div className="flex flex-wrap items-center gap-2 pb-1 border-b border-white/10">
+                          <label className="text-[11px] font-bold text-[#d4af37]">اپنی مسجد کا نام:</label>
+                          <input
+                            type="text"
+                            value={myMosqueName}
+                            onChange={(e) => setMyMosqueName(e.target.value)}
+                            maxLength={60}
+                            placeholder="مثلاً جامع مسجد رحمانیہ..."
+                            className="flex-1 min-w-[160px] bg-white text-[#11261b] rounded-lg px-2.5 py-1 text-xs font-bold outline-none"
+                          />
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                          {jamaatCards.map((item) => (
+                            <div
+                              key={item.key}
+                              className="flex flex-wrap items-center justify-between gap-2 p-2 rounded-xl bg-white/[0.06] border border-white/10 text-xs"
+                            >
+                              <span className="font-bold text-[#d4af37] min-w-[78px]">{item.name}</span>
+
+                              {item.key !== 'Jummah' && (
+                                <select
+                                  value={item.mode}
+                                  onChange={(e) => {
+                                    const mode = e.target.value as 'auto' | 'custom';
+                                    setJamaatSchedule((prev) => ({
+                                      ...prev,
+                                      [item.key]: { ...prev[item.key], mode },
+                                    }));
+                                  }}
+                                  className="bg-[#062214] text-white border border-[#d4af37]/40 rounded-lg px-2 py-1 text-[11px]"
+                                >
+                                  <option value="auto">اذان کے بعد (منٹ)</option>
+                                  <option value="custom">مقررہ وقت</option>
+                                </select>
+                              )}
+
+                              {item.mode === 'auto' && item.key !== 'Jummah' ? (
+                                <div className="flex items-center gap-1">
+                                  <input
+                                    type="number"
+                                    min={1}
+                                    max={120}
+                                    value={item.offsetMinutes}
+                                    onChange={(e) => {
+                                      const val = Math.max(1, Math.min(120, parseInt(e.target.value || '10', 10)));
+                                      setJamaatSchedule((prev) => ({
+                                        ...prev,
+                                        [item.key]: { ...prev[item.key], offsetMinutes: val },
+                                      }));
+                                    }}
+                                    className="w-14 bg-white text-[#11261b] rounded-lg px-2 py-1 text-xs font-bold text-center"
+                                  />
+                                  <span className="text-[11px] opacity-80">منٹ</span>
+                                </div>
+                              ) : (
+                                <input
+                                  type="time"
+                                  value={item.customTime24}
+                                  onChange={(e) => {
+                                    setJamaatSchedule((prev) => ({
+                                      ...prev,
+                                      [item.key]: { ...prev[item.key], customTime24: e.target.value },
+                                    }));
+                                  }}
+                                  className="bg-white text-[#11261b] rounded-lg px-2 py-1 text-xs font-bold"
+                                  dir="ltr"
+                                />
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* SUB-TAB B: Official Khanqah Darul Falah Prayer Times (Admin-Only Edit Lock) */}
+                {jamaatSubTab === 'khanqah' && (
+                  <div className="space-y-2.5">
+                    <div className="flex flex-wrap items-center justify-between gap-2 px-1">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-amber-200 font-semibold">
+                          خانقاہ دارالفلاح — باجماعت نماز کے اوقات
+                        </span>
+                        {isKhanqahSyncedCloud && (
+                          <span className="px-1.5 py-0.5 rounded bg-[#00ff99]/20 border border-[#00ff99]/40 text-[#00ff99] text-[10px] font-bold">
+                            تصدیق شدہ
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          onClick={handleOpenKhanqahAdmin}
+                          disabled={isSigningInAdmin}
+                          className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg border text-[11px] font-bold cursor-pointer transition-colors ${
+                            isKhanqahAdmin
+                              ? 'bg-[#d4af37] text-[#051a0f] border-[#d4af37]'
+                              : 'bg-white/10 hover:bg-white/20 border-[#d4af37]/40 text-amber-200'
+                          }`}
+                          title="صرف خانقاہ دارالفلاح کا مجاز ایڈمن ہی اوقات تبدیل کر سکتا ہے"
+                        >
+                          {isSigningInAdmin ? (
+                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          ) : (
+                            <Lock className="w-3.5 h-3.5" />
+                          )}
+                          <span>
+                            {isKhanqahAdmin
+                              ? isEditingKhanqahAdmin
+                                ? 'ایڈمن پینل بند کریں'
+                                : 'اوقات تبدیل کریں (ایڈمن)'
+                              : 'صرف ایڈمن'}
+                          </span>
+                        </button>
+
+                        {isKhanqahAdmin && (
+                          <button
+                            onClick={handleLogoutKhanqahAdmin}
+                            className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-rose-500/20 hover:bg-rose-500/35 border border-rose-400/40 text-rose-200 text-[11px] cursor-pointer"
+                            title="ایڈمن لاگ آؤٹ"
+                          >
+                            <LogOut className="w-3 h-3" />
+                            <span>لاگ آؤٹ</span>
+                          </button>
+                        )}
+                      </div>
+                    </div>
+
+                    {!isEditingKhanqahAdmin ? (
+                      <div className="space-y-1.5">
+                        <div className="grid grid-cols-3 sm:grid-cols-6 gap-1.5 sm:gap-2">
+                          {khanqahCards.map((item) => (
+                            <div
+                              key={item.key}
+                              className="rounded-xl py-2.5 px-1.5 text-center border bg-[#d4af37]/[0.12] border-[#d4af37]/35 text-emerald-50"
+                            >
+                              <div className="text-[11px] sm:text-xs font-bold text-[#d4af37]">
+                                {item.name}
+                              </div>
+                              <div className="text-xs sm:text-sm font-bold text-[#00ff99] tabular-nums mt-1" dir="ltr">
+                                {item.resolved12}
+                              </div>
+                              <div className="text-[9px] text-emerald-100/70 mt-0.5">
+                                {item.mode === 'custom' || item.key === 'Jummah'
+                                  ? 'مقررہ وقت'
+                                  : `+${item.offsetMinutes} منٹ بعد`}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                        <p className="text-[10px] text-center text-emerald-100/70">
+                          خانقاہ دارالفلاح کے باجماعت اوقات صرف مجاز ایڈمن تبدیل کر سکتے ہیں
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="space-y-3 bg-black/35 p-3 rounded-2xl border border-[#d4af37]/60">
+                        <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] text-[#00ff99] border-b border-white/10 pb-2">
+                          <span>ایڈمن موڈ فعال ہے ({adminEmail})</span>
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => setKhanqahDraftSchedule(DEFAULT_JAMAAT_SCHEDULE)}
+                              className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-emerald-100 cursor-pointer"
+                            >
+                              <RotateCcw className="w-3 h-3" />
+                              <span>ڈیفالٹ</span>
+                            </button>
+                            <button
+                              onClick={handleSaveKhanqahAdmin}
+                              disabled={isSavingKhanqahAdmin}
+                              className="inline-flex items-center gap-1 px-3 py-1 rounded-lg bg-[#00ff99] hover:bg-[#33ffad] text-[#051a0f] font-bold cursor-pointer disabled:opacity-60"
+                            >
+                              {isSavingKhanqahAdmin ? (
+                                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                              ) : (
+                                <Check className="w-3.5 h-3.5" />
+                              )}
+                              <span>محفوظ و شائع کریں</span>
+                            </button>
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                          {khanqahCards.map((item) => (
+                            <div
+                              key={item.key}
+                              className="flex flex-wrap items-center justify-between gap-2 p-2 rounded-xl bg-white/[0.06] border border-white/10 text-xs"
+                            >
+                              <span className="font-bold text-[#d4af37] min-w-[78px]">{item.name}</span>
+
+                              {item.key !== 'Jummah' && (
+                                <select
+                                  value={item.mode}
+                                  onChange={(e) => {
+                                    const mode = e.target.value as 'auto' | 'custom';
+                                    setKhanqahDraftSchedule((prev) => ({
+                                      ...prev,
+                                      [item.key]: { ...prev[item.key], mode },
+                                    }));
+                                  }}
+                                  className="bg-[#062214] text-white border border-[#d4af37]/40 rounded-lg px-2 py-1 text-[11px]"
+                                >
+                                  <option value="auto">اذان کے بعد (منٹ)</option>
+                                  <option value="custom">مقررہ وقت</option>
+                                </select>
+                              )}
+
+                              {item.mode === 'auto' && item.key !== 'Jummah' ? (
+                                <div className="flex items-center gap-1">
+                                  <input
+                                    type="number"
+                                    min={1}
+                                    max={120}
+                                    value={item.offsetMinutes}
+                                    onChange={(e) => {
+                                      const val = Math.max(1, Math.min(120, parseInt(e.target.value || '10', 10)));
+                                      setKhanqahDraftSchedule((prev) => ({
+                                        ...prev,
+                                        [item.key]: { ...prev[item.key], offsetMinutes: val },
+                                      }));
+                                    }}
+                                    className="w-14 bg-white text-[#11261b] rounded-lg px-2 py-1 text-xs font-bold text-center"
+                                  />
+                                  <span className="text-[11px] opacity-80">منٹ</span>
+                                </div>
+                              ) : (
+                                <input
+                                  type="time"
+                                  value={item.customTime24}
+                                  onChange={(e) => {
+                                    setKhanqahDraftSchedule((prev) => ({
+                                      ...prev,
+                                      [item.key]: { ...prev[item.key], customTime24: e.target.value },
+                                    }));
+                                  }}
+                                  className="bg-white text-[#11261b] rounded-lg px-2 py-1 text-xs font-bold"
+                                  dir="ltr"
+                                />
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
@@ -1345,13 +1697,15 @@ export const SmartDashboardHome: React.FC<Props> = ({
               </div>
 
               <a
-                href={OFFICIAL_APK_URL}
-                download="khanqah-Darul-falah.apk"
-                onClick={() => onNotify('آفیشل Android APK ڈاؤنلوڈ شروع ہو گئی ہے...')}
+                href={APP_GIFT_WHATSAPP_SHARE_URL}
+                target="_blank"
+                rel="noreferrer"
+                onClick={() => onNotify('واٹس ایپ پر دوستوں کو ایپ بطورِ ہدیہ شیئر کریں...')}
                 className="w-full py-2 px-3 rounded-xl bg-[#064326] hover:bg-[#095c34] text-white text-xs font-bold flex items-center justify-center gap-1.5 border border-[#d4af37]/60 shadow-xs transition-all active:scale-95"
+                title="واٹس ایپ پر دوستوں کو ایپ بطورِ ہدیہ شیئر کریں"
               >
-                <Download className="w-3.5 h-3.5 text-[#d4af37]" />
-                <span>اینڈرائڈ APK انسٹال کریں</span>
+                <Share2 className="w-3.5 h-3.5 text-[#25D366] shrink-0" />
+                <span>یہ ایپ دوستوں کو بطورِ ہدیہ شیئر کریں</span>
               </a>
             </div>
           </div>
