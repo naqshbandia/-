@@ -434,7 +434,7 @@ export const AboutAppModal: React.FC<{ isOpen: boolean; onClose: () => void; isD
           <img
             src={`${import.meta.env.BASE_URL}app-logo.webp`}
             alt="خانقاہ دارالفلاح لوگو"
-            className="w-20 h-20 mx-auto mb-2 rounded-full border-2 border-[#d4af37] shadow-xl object-cover"
+            className="w-24 h-24 mx-auto mb-2 rounded-2xl shadow-xl object-cover"
           />
           <h3 className="text-2xl font-bold">خانقاہ دارالفلاح</h3>
           <p className="text-xs text-[#b08d43] font-sans">Khanqah Darul Falah Mobile Application</p>

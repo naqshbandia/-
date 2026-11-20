@@ -80,7 +80,7 @@ export const Header: React.FC<Props> = ({
           <img
             src={`${import.meta.env.BASE_URL}app-logo.webp`}
             alt="خانقاہ دارالفلاح لوگو"
-            className="w-7 h-7 sm:w-8 sm:h-8 rounded-full shadow-xs border border-[#d4af37]/80 object-cover shrink-0"
+            className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl shadow-xs object-cover shrink-0"
           />
           <h1 className="text-base sm:text-lg font-extrabold font-lalezar tracking-wide truncate">
             {ANDROID_APP_NAME_URDU}

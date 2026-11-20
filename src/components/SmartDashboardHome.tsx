@@ -450,7 +450,7 @@ export const SmartDashboardHome: React.FC<Props> = ({
           </div>
         </section>
 
-        {/* 3. Smart Islamic Display Box: Clock + 3 Prayer Tabs + Live Bayan */}
+        {/* 3. Standalone Smart Clock & Prayer Timings Display Box */}
         <section className="islamic-panel-pattern border-2 border-[#d4af37] rounded-3xl p-4 sm:p-5 text-white shadow-xl space-y-4">
           {/* Live Clock & Hijri Date */}
           <div className="text-center py-1">
@@ -777,29 +777,58 @@ export const SmartDashboardHome: React.FC<Props> = ({
               </div>
             </div>
           </div>
+        </section>
 
-          {/* Mixlr Live Bayan Status & Notification Box (Inside Clock Box) */}
-          <div className="rounded-2xl bg-black/25 border border-[#d4af37]/45 p-3.5 sm:p-4 space-y-3">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <div className="flex items-center gap-2.5">
-                <div className="w-9 h-9 rounded-xl bg-[#d4af37]/15 text-[#d4af37] flex items-center justify-center shrink-0">
-                  <Radio className="w-5 h-5" />
-                </div>
-                <div>
-                  <h2 className="text-sm sm:text-base font-bold text-[#d4af37]">
-                    لائیو بیان (Mixlr)
-                  </h2>
-                  <p className="text-xs text-emerald-100/80">
-                    اس وقت کوئی لائیو بیان نشر نہیں ہو رہا — نشر ہوتے ہی یہاں ظاہر ہوگا
+        {/* 3A. Standalone Live Bayan Box (YouTube-Style Broadcast Card) */}
+        <section
+          className={`rounded-3xl border-2 border-[#d4af37]/75 shadow-lg overflow-hidden transition-colors ${
+            isDark
+              ? 'bg-gradient-to-br from-[#0b1f14] via-[#08170f] to-[#0f291c] text-emerald-50'
+              : 'bg-white text-[#11261b]'
+          }`}
+        >
+          <div className="p-4 sm:p-5 space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3.5">
+              <div className="flex items-center gap-3 min-w-0">
+                <a
+                  href="https://youtube.com/@peermolanamuhammadjamshedn1391"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="w-14 h-10 rounded-xl bg-[#FF0000] hover:bg-[#d90000] text-white flex items-center justify-center shrink-0 shadow-md transition-transform active:scale-95"
+                  title="آفیشل یوٹیوب چینل کھولیں"
+                >
+                  <Play className="w-5 h-5 fill-white" />
+                </a>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2">
+                    <h2 className="text-base sm:text-lg font-bold text-[#064326] dark:text-[#d4af37]">
+                      لائیو بیان و نشریات
+                    </h2>
+                    <Radio className="w-4 h-4 text-[#FF0000] shrink-0" />
+                  </div>
+                  <p className="text-xs opacity-80 mt-0.5 leading-relaxed">
+                    اس وقت کوئی لائیو بیان نشر نہیں ہو رہا — نشر ہوتے ہی یہاں براہِ راست چلے گا
                   </p>
                 </div>
               </div>
+
+              <a
+                href="https://youtube.com/@peermolanamuhammadjamshedn1391"
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-[#FF0000] hover:bg-[#d90000] text-white text-xs sm:text-sm font-bold shadow-md hover:shadow-red-600/30 transition-all active:scale-95 shrink-0 min-h-[42px]"
+              >
+                <span className="w-6 h-4 rounded bg-white text-[#FF0000] flex items-center justify-center shrink-0">
+                  <Play className="w-3 h-3 fill-[#FF0000]" />
+                </span>
+                <span>یوٹیوب لائیو / چینل دیکھیں</span>
+              </a>
             </div>
 
-            {/* Compact Live Notification Email Bar */}
-            <div className="border-t border-white/10 pt-2.5 text-center">
+            {/* Live Notification Email Bar */}
+            <div className="border-t border-[#d4af37]/25 pt-3 text-center">
               {savedNotifyEmail && !showNotifyForm ? (
-                <div className="flex flex-wrap items-center justify-center gap-2 text-xs text-[#00ff99]">
+                <div className="flex flex-wrap items-center justify-center gap-2 text-xs text-[#064326] dark:text-[#00ff99] font-semibold">
                   <CheckCircle2 className="w-4 h-4 shrink-0" />
                   <span>لائیو نوٹیفیکیشن فعال ہے: {savedNotifyEmail}</span>
                   <button
@@ -807,14 +836,14 @@ export const SmartDashboardHome: React.FC<Props> = ({
                       setNotifyEmailInput(savedNotifyEmail);
                       setShowNotifyForm(true);
                     }}
-                    className="text-[#d4af37] hover:underline text-[11px] cursor-pointer"
+                    className="text-[#8c6514] dark:text-[#d4af37] hover:underline text-[11px] cursor-pointer"
                   >
                     تبدیل کریں
                   </button>
-                  <span aria-hidden="true" className="text-white/30">·</span>
+                  <span aria-hidden="true" className="opacity-40">·</span>
                   <button
                     onClick={handleClearNotify}
-                    className="text-rose-300 hover:underline text-[11px] cursor-pointer"
+                    className="text-rose-600 dark:text-rose-300 hover:underline text-[11px] cursor-pointer"
                   >
                     بند کریں
                   </button>
@@ -822,15 +851,17 @@ export const SmartDashboardHome: React.FC<Props> = ({
               ) : !showNotifyForm ? (
                 <button
                   onClick={() => setShowNotifyForm(true)}
-                  className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full border border-[#d4af37] text-[#d4af37] hover:bg-[#d4af37] hover:text-[#051a0f] text-xs font-semibold transition-all cursor-pointer min-h-[36px]"
+                  className="inline-flex items-center gap-2 px-5 py-2 rounded-xl border border-[#064326]/35 dark:border-[#d4af37]/70 text-[#064326] dark:text-[#d4af37] hover:bg-[#064326] hover:text-white dark:hover:bg-[#d4af37] dark:hover:text-[#051a0f] text-xs font-bold transition-all cursor-pointer min-h-[40px]"
                 >
-                  <Bell className="w-3.5 h-3.5" />
+                  <Bell className="w-4 h-4" />
                   <span>لائیو بیان نوٹیفیکیشن آن کریں</span>
                 </button>
               ) : (
                 <form
                   onSubmit={handleSaveNotify}
-                  className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 bg-black/30 p-2 rounded-xl"
+                  className={`flex flex-col sm:flex-row items-stretch sm:items-center gap-2 p-2.5 rounded-xl border ${
+                    isDark ? 'bg-black/30 border-[#d4af37]/30' : 'bg-[#f4f7f6] border-emerald-900/15'
+                  }`}
                 >
                   <input
                     type="email"
@@ -839,19 +870,19 @@ export const SmartDashboardHome: React.FC<Props> = ({
                     placeholder="اپنی Gmail یہاں لکھیں..."
                     required
                     dir="ltr"
-                    className="flex-1 px-3 py-2 rounded-lg bg-white text-[#11261b] text-xs outline-none placeholder-gray-500 text-right"
+                    className="flex-1 px-3 py-2 rounded-lg bg-white text-[#11261b] text-xs outline-none placeholder-gray-500 text-right border border-emerald-900/15"
                   />
                   <div className="flex items-center gap-1.5 justify-end">
                     <button
                       type="submit"
-                      className="px-4 py-2 rounded-lg bg-[#00ff99] hover:bg-[#33ffad] text-[#051a0f] text-xs font-bold transition-colors cursor-pointer whitespace-nowrap"
+                      className="px-4 py-2 rounded-lg bg-[#064326] dark:bg-[#00ff99] hover:bg-[#095c34] dark:hover:bg-[#33ffad] text-white dark:text-[#051a0f] text-xs font-bold transition-colors cursor-pointer whitespace-nowrap min-h-[38px]"
                     >
                       آن کریں
                     </button>
                     <button
                       type="button"
                       onClick={() => setShowNotifyForm(false)}
-                      className="px-3 py-2 rounded-lg text-xs text-gray-300 hover:text-white hover:bg-white/10 transition-colors cursor-pointer whitespace-nowrap"
+                      className="px-3 py-2 rounded-lg text-xs opacity-75 hover:opacity-100 hover:bg-black/5 dark:hover:bg-white/10 transition-colors cursor-pointer whitespace-nowrap min-h-[38px]"
                     >
                       بعد میں
                     </button>
@@ -1029,14 +1060,14 @@ export const SmartDashboardHome: React.FC<Props> = ({
                 <button
                   key={item.id}
                   onClick={item.onClick}
-                  className={`min-h-[116px] p-3.5 rounded-2xl border flex flex-col items-center justify-center text-center gap-1.5 transition-all duration-200 hover:-translate-y-1 active:scale-[0.98] cursor-pointer relative ${
+                  className={`khanqah-folder-card min-h-[116px] p-3.5 rounded-2xl border flex flex-col items-center justify-center text-center gap-1.5 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#d4af37] ${
                     isDark
-                      ? 'bg-[#0e2217] border-[#d4af37]/30 hover:border-[#d4af37] text-emerald-50 shadow-sm'
-                      : 'bg-white border-emerald-950/10 hover:border-[#d4af37] text-[#11261b] shadow-xs hover:shadow-md'
+                      ? 'bg-[#0e2217] border-[#d4af37]/30 hover:bg-[#122e1f] text-emerald-50 shadow-sm'
+                      : 'bg-white border-emerald-950/10 hover:bg-[#f9fbfa] text-[#11261b] shadow-xs'
                   }`}
                 >
                   <div
-                    className={`w-11 h-11 rounded-xl flex items-center justify-center ${
+                    className={`khanqah-folder-icon w-11 h-11 rounded-xl flex items-center justify-center ${
                       isDark ? 'bg-white/[0.06]' : 'bg-[#f4f7f6]'
                     } ${item.accent}`}
                   >
@@ -1064,14 +1095,14 @@ export const SmartDashboardHome: React.FC<Props> = ({
                 <button
                   key={item.id}
                   onClick={item.onClick}
-                  className={`min-h-[116px] p-3.5 rounded-2xl border flex flex-col items-center justify-center text-center gap-1.5 transition-all duration-200 hover:-translate-y-1 active:scale-[0.98] cursor-pointer ${
+                  className={`khanqah-folder-card min-h-[116px] p-3.5 rounded-2xl border flex flex-col items-center justify-center text-center gap-1.5 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#d4af37] ${
                     isDark
-                      ? 'bg-[#0e2217] border-[#d4af37]/25 hover:border-[#d4af37] text-emerald-50 shadow-sm'
-                      : 'bg-white border-emerald-950/10 hover:border-[#d4af37] text-[#11261b] shadow-xs hover:shadow-md'
+                      ? 'bg-[#0e2217] border-[#d4af37]/25 hover:bg-[#122e1f] text-emerald-50 shadow-sm'
+                      : 'bg-white border-emerald-950/10 hover:bg-[#f9fbfa] text-[#11261b] shadow-xs'
                   }`}
                 >
                   <div
-                    className={`w-11 h-11 rounded-xl flex items-center justify-center ${
+                    className={`khanqah-folder-icon w-11 h-11 rounded-xl flex items-center justify-center ${
                       isDark ? 'bg-white/[0.06]' : 'bg-[#f4f7f6]'
                     } ${item.accent}`}
                   >
@@ -1100,14 +1131,14 @@ export const SmartDashboardHome: React.FC<Props> = ({
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
             {/* Card 1 */}
             <div
-              className={`p-3.5 rounded-2xl border flex flex-col justify-between gap-2.5 ${
+              className={`p-3.5 rounded-2xl border flex flex-col justify-between gap-2.5 text-center ${
                 isDark
                   ? 'bg-[#0e2418] border-[#d4af37]/25'
                   : 'bg-[#f8faf9] border-emerald-900/10'
               }`}
             >
               <div className="space-y-1.5">
-                <div className="flex items-center gap-2 text-[#064326] dark:text-[#d4af37]">
+                <div className="flex items-center justify-center gap-2 text-[#064326] dark:text-[#d4af37]">
                   <Landmark className="w-4 h-4 shrink-0" />
                   <h3 className="text-sm font-bold">تعارفِ خانقاہ و شیخ</h3>
                 </div>
@@ -1133,14 +1164,14 @@ export const SmartDashboardHome: React.FC<Props> = ({
 
             {/* Card 2 */}
             <div
-              className={`p-3.5 rounded-2xl border flex flex-col justify-between gap-2.5 ${
+              className={`p-3.5 rounded-2xl border flex flex-col justify-between gap-2.5 text-center ${
                 isDark
                   ? 'bg-[#0e2418] border-[#d4af37]/25'
                   : 'bg-[#f8faf9] border-emerald-900/10'
               }`}
             >
               <div className="space-y-1.5">
-                <div className="flex items-center gap-2 text-[#064326] dark:text-[#d4af37]">
+                <div className="flex items-center justify-center gap-2 text-[#064326] dark:text-[#d4af37]">
                   <FileText className="w-4 h-4 shrink-0" />
                   <h3 className="text-sm font-bold">شرائط و ضوابط</h3>
                 </div>
@@ -1158,14 +1189,14 @@ export const SmartDashboardHome: React.FC<Props> = ({
 
             {/* Card 3 */}
             <div
-              className={`p-3.5 rounded-2xl border flex flex-col justify-between gap-2.5 ${
+              className={`p-3.5 rounded-2xl border flex flex-col justify-between gap-2.5 text-center ${
                 isDark
                   ? 'bg-[#0e2418] border-[#d4af37]/25'
                   : 'bg-[#f8faf9] border-emerald-900/10'
               }`}
             >
               <div className="space-y-1.5">
-                <div className="flex items-center gap-2 text-[#064326] dark:text-[#d4af37]">
+                <div className="flex items-center justify-center gap-2 text-[#064326] dark:text-[#d4af37]">
                   <ShieldCheck className="w-4 h-4 shrink-0" />
                   <h3 className="text-sm font-bold">پرائیویسی پالیسی</h3>
                 </div>
@@ -1183,21 +1214,21 @@ export const SmartDashboardHome: React.FC<Props> = ({
 
             {/* Card 4 */}
             <div
-              className={`p-3.5 rounded-2xl border flex flex-col justify-between gap-2.5 ${
+              className={`p-3.5 rounded-2xl border flex flex-col justify-between gap-2.5 text-center ${
                 isDark
                   ? 'bg-[#0e2418] border-[#d4af37]/25'
                   : 'bg-[#f8faf9] border-emerald-900/10'
               }`}
             >
               <div className="space-y-1.5">
-                <div className="flex items-center gap-2 text-[#064326] dark:text-[#d4af37]">
+                <div className="flex items-center justify-center gap-2 text-[#064326] dark:text-[#d4af37]">
                   <PhoneCall className="w-4 h-4 shrink-0" />
                   <h3 className="text-sm font-bold">رابطہ و آفیشل ایپ</h3>
                 </div>
                 <p className="text-xs opacity-80 leading-relaxed">
                   آفیشل واٹس ایپ، سوشل میڈیا اور اینڈرائڈ ایپ لنکس:
                 </p>
-                <div className="flex flex-wrap items-center gap-2 pt-0.5">
+                <div className="flex flex-wrap items-center justify-center gap-2 pt-0.5">
                   <a
                     href={WHATSAPP_DIRECT_CHAT_URL}
                     target="_blank"

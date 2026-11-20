@@ -48,7 +48,7 @@ export const PWAInstallBanner: React.FC<Props> = ({ isDark, onNotify }) => {
             <img
               src={`${import.meta.env.BASE_URL}app-logo.webp`}
               alt="خانقاہ دارالفلاح لوگو"
-              className="w-7 h-7 rounded-full border border-[#d4af37] shadow-xs object-cover shrink-0"
+              className="w-7 h-7 rounded-xl shadow-xs object-cover shrink-0"
             />
             <span className="truncate text-xs font-bold">
               خانقاہ دارالفلاح آفیشل اینڈرائڈ ایپ انسٹال کریں
@@ -104,7 +104,7 @@ export const PWAInstallBanner: React.FC<Props> = ({ isDark, onNotify }) => {
                 <img
                   src={`${import.meta.env.BASE_URL}app-logo.webp`}
                   alt="خانقاہ دارالفلاح"
-                  className="w-8 h-8 rounded-full border border-[#d4af37] shadow-xs object-cover"
+                  className="w-8 h-8 rounded-xl shadow-xs object-cover"
                 />
                 <h3 className="font-bold font-lalezar text-base text-[#064326] dark:text-[#d4af37]">
                   خانقاہ دارالفلاح ایپ انسٹالیشن

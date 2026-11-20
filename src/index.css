@@ -158,3 +158,85 @@ html.desktop-mode .sm\:text-4xl {
   }
 }
 
+/* Folder card hover, focus, and touch golden glow + subtle light sweep */
+.khanqah-folder-card {
+  position: relative;
+  overflow: hidden;
+  transition:
+    transform 0.26s cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 0.28s ease,
+    border-color 0.28s ease,
+    background-color 0.25s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.khanqah-folder-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    115deg,
+    transparent 20%,
+    rgba(212, 175, 55, 0.18) 50%,
+    transparent 80%
+  );
+  transform: translateX(-120%);
+  transition: transform 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+  pointer-events: none;
+}
+
+.khanqah-folder-card:hover,
+.khanqah-folder-card:focus-visible {
+  transform: translateY(-4px);
+  border-color: #d4af37;
+  box-shadow:
+    0 12px 26px -8px rgba(212, 175, 55, 0.48),
+    0 0 18px rgba(6, 67, 38, 0.16);
+}
+
+.khanqah-folder-card:active {
+  transform: translateY(-1px) scale(0.985);
+  border-color: #d4af37;
+  box-shadow:
+    0 0 22px rgba(212, 175, 55, 0.6),
+    0 0 12px rgba(0, 255, 153, 0.22);
+}
+
+.khanqah-folder-card:hover::before,
+.khanqah-folder-card:focus-visible::before,
+.khanqah-folder-card:active::before {
+  transform: translateX(120%);
+}
+
+html.dark .khanqah-folder-card:hover,
+html.dark .khanqah-folder-card:focus-visible {
+  box-shadow:
+    0 12px 28px -8px rgba(212, 175, 55, 0.52),
+    0 0 20px rgba(0, 255, 153, 0.2);
+}
+
+.khanqah-folder-icon {
+  transition:
+    transform 0.28s cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 0.28s ease,
+    background-color 0.25s ease;
+}
+
+.khanqah-folder-card:hover .khanqah-folder-icon,
+.khanqah-folder-card:focus-visible .khanqah-folder-icon,
+.khanqah-folder-card:active .khanqah-folder-icon {
+  transform: scale(1.1);
+  box-shadow: 0 0 16px rgba(212, 175, 55, 0.38);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .urdu-ticker-track {
+    animation: none;
+  }
+  .khanqah-folder-card,
+  .khanqah-folder-card::before,
+  .khanqah-folder-icon {
+    transition: none;
+    transform: none;
+  }
+}

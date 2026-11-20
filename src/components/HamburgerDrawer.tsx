@@ -119,7 +119,7 @@ export const HamburgerDrawer: React.FC<Props> = ({
               <img
                 src={`${import.meta.env.BASE_URL}app-logo.webp`}
                 alt="خانقاہ دارالفلاح لوگو"
-                className="w-10 h-10 rounded-full shadow-md border-2 border-[#d4af37] object-cover shrink-0"
+                className="w-10 h-10 rounded-xl shadow-md object-cover shrink-0"
               />
               <div>
                 <h3 className="text-lg font-extrabold font-lalezar leading-tight">
