@@ -73,35 +73,22 @@ export default function App() {
     }
   });
 
-  // View Mode state: Defaults to Mobile Mode for clean fit on phones; users can still toggle Desktop Mode anytime
-  const [viewMode, setViewMode] = useState<'mobile' | 'desktop'>(() => {
-    try {
-      const saved = localStorage.getItem('khanqah_view_mode_v3');
-      return saved === 'desktop' ? 'desktop' : 'mobile';
-    } catch {
-      return 'mobile';
-    }
-  });
-
   // Sync Tailwind dark class on document root
   useEffect(() => {
     document.documentElement.classList.toggle('dark', isDark);
   }, [isDark]);
 
-  // Sync Desktop Mode vs Mobile Mode class & viewport meta tag
+  // Enforce Mobile Mode only (clean responsive viewport, never zoomed desktop mode)
   useEffect(() => {
-    const isDesktop = viewMode === 'desktop';
-    document.documentElement.classList.toggle('desktop-mode', isDesktop);
+    document.documentElement.classList.remove('desktop-mode');
     const viewportMeta = document.querySelector('meta[name="viewport"]');
     if (viewportMeta) {
       viewportMeta.setAttribute(
         'content',
-        isDesktop
-          ? 'width=800, initial-scale=0.8, minimum-scale=0.35, maximum-scale=6.0, user-scalable=yes, viewport-fit=cover'
-          : 'width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover'
+        'width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover'
       );
     }
-  }, [viewMode]);
+  }, []);
 
   // Sync HTML lang and direction attribute whenever language changes
   useEffect(() => {
@@ -130,21 +117,6 @@ export default function App() {
       try {
         localStorage.setItem('khanqah_app_theme_v2', next ? 'dark' : 'light');
       } catch {}
-      return next;
-    });
-  };
-
-  const toggleViewMode = () => {
-    setViewMode((prev) => {
-      const next = prev === 'desktop' ? 'mobile' : 'desktop';
-      try {
-        localStorage.setItem('khanqah_view_mode_v3', next);
-      } catch {}
-      showNotification(
-        next === 'desktop'
-          ? UI_STRINGS[lang].toastDesktopMode
-          : UI_STRINGS[lang].toastMobileMode
-      );
       return next;
     });
   };
@@ -217,8 +189,6 @@ export default function App() {
         isSearchOpen={isSearchOpen}
         isDark={isDark}
         onToggleTheme={toggleTheme}
-        viewMode={viewMode}
-        onToggleViewMode={toggleViewMode}
         isDashboard={activeView === 'dashboard'}
         onGoHome={() => setActiveView('dashboard')}
         lang={lang}
@@ -308,8 +278,6 @@ export default function App() {
         onOpenAbout={() => setIsAboutOpen(true)}
         isDark={isDark}
         onToggleTheme={toggleTheme}
-        viewMode={viewMode}
-        onToggleViewMode={toggleViewMode}
         onRefreshBlogger={handleManualRefresh}
         isRefreshingBlogger={isRefreshing || isSyncingArchive}
         lang={lang}

@@ -10,8 +10,6 @@ import {
   Sun,
   Moon,
   Home,
-  Monitor,
-  Smartphone,
   Globe,
   Check,
   ChevronDown,
@@ -30,8 +28,6 @@ interface Props {
   isSearchOpen: boolean;
   isDark: boolean;
   onToggleTheme: () => void;
-  viewMode?: 'mobile' | 'desktop';
-  onToggleViewMode?: () => void;
   isDashboard?: boolean;
   onGoHome?: () => void;
   lang?: AppLanguage;
@@ -44,8 +40,6 @@ export const Header: React.FC<Props> = ({
   isSearchOpen,
   isDark,
   onToggleTheme,
-  viewMode = 'mobile',
-  onToggleViewMode,
   isDashboard = true,
   onGoHome,
   lang = DEFAULT_LANGUAGE,
@@ -220,36 +214,6 @@ export const Header: React.FC<Props> = ({
                 </div>
               )}
             </div>
-          )}
-
-          {onToggleViewMode && (
-            <button
-              onClick={onToggleViewMode}
-              className={`min-w-[32px] min-h-[34px] sm:min-w-[36px] sm:min-h-[38px] px-1 sm:px-1.5 rounded-lg active:scale-95 transition-all flex items-center justify-center gap-1 cursor-pointer ${
-                viewMode === 'desktop'
-                  ? 'bg-[#064326] text-[#d4af37] border border-[#d4af37]/60 shadow-xs'
-                  : isDark
-                  ? 'text-[#d4af37] hover:text-white hover:bg-[#d4af37]/15'
-                  : 'text-[#064326] hover:bg-emerald-50'
-              }`}
-              title={
-                viewMode === 'desktop' ? t.headerMobileMode : t.headerDesktopMode
-              }
-              aria-label={
-                viewMode === 'desktop' ? t.headerMobileMode : t.headerDesktopMode
-              }
-            >
-              {viewMode === 'desktop' ? (
-                <Smartphone className="w-4 h-4 sm:w-5 sm:h-5" />
-              ) : (
-                <Monitor className="w-4 h-4 sm:w-5 sm:h-5" />
-              )}
-              <span className="text-[10px] font-bold hidden sm:inline whitespace-nowrap">
-                {viewMode === 'desktop'
-                  ? t.headerMobileMode
-                  : t.headerDesktopMode}
-              </span>
-            </button>
           )}
 
           <button
