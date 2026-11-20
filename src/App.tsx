@@ -214,6 +214,8 @@ export default function App() {
             isDark={isDark}
             bayanatList={bayanat}
             bloggerTabs={tabs}
+            onRefreshBlogger={handleManualRefresh}
+            isRefreshingBlogger={isRefreshing}
             onOpenUrl={handleNavigateUrl}
             onOpenLibrary={() => handleOpenLibraryFolder('all')}
             onOpenWhatsAppGroups={() => setIsWhatsAppGroupsOpen(true)}

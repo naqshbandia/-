@@ -28,6 +28,9 @@ export const URDU_BOOKS_URL = "https://naqshbandia.github.io/index.html/Urdu-Boo
 export const HAFTAWAR_BAYANAT_URL = "https://naqshbandia.github.io/index.html/Haftawar-Bayanat.html";
 export const ISLAMI_MAJALIS_URL = "https://naqshbandia.github.io/index.html/ISLAMI_MAJALIS.html";
 export const TELAWAT_HAMD_NAAT_URL = "https://naqshbandia.github.io/index.html/telawat-Hamd-naat.html";
+export const KHANQAH_CLOCK_HTML_URL = "https://naqshbandia.github.io/index.html/khanqah-darul-falah-clock.html";
+export const KHANQAH_MESSAGE_HTML_URL = "https://naqshbandia.github.io/index.html/khanqah-message.html";
+export const KHANQAH_LATEST_UPDATE_TXT_URL = "https://naqshbandia.github.io/index.html/latest_update.txt";
 
 // Blogger Official Website
 export const BLOGGER_HOME_URL = "https://khanqahdarulfalah.blogspot.com/";

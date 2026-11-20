@@ -4,16 +4,15 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
-import { 
-  BloggerPostTab, 
-  DEFAULT_BLOGGER_POSTS_TABS, 
+import {
+  BloggerPostTab,
+  DEFAULT_BLOGGER_POSTS_TABS,
   BLOGGER_HOME_URL,
-  GOLD_LIBRARY_URL 
 } from '../data/appConfig';
 
-// Cache keys
-const CACHE_KEY = 'khanqah_blogger_tabs_cache_v4';
-const CACHE_TIME_KEY = 'khanqah_blogger_tabs_time_v4';
+// Cache keys (v5 stores strictly real live Blogger posts)
+const CACHE_KEY = 'khanqah_blogger_tabs_cache_v5';
+const CACHE_TIME_KEY = 'khanqah_blogger_tabs_time_v5';
 
 // Helper to keep exact Blogger post title
 function formatTabTitle(title: string): string {
@@ -23,40 +22,45 @@ function formatTabTitle(title: string): string {
 // Helper to choose appropriate icon
 function detectIconName(title: string, content: string): BloggerPostTab['iconName'] {
   const combined = (title + ' ' + content).toLowerCase();
-  
+
   if (
-    combined.includes('app') || 
-    combined.includes('apk') || 
-    combined.includes('ایپ') || 
-    combined.includes('انسٹال') || 
+    combined.includes('app') ||
+    combined.includes('apk') ||
+    combined.includes('ایپ') ||
+    combined.includes('انسٹال') ||
     combined.includes('ڈاؤنلوڈ') ||
     combined.includes('موبائل')
   ) {
     return 'app';
   }
   if (
-    combined.includes('audio') || 
-    combined.includes('gold') || 
-    combined.includes('آڈیو') || 
-    combined.includes('بیان') || 
+    combined.includes('audio') ||
+    combined.includes('gold') ||
+    combined.includes('آڈیو') ||
+    combined.includes('بیان') ||
     combined.includes('صوتی') ||
+    combined.includes('تلاوت') ||
+    combined.includes('نعت') ||
+    combined.includes('مجلس') ||
+    combined.includes('مجالس') ||
     combined.includes('mp3')
   ) {
     return 'audio';
   }
   if (
-    combined.includes('book') || 
-    combined.includes('کتاب') || 
-    combined.includes('کتب') || 
+    combined.includes('book') ||
+    combined.includes('کتاب') ||
+    combined.includes('کتب') ||
+    combined.includes('مسائل') ||
     combined.includes('رسالہ') ||
     combined.includes('pdf')
   ) {
     return 'books';
   }
   if (
-    combined.includes('news') || 
-    combined.includes('خبر') || 
-    combined.includes('اعلان') || 
+    combined.includes('news') ||
+    combined.includes('خبر') ||
+    combined.includes('اعلان') ||
     combined.includes('تازہ') ||
     combined.includes('اشتہار')
   ) {
@@ -119,16 +123,22 @@ export async function fetchLiveBloggerPosts(): Promise<BloggerPostTab[]> {
         for (const entry of entries) {
           const rawTitle = entry.title?.$t || 'پوسٹ';
           const content = entry.content?.$t || '';
-          
-          // Extract direct iframe url if embedded in post
+
+          // Extract direct iframe URL or direct GitHub/Archive HTML link if embedded in post
           let targetUrl = '';
           const iframeMatch = content.match(/<iframe[^>]+src=["']([^"']+)["']/i);
           if (iframeMatch && iframeMatch[1]) {
             targetUrl = iframeMatch[1];
           } else {
-            // Find alternate web link
-            const altLink = entry.link?.find((l: any) => l.rel === 'alternate')?.href;
-            targetUrl = altLink || BLOGGER_HOME_URL;
+            const externalLinkMatch = content.match(
+              /<a[^>]+href=["'](https?:\/\/[^"']*(?:github\.io|archive\.org)[^"']*)["']/i
+            );
+            if (externalLinkMatch && externalLinkMatch[1]) {
+              targetUrl = externalLinkMatch[1];
+            } else {
+              const altLink = entry.link?.find((l: any) => l.rel === 'alternate')?.href;
+              targetUrl = altLink || BLOGGER_HOME_URL;
+            }
           }
 
           const id = entry.id?.$t || targetUrl;
@@ -138,6 +148,7 @@ export async function fetchLiveBloggerPosts(): Promise<BloggerPostTab[]> {
             .replace(/<style[\s\S]*?<\/style>/gi, ' ')
             .replace(/<script[\s\S]*?<\/script>/gi, ' ')
             .replace(/<[^>]+>/g, ' ')
+            .replace(/&nbsp;/gi, ' ')
             .replace(/\s+/g, ' ')
             .trim()
             .slice(0, 120);
@@ -153,27 +164,13 @@ export async function fetchLiveBloggerPosts(): Promise<BloggerPostTab[]> {
           });
         }
 
-        // Ensure Audio Library Gold Page is always the first tab at the top
-        dynamicTabs.unshift({
-          id: 'blogger-home',
-          title: 'خانقاہ دارالفلاح (ہوم پیج)',
-          url: BLOGGER_HOME_URL,
-          iconName: 'blogger',
-        });
-        dynamicTabs.unshift({
-          id: 'audio-library-gold-page',
-          title: 'Audio Library Gold Page',
-          url: GOLD_LIBRARY_URL,
-          iconName: 'audio',
-        });
-
         resolve(dynamicTabs);
       } catch (err) {
         reject(err);
       }
     };
 
-    script.src = `https://khanqahdarulfalah.blogspot.com/feeds/posts/default?alt=json-in-script&callback=${callbackName}&max-results=50&_t=${Date.now()}`;
+    script.src = `https://khanqahdarulfalah.blogspot.com/feeds/posts/default?alt=json-in-script&callback=${callbackName}&max-results=150&_t=${Date.now()}`;
     script.onerror = () => {
       if (settled) return;
       settled = true;
@@ -226,7 +223,7 @@ export function useBloggerTabs() {
           // storage quota safe
         }
         if (notifyUser) {
-          notifyUser('بلاگر سے تمام پوسٹس اور لائبریری تازہ ہو گئی ہیں!');
+          notifyUser('بلاگر سے تمام پوسٹس اور فولڈرز تازہ ہو گئے!');
         }
       }
     } catch (e) {
@@ -239,9 +236,16 @@ export function useBloggerTabs() {
     }
   }, []);
 
-  // Fetch on mount to ensure user always gets the latest posts from Blogger
+  // Fetch on mount & when user returns to app so newly published Blogger posts appear automatically
   useEffect(() => {
     refreshPosts();
+    const onFocusOrVisible = () => {
+      if (document.visibilityState === 'visible') {
+        refreshPosts();
+      }
+    };
+    document.addEventListener('visibilitychange', onFocusOrVisible);
+    return () => document.removeEventListener('visibilitychange', onFocusOrVisible);
   }, [refreshPosts]);
 
   return {
