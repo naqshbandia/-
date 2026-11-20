@@ -30,7 +30,6 @@
       max-width: 240px;
       height: auto;
       filter: drop-shadow(0 0 8px rgba(46, 125, 50, 0.3));
-      transition: all 0.3s ease-in-out;
     }
     .container {
       max-width: 480px;
@@ -66,6 +65,7 @@
       text-align: right;
       font-family: inherit;
     }
+    .hidden { display: none; }
     .amount-presets {
       display: flex;
       flex-wrap: wrap;
@@ -117,17 +117,30 @@
       opacity: 0.65;
       cursor: not-allowed;
     }
-    .whatsapp-btn {
-      display: block;
-      width: 100%;
+    .export-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
       margin-top: 10px;
-      background: #25D366;
-      color: white;
-      text-decoration: none;
-      padding: 10px;
+    }
+    .export-btn {
+      border: none;
+      padding: 10px 8px;
       border-radius: 8px;
-      font-size: 13px;
+      font-size: 12px;
       font-weight: bold;
+      cursor: pointer;
+      font-family: inherit;
+    }
+    .btn-jpg { background: #25D366; color: #fff; }
+    .btn-pdf { background: #064326; color: #d4af37; border: 1px solid #d4af37; }
+    .wa-link {
+      display: inline-block;
+      margin-top: 8px;
+      font-size: 12px;
+      color: #15803d;
+      font-weight: bold;
+      text-decoration: underline;
     }
     #statusBox {
       display: none;
@@ -175,12 +188,20 @@
       </div>
 
       <div class="form-group">
-        <label for="pledgeRelation">بیعت کا تعلق (حضرت شیخ صاحب سے بیعت ہیں؟)</label>
+        <label for="pledgeRelation">بیعت کی نوعیت</label>
         <select id="pledgeRelation" name="pledge_relation" required>
           <option value="">-- منتخب کریں --</option>
-          <option value="بیعت ہیں">بیعت ہیں</option>
-          <option value="نہیں ہیں">نہیں ہیں</option>
+          <option value="پیر محمد جمشید صاحب نقشبندی مجددی دامت برکاتہم العالیہ">
+            پیر محمد جمشید صاحب نقشبندی مجددی دامت برکاتہم العالیہ
+          </option>
+          <option value="نہیں">نہیں</option>
+          <option value="کسی اور سے">کسی اور سے</option>
         </select>
+      </div>
+
+      <div class="form-group hidden" id="otherSheikhGroup">
+        <label for="otherSheikhName">اپنے شیخ کا نام لکھیں</label>
+        <input id="otherSheikhName" type="text" name="other_sheikh_name" placeholder="اپنے شیخِ طریقت کا نام درج کریں..." />
       </div>
 
       <div class="form-group">
@@ -226,26 +247,49 @@
       </button>
     </form>
 
+    <div class="export-row">
+      <button type="button" id="shareJpgBtn" class="export-btn btn-jpg">
+        فارم کی JPG شیئر / محفوظ کریں
+      </button>
+      <button type="button" id="sharePdfBtn" class="export-btn btn-pdf">
+        فارم کی PDF شیئر / محفوظ کریں
+      </button>
+    </div>
+
     <a
-      id="waBackupBtn"
       href="https://api.whatsapp.com/send?phone=923369757393"
       target="_blank"
       rel="noreferrer"
-      class="whatsapp-btn"
+      class="wa-link"
     >
-      واٹس ایپ پر اسکرین شاٹ اور تفصیل بھیجیں (03369757393)
+      واٹس ایپ چیٹ کھولیں (03369757393)
     </a>
   </div>
 
   <script>
     (function () {
       var form = document.getElementById('mainForm');
+      var pledgeSelect = document.getElementById('pledgeRelation');
+      var otherGroup = document.getElementById('otherSheikhGroup');
+      var otherInput = document.getElementById('otherSheikhName');
       var customAmount = document.getElementById('customAmount');
       var presetBtns = document.querySelectorAll('.preset-btn');
       var screenshotInput = document.getElementById('screenshotInput');
       var statusBox = document.getElementById('statusBox');
       var submitBtn = document.getElementById('submitBtn');
-      var waBackupBtn = document.getElementById('waBackupBtn');
+      var shareJpgBtn = document.getElementById('shareJpgBtn');
+      var sharePdfBtn = document.getElementById('sharePdfBtn');
+
+      pledgeSelect.addEventListener('change', function () {
+        if (pledgeSelect.value === 'کسی اور سے') {
+          otherGroup.classList.remove('hidden');
+          otherInput.required = true;
+        } else {
+          otherGroup.classList.add('hidden');
+          otherInput.required = false;
+          otherInput.value = '';
+        }
+      });
 
       presetBtns.forEach(function (btn) {
         btn.addEventListener('click', function () {
@@ -254,29 +298,6 @@
           customAmount.value = btn.getAttribute('data-val') || '';
         });
       });
-
-      function updateWaLink() {
-        var uName = document.getElementById('userName').value.trim() || '—';
-        var city = document.getElementById('cityVillage').value.trim() || '—';
-        var pledge = document.getElementById('pledgeRelation').value || '—';
-        var ph = document.getElementById('phone').value.trim() || '—';
-        var hType = document.getElementById('helpType').value || '—';
-        var amt = customAmount.value.trim() || '—';
-        var msg = [
-          'السلام علیکم ورحمۃ اللہ وبرکاتہ',
-          '🕌 خانقاہ و مدرسہ دارالفلاح — عطیات فارم',
-          '• نام: ' + uName,
-          '• شہر / گاؤں: ' + city,
-          '• بیعت کا تعلق: ' + pledge,
-          '• واٹس ایپ / فون: ' + ph,
-          '• تعاون کی نوعیت: ' + hType,
-          '• رقم (روپے): ' + amt
-        ].join('\n');
-        waBackupBtn.href = 'https://api.whatsapp.com/send?phone=923369757393&text=' + encodeURIComponent(msg);
-      }
-
-      form.addEventListener('input', updateWaLink);
-      form.addEventListener('change', updateWaLink);
 
       screenshotInput.addEventListener('change', function () {
         var file = screenshotInput.files && screenshotInput.files[0];
@@ -302,6 +323,10 @@
         statusBox.textContent = 'براہِ کرم انتظار فرمائیں، آپ کا فارم بھیجا جا رہا ہے...';
 
         var formData = new FormData(form);
+        if (pledgeSelect.value === 'کسی اور سے' && otherInput.value.trim()) {
+          formData.set('pledge_relation', 'کسی اور سے (' + otherInput.value.trim() + ')');
+        }
+
         fetch('https://formsubmit.co/ajax/khanqahdarulfalah@gmail.com', {
           method: 'POST',
           headers: { Accept: 'application/json' },
@@ -315,22 +340,196 @@
           .then(function (result) {
             if (result.ok && result.data && (result.data.success === 'true' || result.data.success === true)) {
               statusBox.className = 'success';
-              statusBox.textContent = 'جزاک اللہ! آپ کی معلومات اور رسید کامیابی سے بھیج دی گئی ہے۔';
-              form.reset();
-              presetBtns.forEach(function (b) { b.classList.remove('active'); });
+              statusBox.textContent = 'جزاک اللہ! آپ کی معلومات کامیابی سے بھیج دی گئی ہے۔ آپ نیچے سے JPG یا PDF بھی شیئر کر سکتے ہیں۔';
             } else {
-              // Fallback standard POST submission if AJAX rejects multipart file upload
               form.submit();
             }
           })
           .catch(function () {
             statusBox.className = 'error';
-            statusBox.textContent = 'ارسال کرنے میں دشواری ہوئی۔ براہِ کرم نیچے واٹس ایپ بٹن سے تفصیل بھیج دیں۔';
+            statusBox.textContent = 'ارسال کرنے میں دشواری ہوئی۔ آپ نیچے سے فارم کی JPG یا PDF بنا کر واٹس ایپ پر بھیج سکتے ہیں۔';
           })
           .finally(function () {
             submitBtn.disabled = false;
           });
       });
+
+      function loadScreenshotImg(file) {
+        return new Promise(function (resolve) {
+          if (!file) return resolve(null);
+          var reader = new FileReader();
+          reader.onload = function () {
+            var img = new Image();
+            img.onload = function () { resolve(img); };
+            img.onerror = function () { resolve(null); };
+            img.src = reader.result;
+          };
+          reader.onerror = function () { resolve(null); };
+          reader.readAsDataURL(file);
+        });
+      }
+
+      function wrapLines(ctx, text, maxW) {
+        var words = String(text || '—').trim().split(/\s+/);
+        var lines = [];
+        var cur = words[0] || '—';
+        for (var i = 1; i < words.length; i++) {
+          var test = cur + ' ' + words[i];
+          if (ctx.measureText(test).width <= maxW) {
+            cur = test;
+          } else {
+            lines.push(cur);
+            cur = words[i];
+          }
+        }
+        lines.push(cur);
+        return lines;
+      }
+
+      function buildPdfFromJpeg(jpegBytes, imgW, imgH) {
+        var enc = new TextEncoder();
+        var pageW = 595, pageH = 842, margin = 24;
+        var scale = Math.min((pageW - margin * 2) / imgW, (pageH - margin * 2) / imgH);
+        var dW = imgW * scale, dH = imgH * scale;
+        var dX = (pageW - dW) / 2, dY = pageH - margin - dH;
+        var stream = 'q\n' + dW.toFixed(2) + ' 0 0 ' + dH.toFixed(2) + ' ' + dX.toFixed(2) + ' ' + dY.toFixed(2) + ' cm\n/Im0 Do\nQ\n';
+        var chunks = [], offsets = [], pos = 0;
+        function pushText(s) { var b = enc.encode(s); chunks.push(b); pos += b.length; }
+        function pushBytes(b) { chunks.push(b); pos += b.length; }
+        pushText('%PDF-1.4\n%\xFF\xFF\xFF\xFF\n');
+        offsets[1] = pos; pushText('1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n');
+        offsets[2] = pos; pushText('2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n');
+        offsets[3] = pos; pushText('3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /XObject << /Im0 4 0 R >> >> /Contents 5 0 R >>\nendobj\n');
+        offsets[4] = pos; pushText('4 0 obj\n<< /Type /XObject /Subtype /Image /Width ' + imgW + ' /Height ' + imgH + ' /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ' + jpegBytes.length + ' >>\nstream\n');
+        pushBytes(jpegBytes);
+        pushText('\nendstream\nendobj\n');
+        offsets[5] = pos; pushText('5 0 obj\n<< /Length ' + stream.length + ' >>\nstream\n' + stream + 'endstream\nendobj\n');
+        var xref = pos;
+        pushText('xref\n0 6\n0000000000 65535 f \n');
+        for (var i = 1; i <= 5; i++) {
+          pushText(String(offsets[i]).padStart(10, '0') + ' 00000 n \n');
+        }
+        pushText('trailer\n<< /Size 6 /Root 1 0 R >>\nstartxref\n' + xref + '\n%%EOF');
+        var out = new Uint8Array(pos), off = 0;
+        chunks.forEach(function (c) { out.set(c, off); off += c.length; });
+        return new Blob([out], { type: 'application/pdf' });
+      }
+
+      function exportForm(format) {
+        var uName = document.getElementById('userName').value.trim();
+        var amt = customAmount.value.trim();
+        if (!uName || !amt) {
+          statusBox.className = 'error';
+          statusBox.textContent = 'براہِ کرم کم از کم اپنا نام اور رقم درج کریں تاکہ فارم کی JPG / PDF تیار ہو سکے۔';
+          return;
+        }
+        var bayat = pledgeSelect.value || '—';
+        if (bayat === 'کسی اور سے' && otherInput.value.trim()) {
+          bayat = 'کسی اور سے (' + otherInput.value.trim() + ')';
+        }
+        var rows = [
+          { label: 'نام', value: uName },
+          { label: 'شہر / گاؤں', value: document.getElementById('cityVillage').value.trim() || '—' },
+          { label: 'بیعت کی نوعیت', value: bayat },
+          { label: 'موبائل / واٹس ایپ', value: document.getElementById('phone').value.trim() || '—' },
+          { label: 'تعاون کی نوعیت', value: document.getElementById('helpType').value || '—' },
+          { label: 'رقم (روپے)', value: 'Rs ' + amt }
+        ];
+
+        var file = screenshotInput.files && screenshotInput.files[0];
+        loadScreenshotImg(file).then(function (img) {
+          var width = 900, padX = 48, contentW = width - padX * 2;
+          var mCanvas = document.createElement('canvas'), mCtx = mCanvas.getContext('2d');
+          mCtx.font = 'bold 24px Tahoma, sans-serif';
+          var layouts = rows.map(function (r) {
+            var lines = wrapLines(mCtx, r.value, contentW - 250);
+            return { label: r.label, lines: lines, h: Math.max(66, 26 + lines.length * 36) };
+          });
+          var rowsH = layouts.reduce(function (s, r) { return s + r.h + 10; }, 0);
+          var dW = 0, dH = 0, boxH = 0;
+          if (img) {
+            var ratio = Math.min((contentW - 40) / img.width, 420 / img.height, 1);
+            dW = Math.round(img.width * ratio);
+            dH = Math.round(img.height * ratio);
+            boxH = dH + 92;
+          }
+          var totalH = 36 + 190 + 24 + rowsH + (boxH ? boxH + 20 : 0) + 124;
+          var canvas = document.createElement('canvas');
+          canvas.width = width;
+          canvas.height = totalH;
+          var ctx = canvas.getContext('2d');
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(0, 0, width, totalH);
+          ctx.strokeStyle = '#064326'; ctx.lineWidth = 8; ctx.strokeRect(16, 16, width - 32, totalH - 32);
+          ctx.fillStyle = '#064326'; ctx.fillRect(padX, 44, contentW, 190);
+          ctx.textAlign = 'center'; ctx.direction = 'rtl';
+          ctx.fillStyle = '#d4af37'; ctx.font = 'bold 34px Tahoma, sans-serif';
+          ctx.fillText('خانقاہ و مدرسہ دارالفلاح', width / 2, 102);
+          ctx.fillStyle = '#ffffff'; ctx.font = 'bold 26px Tahoma, sans-serif';
+          ctx.fillText('عطیات و صدقات فارم رسید', width / 2, 150);
+          ctx.fillStyle = '#a7f3d0'; ctx.font = '600 18px Tahoma, sans-serif';
+          ctx.fillText('تاریخ: ' + new Date().toLocaleString('en-PK', { dateStyle: 'medium', timeStyle: 'short' }), width / 2, 194);
+
+          var curY = 258;
+          layouts.forEach(function (r, idx) {
+            ctx.fillStyle = idx % 2 === 0 ? '#f4fbf6' : '#ffffff';
+            ctx.fillRect(padX, curY, contentW, r.h);
+            ctx.strokeStyle = 'rgba(6, 67, 38, 0.25)'; ctx.lineWidth = 1.5;
+            ctx.strokeRect(padX, curY, contentW, r.h);
+            ctx.textAlign = 'right'; ctx.direction = 'rtl';
+            ctx.fillStyle = '#064326'; ctx.font = 'bold 22px Tahoma, sans-serif';
+            ctx.fillText(r.label + ':', padX + contentW - 20, curY + 40);
+            ctx.fillStyle = '#11261b'; ctx.font = 'bold 23px Tahoma, sans-serif';
+            r.lines.forEach(function (ln, li) {
+              ctx.fillText(ln, padX + contentW - 220, curY + 40 + li * 36);
+            });
+            curY += r.h + 10;
+          });
+
+          if (img && boxH > 0) {
+            ctx.fillStyle = '#f8faf9'; ctx.fillRect(padX, curY, contentW, boxH);
+            ctx.strokeStyle = '#d4af37'; ctx.lineWidth = 2; ctx.strokeRect(padX, curY, contentW, boxH);
+            ctx.textAlign = 'center'; ctx.fillStyle = '#064326'; ctx.font = 'bold 21px Tahoma, sans-serif';
+            ctx.fillText('منسلک پیمنٹ اسکرین شاٹ', width / 2, curY + 38);
+            ctx.drawImage(img, Math.round((width - dW) / 2), curY + 56, dW, dH);
+            curY += boxH + 14;
+          }
+
+          ctx.fillStyle = '#ebf2ee'; ctx.fillRect(padX, curY, contentW, 80);
+          ctx.textAlign = 'center'; ctx.fillStyle = '#064326'; ctx.font = 'bold 20px Tahoma, sans-serif';
+          ctx.fillText('نزد ملک آڈہ میراخیل، بنوں · واٹس ایپ: 03369757393', width / 2, curY + 48);
+
+          canvas.toBlob(function (jpgBlob) {
+            if (!jpgBlob) return;
+            var stamp = new Date().toISOString().slice(0, 10);
+            function finishFile(f) {
+              if (navigator.share && navigator.canShare && navigator.canShare({ files: [f] })) {
+                navigator.share({ files: [f], title: 'عطیات فارم رسید', text: 'خانقاہ دارالفلاح عطیات رسید' }).catch(function () {});
+              } else {
+                var a = document.createElement('a');
+                a.href = URL.createObjectURL(f);
+                a.download = f.name;
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                statusBox.className = 'success';
+                statusBox.textContent = 'رسید محفوظ ہو گئی ہے — اب آپ اسے واٹس ایپ (03369757393) پر بھیج سکتے ہیں۔';
+              }
+            }
+            if (format === 'jpg') {
+              finishFile(new File([jpgBlob], 'khanqah-donation-' + stamp + '.jpg', { type: 'image/jpeg' }));
+            } else {
+              jpgBlob.arrayBuffer().then(function (buf) {
+                var pdfBlob = buildPdfFromJpeg(new Uint8Array(buf), canvas.width, canvas.height);
+                finishFile(new File([pdfBlob], 'khanqah-donation-' + stamp + '.pdf', { type: 'application/pdf' }));
+              });
+            }
+          }, 'image/jpeg', 0.92);
+        });
+      }
+
+      shareJpgBtn.addEventListener('click', function () { exportForm('jpg'); });
+      sharePdfBtn.addEventListener('click', function () { exportForm('pdf'); });
     })();
   </script>
 </body>

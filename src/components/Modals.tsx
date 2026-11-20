@@ -1,6 +1,7 @@
 import React from 'react';
-import { X, MessageCircle, Youtube, Facebook, ExternalLink, User, Sparkles, ShieldCheck, FileText, HeartHandshake, Copy, Check, Globe, Upload, Send, ArrowRight, CheckCircle2, AlertCircle } from 'lucide-react';
+import { X, MessageCircle, Youtube, Facebook, ExternalLink, User, Sparkles, ShieldCheck, FileText, HeartHandshake, Copy, Check, Globe, Upload, Send, ArrowRight, CheckCircle2, AlertCircle, FileImage, FileDown } from 'lucide-react';
 import { ANDROID_PACKAGE_NAME, OFFICIAL_WEBSITE_URL, OFFICIAL_WHATSAPP_LINKS, WHATSAPP_DIRECT_CHAT_URL, BLOGGER_HOME_URL } from '../data/appConfig';
+import { exportReceiptFile, shareOrDownloadReceiptFile } from '../utils/donationReceipt';
 import {
   AppLanguage,
   DEFAULT_LANGUAGE,
@@ -15,6 +16,7 @@ interface ModalProps {
   title: string;
   isDark?: boolean;
   lang?: AppLanguage;
+  compact?: boolean;
   children: React.ReactNode;
 }
 
@@ -24,6 +26,7 @@ export const BaseModal: React.FC<ModalProps> = ({
   title,
   isDark = true,
   lang = DEFAULT_LANGUAGE,
+  compact = false,
   children,
 }) => {
   if (!isOpen) return null;
@@ -32,11 +35,11 @@ export const BaseModal: React.FC<ModalProps> = ({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs animate-in fade-in duration-200"
+      className="fixed inset-0 z-50 flex items-center justify-center p-2.5 sm:p-4 bg-black/70 backdrop-blur-xs animate-in fade-in duration-200"
       dir={dir}
     >
       <div
-        className={`border-2 border-[#d4af37] rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden flex flex-col max-h-[90vh] transition-colors ${
+        className={`border-2 border-[#d4af37] rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden flex flex-col max-h-[94vh] transition-colors ${
           dir === 'ltr' ? 'text-left' : 'text-right'
         } ${
           isDark ? 'bg-[#0c2116] text-emerald-50' : 'bg-white text-[#11261b]'
@@ -45,16 +48,20 @@ export const BaseModal: React.FC<ModalProps> = ({
       >
         {/* Modal Header */}
         <div
-          className={`border-b border-[#d4af37]/40 px-5 py-3.5 flex items-center justify-between ${
+          className={`border-b border-[#d4af37]/40 flex items-center justify-between ${
+            compact ? 'px-3.5 py-2' : 'px-5 py-3.5'
+          } ${
             isDark ? 'bg-[#062e1b]' : 'bg-[#ebf2ee]'
           }`}
         >
-          <h3 className="text-lg sm:text-xl font-bold font-lalezar tracking-wide flex items-center gap-2 text-[#064326] dark:text-[#d4af37]">
+          <h3 className={`font-bold font-lalezar tracking-wide flex items-center gap-2 text-[#064326] dark:text-[#d4af37] ${
+            compact ? 'text-sm sm:text-base' : 'text-lg sm:text-xl'
+          }`}>
             {title}
           </h3>
           <button
             onClick={onClose}
-            className="p-1.5 rounded-lg text-[#b08d43] hover:bg-[#d4af37]/20 transition-colors cursor-pointer"
+            className="p-1 rounded-lg text-[#b08d43] hover:bg-[#d4af37]/20 transition-colors cursor-pointer"
             title={t.closeBtn}
           >
             <X className="w-5 h-5" />
@@ -62,19 +69,21 @@ export const BaseModal: React.FC<ModalProps> = ({
         </div>
 
         {/* Modal Body */}
-        <div className="p-5 overflow-y-auto text-sm leading-relaxed space-y-4">
+        <div className={compact ? 'px-3 py-2 overflow-y-auto text-xs sm:text-sm leading-snug space-y-2' : 'p-5 overflow-y-auto text-sm leading-relaxed space-y-4'}>
           {children}
         </div>
 
         {/* Modal Footer */}
         <div
-          className={`border-t border-[#d4af37]/30 px-5 py-3 flex justify-end ${
+          className={`border-t border-[#d4af37]/30 flex justify-end ${
+            compact ? 'px-3.5 py-2' : 'px-5 py-3'
+          } ${
             isDark ? 'bg-[#08170f]' : 'bg-[#f4f7f6]'
           }`}
         >
           <button
             onClick={onClose}
-            className="px-5 py-1.5 bg-[#064326] hover:bg-[#095c34] text-white font-lalezar text-sm rounded-lg shadow-xs border border-[#d4af37]/50 transition-all active:scale-95 cursor-pointer"
+            className="px-4 py-1 bg-[#064326] hover:bg-[#095c34] text-white font-lalezar text-xs sm:text-sm rounded-lg shadow-xs border border-[#d4af37]/50 transition-all active:scale-95 cursor-pointer"
           >
             {t.modalOkClose}
           </button>
@@ -206,16 +215,18 @@ export const DonationModal: React.FC<{
   const [imgError, setImgError] = React.useState(false);
   const [formLogoError, setFormLogoError] = React.useState(false);
 
-  // Native form fields (NO father_name / ولدیت, NO QR code)
+  // Native form fields
   const [userName, setUserName] = React.useState('');
   const [cityVillage, setCityVillage] = React.useState('');
   const [pledgeRelation, setPledgeRelation] = React.useState('');
+  const [otherSheikhName, setOtherSheikhName] = React.useState('');
   const [phone, setPhone] = React.useState('');
   const [helpType, setHelpType] = React.useState('');
   const [amount, setAmount] = React.useState('');
   const [screenshotFile, setScreenshotFile] = React.useState<File | null>(null);
   const [submitState, setSubmitState] = React.useState<'idle' | 'submitting' | 'success' | 'error'>('idle');
   const [statusMessage, setStatusMessage] = React.useState('');
+  const [exportingFormat, setExportingFormat] = React.useState<'jpg' | 'pdf' | null>(null);
 
   const labels = getDonationLabels(lang);
 
@@ -260,11 +271,24 @@ export const DonationModal: React.FC<{
 
   const handleSubmitForm = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!userName.trim() || !cityVillage.trim() || !pledgeRelation || !phone.trim() || !helpType || !amount.trim()) {
+    if (
+      !userName.trim() ||
+      !cityVillage.trim() ||
+      !pledgeRelation ||
+      (pledgeRelation === 'کسی اور سے' && !otherSheikhName.trim()) ||
+      !phone.trim() ||
+      !helpType ||
+      !amount.trim()
+    ) {
       setSubmitState('error');
       setStatusMessage('براہِ کرم تمام ضروری خانے پُر کریں۔');
       return;
     }
+
+    const fullPledgeText =
+      pledgeRelation === 'کسی اور سے' && otherSheikhName.trim()
+        ? `کسی اور سے (${otherSheikhName.trim()})`
+        : pledgeRelation;
 
     setSubmitState('submitting');
     setStatusMessage('براہِ کرم انتظار فرمائیں، آپ کا فارم بھیجا جا رہا ہے...');
@@ -272,7 +296,10 @@ export const DonationModal: React.FC<{
     const formData = new FormData();
     formData.append('user_name', userName.trim());
     formData.append('city_village', cityVillage.trim());
-    formData.append('pledge_relation', pledgeRelation);
+    formData.append('pledge_relation', fullPledgeText);
+    if (pledgeRelation === 'کسی اور سے' && otherSheikhName.trim()) {
+      formData.append('other_sheikh_name', otherSheikhName.trim());
+    }
     formData.append('phone', phone.trim());
     formData.append('help_type', helpType);
     formData.append('amount', amount.trim());
@@ -295,52 +322,76 @@ export const DonationModal: React.FC<{
       const data = await response.json().catch(() => null);
       if (response.ok && (data?.success === 'true' || data?.success === true || !data?.message)) {
         setSubmitState('success');
-        setStatusMessage('جزاک اللہ! آپ کی معلومات اور رسید کامیابی سے بھیج دی گئی ہے۔ اللہ آپ کی نیکی قبول فرمائے۔');
+        setStatusMessage('جزاک اللہ! آپ کی معلومات اور رسید کامیابی سے بھیج دی گئی ہے۔ آپ نیچے سے فارم کی JPG یا PDF بھی شیئر کر سکتے ہیں۔');
         if (onNotify) onNotify('عطیات فارم کامیابی سے جمع ہو گیا! جزاک اللہ');
-        setUserName('');
-        setCityVillage('');
-        setPledgeRelation('');
-        setPhone('');
-        setHelpType('');
-        setAmount('');
-        setScreenshotFile(null);
       } else {
         setSubmitState('error');
         setStatusMessage(
           data?.message ||
-            'فارم بھیجنے میں دشواری پیش آئی۔ براہِ کرم نیچے واٹس ایپ بٹن سے تفصیل اور اسکرین شاٹ بھیج دیں۔'
+            'فارم بھیجنے میں دشواری پیش آئی۔ براہِ کرم نیچے سے فارم کی JPG یا PDF بنا کر واٹس ایپ پر شیئر کر دیں۔'
         );
       }
     } catch {
       setSubmitState('error');
-      setStatusMessage('انٹرنیٹ یا سرور کی خرابی کی وجہ سے فارم نہیں جا سکا۔ براہِ کرم واٹس ایپ کے ذریعے اسکرین شاٹ بھیجیں۔');
+      setStatusMessage('انٹرنیٹ یا سرور کی خرابی کی وجہ سے فارم نہیں جا سکا۔ براہِ کرم نیچے سے فارم کی JPG یا PDF شیئر کریں۔');
     }
   };
 
-  const whatsappReceiptUrl = React.useMemo(() => {
-    const lines = [
-      'السلام علیکم ورحمۃ اللہ وبرکاتہ',
-      '🕌 *خانقاہ و مدرسہ دارالفلاح — عطیات فارم*',
-      `• *نام:* ${userName || '—'}`,
-      `• *شہر / گاؤں:* ${cityVillage || '—'}`,
-      `• *بیعت کا تعلق:* ${pledgeRelation || '—'}`,
-      `• *واٹس ایپ / فون:* ${phone || '—'}`,
-      `• *تعاون کی نوعیت:* ${helpType || '—'}`,
-      `• *رقم (روپے):* ${amount || '—'}`,
-      'نوٹ: میں رقم ادا کرنے کا اسکرین شاٹ ساتھ بھیج رہا ہوں۔',
-    ].join('\n');
-    return `https://api.whatsapp.com/send?phone=923369757393&text=${encodeURIComponent(lines)}`;
-  }, [userName, cityVillage, pledgeRelation, phone, helpType, amount]);
+  const handleShareOrDownloadReceipt = async (format: 'jpg' | 'pdf') => {
+    if (!userName.trim() || !amount.trim()) {
+      setSubmitState('error');
+      setStatusMessage('براہِ کرم کم از کم اپنا نام اور رقم درج کریں تاکہ فارم کی JPG / PDF تیار کی جا سکے۔');
+      return;
+    }
 
-  const inputClassName = `w-full rounded-xl border px-3 py-2 text-xs sm:text-sm outline-none transition-colors ${
+    setExportingFormat(format);
+    try {
+      const file = await exportReceiptFile(
+        {
+          userName,
+          cityVillage,
+          pledgeRelation,
+          otherSheikhName,
+          phone,
+          helpType,
+          amount,
+          screenshotFile,
+        },
+        format
+      );
+      const outcome = await shareOrDownloadReceiptFile(
+        file,
+        'عطیات و صدقات فارم رسید — خانقاہ دارالفلاح',
+        `عطیات فارم رسید (${userName.trim()} — Rs ${amount.trim()})`
+      );
+      if (outcome === 'downloaded') {
+        const msg =
+          format === 'jpg'
+            ? 'فارم کی JPG تصویر محفوظ ہو گئی ہے — اب آپ اسے واٹس ایپ (03369757393) پر بھیج سکتے ہیں۔'
+            : 'فارم کی PDF فائل محفوظ ہو گئی ہے — اب آپ اسے واٹس ایپ (03369757393) پر بھیج سکتے ہیں۔';
+        setSubmitState('success');
+        setStatusMessage(msg);
+        if (onNotify) onNotify(msg);
+      } else if (outcome === 'shared') {
+        if (onNotify) onNotify(`فارم کی ${format.toUpperCase()} شیئر کر دی گئی!`);
+      }
+    } catch {
+      setSubmitState('error');
+      setStatusMessage('رسید تیار کرنے میں دشواری پیش آئی، براہِ کرم دوبارہ کوشش کریں۔');
+    } finally {
+      setExportingFormat(null);
+    }
+  };
+
+  const inputClassName = `w-full rounded-xl border px-3 py-1.5 text-xs sm:text-sm outline-none transition-colors ${
     isDark
       ? 'bg-[#081b11] border-[#d4af37]/40 text-emerald-50 placeholder:text-emerald-200/40 focus:border-[#00ff99]'
       : 'bg-white border-emerald-700/25 text-[#11261b] placeholder:text-slate-400 focus:border-[#2e7d32]'
   }`;
 
   return (
-    <BaseModal isOpen={isOpen} onClose={handleClose} title={labels.modalTitle} isDark={isDark} lang={lang}>
-      <div className="space-y-3.5 text-center">
+    <BaseModal isOpen={isOpen} onClose={handleClose} title={labels.modalTitle} isDark={isDark} lang={lang} compact>
+      <div className="space-y-1.5 text-center">
         {!showForm ? (
           <>
             {!imgError && (
@@ -349,52 +400,52 @@ export const DonationModal: React.FC<{
                   src={SHEIKH_ARCHIVE_PNG}
                   alt="حضرت شیخ صاحب"
                   onError={() => setImgError(true)}
-                  className="max-w-full w-[260px] h-auto object-contain mx-auto"
+                  className="max-h-[68px] w-auto object-contain mx-auto"
                 />
               </div>
             )}
 
             <div>
-              <span className="inline-block px-3.5 py-1 rounded-lg bg-[#064326] text-[#d4af37] border border-[#d4af37]/60 text-sm font-bold shadow-xs">
+              <span className="inline-block px-3 py-0.5 rounded-lg bg-[#064326] text-[#d4af37] border border-[#d4af37]/60 text-xs font-bold shadow-xs">
                 {labels.institutionBadge}
               </span>
             </div>
 
-            <p className="text-xs sm:text-sm font-semibold leading-relaxed">
+            <p className="text-[11px] sm:text-xs font-semibold leading-snug">
               {labels.introLine}
             </p>
-            <p className="text-xs text-rose-600 dark:text-rose-300 font-bold leading-relaxed">
+            <p className="text-[11px] text-rose-600 dark:text-rose-300 font-bold leading-snug">
               {labels.sadqaNote}
             </p>
 
             {/* Donation Bank & EasyPaisa Card */}
             <div
-              className={`rounded-2xl border p-3 space-y-2 text-xs sm:text-sm ${
+              className={`rounded-xl border px-2.5 py-2 space-y-1 text-[11px] sm:text-xs ${
                 isDark
                   ? 'bg-[#081b11] border-[#d4af37]/40 text-emerald-50'
                   : 'bg-[#f8faf9] border-[#064326]/20 text-[#11261b]'
               }`}
             >
-              <div className="inline-block px-3 py-0.5 rounded-md bg-[#009970] text-white text-xs font-bold">
+              <div className="inline-block px-2.5 py-0.5 rounded-md bg-[#009970] text-white text-[11px] font-bold">
                 {labels.detailsHeading}
               </div>
 
-              <div className="flex flex-wrap items-center justify-center gap-1.5 pt-1">
+              <div className="flex flex-wrap items-center justify-center gap-1 pt-0.5">
                 <span className="font-bold">{labels.bankLabel}</span>
-                <span dir="ltr" className="font-mono font-bold text-[#064326] dark:text-[#00ff99] select-all break-all">
+                <span dir="ltr" className="font-mono text-[10.5px] sm:text-xs font-bold text-[#064326] dark:text-[#00ff99] select-all">
                   PK61BAHL2021008100453301
                 </span>
                 <button
                   type="button"
                   onClick={() => handleCopy('PK61BAHL2021008100453301', 'iban')}
-                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-[#064326] hover:bg-[#095c34] text-white border border-[#d4af37]/50 text-[10px] font-bold cursor-pointer"
+                  className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md bg-[#064326] hover:bg-[#095c34] text-white border border-[#d4af37]/50 text-[10px] font-bold cursor-pointer"
                 >
-                  {copiedKey === 'iban' ? <Check className="w-3 h-3 text-[#00ff99]" /> : <Copy className="w-3 h-3" />}
+                  {copiedKey === 'iban' ? <Check className="w-2.5 h-2.5 text-[#00ff99]" /> : <Copy className="w-2.5 h-2.5" />}
                   <span>{copiedKey === 'iban' ? labels.copiedLabel : labels.copyLabel}</span>
                 </button>
               </div>
 
-              <div className="flex flex-wrap items-center justify-center gap-1.5">
+              <div className="flex flex-wrap items-center justify-center gap-1">
                 <span className="font-bold">{labels.easyPaisaLabel}</span>
                 <span dir="ltr" className="font-mono font-bold text-[#064326] dark:text-[#00ff99] select-all">
                   03369757393
@@ -402,46 +453,46 @@ export const DonationModal: React.FC<{
                 <button
                   type="button"
                   onClick={() => handleCopy('03369757393', 'ep')}
-                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-[#064326] hover:bg-[#095c34] text-white border border-[#d4af37]/50 text-[10px] font-bold cursor-pointer"
+                  className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md bg-[#064326] hover:bg-[#095c34] text-white border border-[#d4af37]/50 text-[10px] font-bold cursor-pointer"
                 >
-                  {copiedKey === 'ep' ? <Check className="w-3 h-3 text-[#00ff99]" /> : <Copy className="w-3 h-3" />}
+                  {copiedKey === 'ep' ? <Check className="w-2.5 h-2.5 text-[#00ff99]" /> : <Copy className="w-2.5 h-2.5" />}
                   <span>{copiedKey === 'ep' ? labels.copiedLabel : labels.copyLabel}</span>
                 </button>
               </div>
 
-              <div className="text-xs">
+              <div className="text-[11px]">
                 <span className="font-bold">{labels.nameLabel}</span> پیر حضرت مولانا محمد جمشید صاحب
               </div>
 
-              <div className="flex flex-wrap items-center justify-center gap-3 pt-1 text-xs">
+              <div className="flex flex-wrap items-center justify-center gap-2 pt-0.5 text-[11px]">
                 <a
                   href={WHATSAPP_DIRECT_CHAT_URL}
                   target="_blank"
                   rel="noreferrer"
-                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[#25D366] hover:bg-[#1faa4e] text-white font-bold"
+                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-[#25D366] hover:bg-[#1faa4e] text-white font-bold"
                 >
-                  <MessageCircle className="w-3.5 h-3.5 fill-white" />
+                  <MessageCircle className="w-3 h-3 fill-white" />
                   <span>{labels.whatsappLabel} 03369757393</span>
                 </a>
                 <a
                   href={BLOGGER_HOME_URL}
                   target="_blank"
                   rel="noreferrer"
-                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg border border-[#009970]/40 text-[#009970] dark:text-[#00ff99] font-bold hover:underline"
+                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg border border-[#009970]/40 text-[#009970] dark:text-[#00ff99] font-bold hover:underline"
                 >
-                  <Globe className="w-3.5 h-3.5" />
-                  <span>{labels.websiteLabel}</span>
+                  <Globe className="w-3 h-3" />
+                  <span>{labels.websiteLabel.replace('🌐 ', '')}</span>
                 </a>
               </div>
             </div>
 
             {/* Hadees Blockquote */}
-            <div className="space-y-1.5">
-              <div className="inline-block px-3 py-0.5 rounded-md bg-[#00a78e] text-white text-xs font-bold">
+            <div className="space-y-1">
+              <div className="inline-block px-2.5 py-0.5 rounded-md bg-[#00a78e] text-white text-[11px] font-bold">
                 {labels.hadeesHeading}
               </div>
               <blockquote
-                className={`border-r-4 border-[#00a78e] px-3 py-2 rounded-xl text-xs leading-relaxed ${
+                className={`border-r-4 border-[#00a78e] px-2.5 py-1.5 rounded-lg text-[11px] leading-snug ${
                   isDark ? 'bg-[#081b11] text-emerald-100' : 'bg-[#f3faf7] text-[#11261b]'
                 }`}
               >
@@ -451,11 +502,11 @@ export const DonationModal: React.FC<{
             </div>
 
             {/* Open Form Sparkling Button + Standalone HTML Page Link */}
-            <div className="pt-1 flex flex-col items-center gap-2">
+            <div className="pt-0.5 flex flex-col items-center gap-1">
               <button
                 type="button"
                 onClick={() => setShowForm(true)}
-                className="khanqah-shine-btn inline-flex items-center justify-center gap-2 px-7 py-3 rounded-xl bg-[#2e7d32] hover:bg-[#1b5e20] text-white text-sm sm:text-base font-bold border-2 border-[#d4af37] shadow-lg active:scale-95 transition-transform cursor-pointer"
+                className="khanqah-shine-btn inline-flex items-center justify-center gap-1.5 px-6 py-2 rounded-xl bg-[#2e7d32] hover:bg-[#1b5e20] text-white text-xs sm:text-sm font-bold border-2 border-[#d4af37] shadow-md active:scale-95 transition-transform cursor-pointer"
               >
                 <HeartHandshake className="w-4 h-4 text-[#d4af37]" />
                 <span>{labels.openFormBtn}</span>
@@ -465,7 +516,7 @@ export const DonationModal: React.FC<{
                 href={`${import.meta.env.BASE_URL}khanqah-donation.html`}
                 target="_blank"
                 rel="noreferrer"
-                className="text-[11px] font-bold text-[#064326] dark:text-[#d4af37] hover:underline inline-flex items-center gap-1"
+                className="text-[10.5px] font-bold text-[#064326] dark:text-[#d4af37] hover:underline inline-flex items-center gap-1"
               >
                 <span>{labels.openHtmlPageBtn}</span>
                 <ExternalLink className="w-3 h-3" />
@@ -473,31 +524,31 @@ export const DonationModal: React.FC<{
             </div>
           </>
         ) : (
-          <div className="space-y-3 text-right" dir="rtl">
+          <div className="space-y-2 text-right" dir="rtl">
             {/* Form Logo */}
             {!formLogoError && (
-              <div className={`rounded-xl p-2 border-b-2 border-[#2e7d32] text-center ${isDark ? 'bg-[#081b11]' : 'bg-white'}`}>
+              <div className={`rounded-xl p-1.5 border-b-2 border-[#2e7d32] text-center ${isDark ? 'bg-[#081b11]' : 'bg-white'}`}>
                 <img
                   src={SADAQAH_FORM_LOGO}
                   alt="خانقاہ دارالفلاح لوگو"
                   onError={() => setFormLogoError(true)}
-                  className="max-w-[200px] h-auto mx-auto"
+                  className="max-h-[54px] w-auto mx-auto"
                 />
               </div>
             )}
 
             <div className="text-center">
-              <h4 className="text-base sm:text-lg font-bold text-[#2e7d32] dark:text-[#d4af37]">
+              <h4 className="text-sm sm:text-base font-bold text-[#2e7d32] dark:text-[#d4af37]">
                 عطیات و صدقات فارم
               </h4>
-              <p className="text-[11px] opacity-75">
+              <p className="text-[10.5px] opacity-75">
                 پیسے ادا کرنے کے بعد اسکرین شاٹ منسلک کر کے فارم ارسال کریں
               </p>
             </div>
 
-            <form onSubmit={handleSubmitForm} className="space-y-2.5">
+            <form onSubmit={handleSubmitForm} className="space-y-2">
               <div>
-                <label className="block text-xs font-bold mb-1">نام (Name)</label>
+                <label className="block text-xs font-bold mb-0.5">نام (Name)</label>
                 <input
                   type="text"
                   required
@@ -509,7 +560,7 @@ export const DonationModal: React.FC<{
               </div>
 
               <div>
-                <label className="block text-xs font-bold mb-1">شہر یا گاؤں (City/Village)</label>
+                <label className="block text-xs font-bold mb-0.5">شہر یا گاؤں (City/Village)</label>
                 <input
                   type="text"
                   required
@@ -520,20 +571,45 @@ export const DonationModal: React.FC<{
                 />
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <div className="space-y-1.5">
                 <div>
-                  <label className="block text-xs font-bold mb-1">بیعت کا تعلق</label>
+                  <label className="block text-xs font-bold mb-0.5">بیعت کی نوعیت</label>
                   <select
                     required
                     value={pledgeRelation}
-                    onChange={(e) => setPledgeRelation(e.target.value)}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setPledgeRelation(val);
+                      if (val !== 'کسی اور سے') {
+                        setOtherSheikhName('');
+                      }
+                    }}
                     className={inputClassName}
                   >
                     <option value="">-- منتخب کریں --</option>
-                    <option value="بیعت ہیں">بیعت ہیں</option>
-                    <option value="نہیں ہیں">نہیں ہیں</option>
+                    <option value="پیر محمد جمشید صاحب نقشبندی مجددی دامت برکاتہم العالیہ">
+                      پیر محمد جمشید صاحب نقشبندی مجددی دامت برکاتہم العالیہ
+                    </option>
+                    <option value="نہیں">نہیں</option>
+                    <option value="کسی اور سے">کسی اور سے</option>
                   </select>
                 </div>
+
+                {pledgeRelation === 'کسی اور سے' && (
+                  <div>
+                    <label className="block text-xs font-bold mb-0.5 text-[#064326] dark:text-[#d4af37]">
+                      اپنے شیخ کا نام لکھیں
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={otherSheikhName}
+                      onChange={(e) => setOtherSheikhName(e.target.value)}
+                      placeholder="اپنے شیخِ طریقت کا نام درج کریں..."
+                      className={inputClassName}
+                    />
+                  </div>
+                )}
 
                 <div>
                   <label className="block text-xs font-bold mb-1">واٹس ایپ / موبائل نمبر</label>
@@ -651,16 +727,42 @@ export const DonationModal: React.FC<{
               </button>
             </form>
 
-            {/* 1-Tap WhatsApp Receipt Backup + Navigation Links */}
+            {/* Share / Download Form as JPG or PDF */}
             <div className="pt-1 flex flex-col items-center gap-2">
+              <div className="w-full grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  disabled={exportingFormat !== null}
+                  onClick={() => handleShareOrDownloadReceipt('jpg')}
+                  className="py-2.5 px-3 rounded-xl bg-[#25D366] hover:bg-[#1faa4e] disabled:opacity-60 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm cursor-pointer active:scale-98 transition-all"
+                >
+                  <FileImage className="w-4 h-4" />
+                  <span>
+                    {exportingFormat === 'jpg' ? 'JPG تیار ہو رہی ہے...' : 'فارم کی JPG شیئر / محفوظ کریں'}
+                  </span>
+                </button>
+
+                <button
+                  type="button"
+                  disabled={exportingFormat !== null}
+                  onClick={() => handleShareOrDownloadReceipt('pdf')}
+                  className="py-2.5 px-3 rounded-xl bg-[#064326] hover:bg-[#095c34] disabled:opacity-60 text-[#d4af37] border border-[#d4af37]/60 font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm cursor-pointer active:scale-98 transition-all"
+                >
+                  <FileDown className="w-4 h-4" />
+                  <span>
+                    {exportingFormat === 'pdf' ? 'PDF تیار ہو رہی ہے...' : 'فارم کی PDF شیئر / محفوظ کریں'}
+                  </span>
+                </button>
+              </div>
+
               <a
-                href={whatsappReceiptUrl}
+                href={WHATSAPP_DIRECT_CHAT_URL}
                 target="_blank"
                 rel="noreferrer"
-                className="w-full py-2 px-3 rounded-xl bg-[#25D366] hover:bg-[#1faa4e] text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm"
+                className="text-[11px] font-bold text-[#15803d] dark:text-[#00ff99] hover:underline inline-flex items-center gap-1"
               >
-                <MessageCircle className="w-4 h-4 fill-white" />
-                <span>واٹس ایپ پر اسکرین شاٹ اور تفصیل بھیجیں (03369757393)</span>
+                <MessageCircle className="w-3.5 h-3.5" />
+                <span>واٹس ایپ چیٹ کھولیں (03369757393)</span>
               </a>
 
               <div className="flex flex-wrap items-center justify-center gap-3 pt-1">
