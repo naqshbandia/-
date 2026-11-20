@@ -46,7 +46,7 @@ export const PWAInstallBanner: React.FC<Props> = ({ isDark, onNotify }) => {
         <div className="max-w-5xl mx-auto flex items-center justify-between gap-2">
           <div className="flex items-center gap-2 min-w-0">
             <img
-              src={`${import.meta.env.BASE_URL}app-logo.webp`}
+              src={`${import.meta.env.BASE_URL}kdf-logo-v4.webp`}
               alt="خانقاہ دارالفلاح لوگو"
               className="w-7 h-7 rounded-xl shadow-xs object-cover shrink-0"
             />
@@ -70,7 +70,7 @@ export const PWAInstallBanner: React.FC<Props> = ({ isDark, onNotify }) => {
             {isInstallable && (
               <button
                 onClick={handlePWAInstall}
-                className="hidden sm:inline-flex px-2.5 py-1.5 bg-[#d4af37] hover:bg-[#c29b29] text-[#051a0f] font-bold rounded-lg shadow-xs items-center gap-1 active:scale-95 transition-all text-xs whitespace-nowrap cursor-pointer"
+                className="inline-flex px-2.5 py-1.5 bg-[#d4af37] hover:bg-[#c29b29] text-[#051a0f] font-bold rounded-lg shadow-xs items-center gap-1 active:scale-95 transition-all text-xs whitespace-nowrap cursor-pointer"
               >
                 <Smartphone className="w-3.5 h-3.5" />
                 <span>ویب ایپ</span>
@@ -102,7 +102,7 @@ export const PWAInstallBanner: React.FC<Props> = ({ isDark, onNotify }) => {
             <div className="flex items-center justify-between border-b border-[#d4af37]/30 pb-2">
               <div className="flex items-center gap-2">
                 <img
-                  src={`${import.meta.env.BASE_URL}app-logo.webp`}
+                  src={`${import.meta.env.BASE_URL}kdf-logo-v4.webp`}
                   alt="خانقاہ دارالفلاح"
                   className="w-8 h-8 rounded-xl shadow-xs object-cover"
                 />

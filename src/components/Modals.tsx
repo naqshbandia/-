@@ -432,7 +432,7 @@ export const AboutAppModal: React.FC<{ isOpen: boolean; onClose: () => void; isD
       <div className="space-y-4 font-lalezar text-sm">
         <div className={`text-center p-4 border border-[#b08d43]/50 rounded-2xl ${isDark ? 'bg-[#382618]' : 'bg-amber-100/70'}`}>
           <img
-            src={`${import.meta.env.BASE_URL}app-logo.webp`}
+            src={`${import.meta.env.BASE_URL}kdf-logo-v4.webp`}
             alt="خانقاہ دارالفلاح لوگو"
             className="w-24 h-24 mx-auto mb-2 rounded-2xl shadow-xl object-cover"
           />

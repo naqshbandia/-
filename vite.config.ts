@@ -1,7 +1,7 @@
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
-import { defineConfig } from 'vite';
+import { defineConfig, Plugin } from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
 
 export default defineConfig(() => {
@@ -12,17 +12,81 @@ export default defineConfig(() => {
     !repoName.endsWith('.github.io');
   const base = isGitHubSubpath ? `/${repoName}/` : '/';
 
+  const pwaManifest = {
+    id: base,
+    name: 'Khanqah Darul Falah',
+    short_name: 'دارالفلاح',
+    description:
+      'خانقاہ دارالفلاح - حضرت مولانا پیر محمد جمشید نقشبندی مجددی (دامت برکاتہم العالیہ)',
+    theme_color: '#064326',
+    background_color: '#053b2d',
+    display: 'standalone' as const,
+    orientation: 'portrait-primary' as const,
+    start_url: base,
+    scope: base,
+    icons: [
+      {
+        src: `${base}kdf-icon-192-v4.png`,
+        sizes: '192x192',
+        type: 'image/png',
+        purpose: 'any' as const,
+      },
+      {
+        src: `${base}kdf-icon-512-v4.png`,
+        sizes: '512x512',
+        type: 'image/png',
+        purpose: 'any' as const,
+      },
+      {
+        src: `${base}kdf-icon-maskable-v4.png`,
+        sizes: '512x512',
+        type: 'image/png',
+        purpose: 'maskable' as const,
+      },
+    ],
+  };
+
+  const devManifestPlugin: Plugin = {
+    name: 'kdf-dev-manifest',
+    apply: 'serve',
+    configureServer(server) {
+      server.middlewares.use((req, res, next) => {
+        if (req.url?.split('?')[0] === `${base}manifest.webmanifest`) {
+          res.setHeader('Content-Type', 'application/manifest+json; charset=utf-8');
+          res.setHeader('Cache-Control', 'no-store');
+          res.end(JSON.stringify(pwaManifest, null, 2));
+          return;
+        }
+        next();
+      });
+    },
+    transformIndexHtml(html) {
+      if (html.includes('rel="manifest"')) return html;
+      return html.replace(
+        '</head>',
+        `  <link rel="manifest" href="${base}manifest.webmanifest" />\n  </head>`
+      );
+    },
+  };
+
   return {
     base,
     plugins: [
       react(),
       tailwindcss(),
+      devManifestPlugin,
       VitePWA({
         registerType: 'autoUpdate',
         useCredentials: true,
         includeAssets: [
           'favicon.ico',
           'favicon.png',
+          'kdf-favicon-v4.png',
+          'kdf-apple-touch-v4.png',
+          'kdf-icon-192-v4.png',
+          'kdf-icon-512-v4.png',
+          'kdf-icon-maskable-v4.png',
+          'kdf-logo-v4.webp',
           'apple-touch-icon.png',
           'app-icon-192.png',
           'app-icon-512.png',
@@ -30,40 +94,11 @@ export default defineConfig(() => {
           'app-logo.webp',
           'sheikh-glass-banner.png',
         ],
-        manifest: {
-          id: base,
-          name: 'Khanqah Darul Falah',
-          short_name: 'دارالفلاح',
-          description:
-            'خانقاہ دارالفلاح - حضرت مولانا پیر محمد جمشید نقشبندی مجددی (دامت برکاتہم العالیہ)',
-          theme_color: '#3d2e21',
-          background_color: '#1e1712',
-          display: 'standalone',
-          orientation: 'portrait-primary',
-          start_url: base,
-          scope: base,
-          icons: [
-            {
-              src: 'app-icon-192.png',
-              sizes: '192x192',
-              type: 'image/png',
-              purpose: 'any',
-            },
-            {
-              src: 'app-icon-512.png',
-              sizes: '512x512',
-              type: 'image/png',
-              purpose: 'any',
-            },
-            {
-              src: 'app-icon-maskable.png',
-              sizes: '512x512',
-              type: 'image/png',
-              purpose: 'maskable',
-            },
-          ],
-        },
+        manifest: pwaManifest,
         workbox: {
+          cleanupOutdatedCaches: true,
+          clientsClaim: true,
+          skipWaiting: true,
           globPatterns: ['**/*.{js,css,html,ico,png,svg,webp,woff,woff2}'],
           maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
         },
@@ -95,3 +130,4 @@ export default defineConfig(() => {
     },
   };
 });
+

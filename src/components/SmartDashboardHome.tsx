@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
   Headphones,
   BookOpen,
@@ -100,6 +100,46 @@ function getBloggerFolderIcon(iconName: BloggerPostTab['iconName']) {
       return Folder;
   }
 }
+
+const SlidingBayanTitle: React.FC<{ text: string }> = ({ text }) => {
+  const viewportRef = useRef<HTMLDivElement | null>(null);
+  const spanRef = useRef<HTMLSpanElement | null>(null);
+  const [shouldSlide, setShouldSlide] = useState(false);
+
+  useEffect(() => {
+    const checkOverflow = () => {
+      const vp = viewportRef.current;
+      const sp = spanRef.current;
+      if (!vp || !sp) return;
+      setShouldSlide(sp.scrollWidth > vp.clientWidth + 4);
+    };
+
+    checkOverflow();
+    const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(checkOverflow) : null;
+    if (ro && viewportRef.current) ro.observe(viewportRef.current);
+    return () => ro?.disconnect();
+  }, [text]);
+
+  const durationSec = Math.max(10, Math.min(28, Math.round(text.length * 0.22)));
+
+  return (
+    <div
+      ref={viewportRef}
+      className={`flex-1 min-w-0 overflow-hidden ${shouldSlide ? 'urdu-ticker-viewport' : ''}`}
+    >
+      <span
+        ref={spanRef}
+        dir="rtl"
+        style={shouldSlide ? { animationDuration: `${durationSec}s` } : undefined}
+        className={`text-[11.5px] sm:text-[12.5px] font-bold leading-snug whitespace-nowrap ${
+          shouldSlide ? 'urdu-ticker-track' : 'block text-right'
+        }`}
+      >
+        {text}
+      </span>
+    </div>
+  );
+};
 
 export const SmartDashboardHome: React.FC<Props> = ({
   isDark,
@@ -399,7 +439,7 @@ export const SmartDashboardHome: React.FC<Props> = ({
       }`}
       dir="rtl"
     >
-      <div className="max-w-5xl mx-auto px-3.5 sm:px-6 py-4 space-y-5">
+      <div className="max-w-5xl mx-auto px-3 sm:px-5 py-3 space-y-3">
         {/* 1. Top Sheikh Title Calligraphy Banner (Glass Crystal Card PNG Showcase) */}
         <section
           className={`rounded-3xl border-2 border-[#d4af37]/80 overflow-hidden shadow-md transition-colors ${
@@ -779,71 +819,61 @@ export const SmartDashboardHome: React.FC<Props> = ({
           </div>
         </section>
 
-        {/* 3A. Standalone Live Bayan Box (YouTube-Style Broadcast Card) */}
+        {/* 3A. Standalone Live Audio Broadcast Box (Mixlr) */}
         <section
-          className={`rounded-3xl border-2 border-[#d4af37]/75 shadow-lg overflow-hidden transition-colors ${
+          className={`rounded-3xl border-2 border-[#d4af37]/75 shadow-md overflow-hidden transition-colors ${
             isDark
               ? 'bg-gradient-to-br from-[#0b1f14] via-[#08170f] to-[#0f291c] text-emerald-50'
               : 'bg-white text-[#11261b]'
           }`}
         >
-          <div className="p-4 sm:p-5 space-y-4">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3.5">
-              <div className="flex items-center gap-3 min-w-0">
-                <a
-                  href="https://youtube.com/@peermolanamuhammadjamshedn1391"
-                  target="_blank"
-                  rel="noreferrer"
-                  className="w-14 h-10 rounded-xl bg-[#FF0000] hover:bg-[#d90000] text-white flex items-center justify-center shrink-0 shadow-md transition-transform active:scale-95"
-                  title="آفیشل یوٹیوب چینل کھولیں"
-                >
-                  <Play className="w-5 h-5 fill-white" />
-                </a>
+          <div className="p-3 sm:p-4 space-y-2.5">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div className="w-10 h-10 rounded-xl bg-[#064326] border border-[#d4af37]/60 text-[#00ff99] flex items-center justify-center shrink-0 shadow-sm">
+                  <Radio className="w-5 h-5" />
+                </div>
                 <div className="min-w-0">
-                  <div className="flex items-center gap-2">
-                    <h2 className="text-base sm:text-lg font-bold text-[#064326] dark:text-[#d4af37]">
-                      لائیو بیان و نشریات
-                    </h2>
-                    <Radio className="w-4 h-4 text-[#FF0000] shrink-0" />
-                  </div>
-                  <p className="text-xs opacity-80 mt-0.5 leading-relaxed">
-                    اس وقت کوئی لائیو بیان نشر نہیں ہو رہا — نشر ہوتے ہی یہاں براہِ راست چلے گا
+                  <h2 className="text-sm sm:text-base font-bold text-[#064326] dark:text-[#d4af37]">
+                    لائیو آڈیو بیان (Mixlr)
+                  </h2>
+                  <p className="text-[11px] opacity-80 leading-snug">
+                    اس وقت کوئی لائیو آڈیو بیان نشر نہیں ہو رہا — نشر ہوتے ہی یہاں براہِ راست چلے گا
                   </p>
                 </div>
               </div>
 
-              <a
-                href="https://youtube.com/@peermolanamuhammadjamshedn1391"
-                target="_blank"
-                rel="noreferrer"
-                className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-[#FF0000] hover:bg-[#d90000] text-white text-xs sm:text-sm font-bold shadow-md hover:shadow-red-600/30 transition-all active:scale-95 shrink-0 min-h-[42px]"
+              <button
+                type="button"
+                onClick={() =>
+                  onNotify('اس وقت کوئی لائیو آڈیو نشر نہیں ہو رہا؛ شروع ہوتے ہی خودکار طور پر یہاں آڈیو چلے گا۔')
+                }
+                className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#064326] hover:bg-[#095c34] text-white border border-[#d4af37]/65 text-[11px] font-bold shadow-sm transition-all active:scale-95 shrink-0 cursor-pointer min-h-[38px]"
               >
-                <span className="w-6 h-4 rounded bg-white text-[#FF0000] flex items-center justify-center shrink-0">
-                  <Play className="w-3 h-3 fill-[#FF0000]" />
-                </span>
-                <span>یوٹیوب لائیو / چینل دیکھیں</span>
-              </a>
+                <Headphones className="w-3.5 h-3.5 text-[#00ff99] shrink-0" />
+                <span>لائیو آڈیو نشریات (Mixlr)</span>
+              </button>
             </div>
 
             {/* Live Notification Email Bar */}
-            <div className="border-t border-[#d4af37]/25 pt-3 text-center">
+            <div className="border-t border-[#d4af37]/20 pt-2.5 text-center">
               {savedNotifyEmail && !showNotifyForm ? (
-                <div className="flex flex-wrap items-center justify-center gap-2 text-xs text-[#064326] dark:text-[#00ff99] font-semibold">
-                  <CheckCircle2 className="w-4 h-4 shrink-0" />
+                <div className="flex flex-wrap items-center justify-center gap-2 text-[11px] text-[#064326] dark:text-[#00ff99] font-semibold">
+                  <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
                   <span>لائیو نوٹیفیکیشن فعال ہے: {savedNotifyEmail}</span>
                   <button
                     onClick={() => {
                       setNotifyEmailInput(savedNotifyEmail);
                       setShowNotifyForm(true);
                     }}
-                    className="text-[#8c6514] dark:text-[#d4af37] hover:underline text-[11px] cursor-pointer"
+                    className="text-[#8c6514] dark:text-[#d4af37] hover:underline text-[10.5px] cursor-pointer"
                   >
                     تبدیل کریں
                   </button>
                   <span aria-hidden="true" className="opacity-40">·</span>
                   <button
                     onClick={handleClearNotify}
-                    className="text-rose-600 dark:text-rose-300 hover:underline text-[11px] cursor-pointer"
+                    className="text-rose-600 dark:text-rose-300 hover:underline text-[10.5px] cursor-pointer"
                   >
                     بند کریں
                   </button>
@@ -851,15 +881,15 @@ export const SmartDashboardHome: React.FC<Props> = ({
               ) : !showNotifyForm ? (
                 <button
                   onClick={() => setShowNotifyForm(true)}
-                  className="inline-flex items-center gap-2 px-5 py-2 rounded-xl border border-[#064326]/35 dark:border-[#d4af37]/70 text-[#064326] dark:text-[#d4af37] hover:bg-[#064326] hover:text-white dark:hover:bg-[#d4af37] dark:hover:text-[#051a0f] text-xs font-bold transition-all cursor-pointer min-h-[40px]"
+                  className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-xl border border-[#064326]/35 dark:border-[#d4af37]/70 text-[#064326] dark:text-[#d4af37] hover:bg-[#064326] hover:text-white dark:hover:bg-[#d4af37] dark:hover:text-[#051a0f] text-[11px] font-bold transition-all cursor-pointer min-h-[36px]"
                 >
-                  <Bell className="w-4 h-4" />
+                  <Bell className="w-3.5 h-3.5" />
                   <span>لائیو بیان نوٹیفیکیشن آن کریں</span>
                 </button>
               ) : (
                 <form
                   onSubmit={handleSaveNotify}
-                  className={`flex flex-col sm:flex-row items-stretch sm:items-center gap-2 p-2.5 rounded-xl border ${
+                  className={`flex flex-col sm:flex-row items-stretch sm:items-center gap-2 p-2 rounded-xl border ${
                     isDark ? 'bg-black/30 border-[#d4af37]/30' : 'bg-[#f4f7f6] border-emerald-900/15'
                   }`}
                 >
@@ -870,19 +900,19 @@ export const SmartDashboardHome: React.FC<Props> = ({
                     placeholder="اپنی Gmail یہاں لکھیں..."
                     required
                     dir="ltr"
-                    className="flex-1 px-3 py-2 rounded-lg bg-white text-[#11261b] text-xs outline-none placeholder-gray-500 text-right border border-emerald-900/15"
+                    className="flex-1 px-3 py-1.5 rounded-lg bg-white text-[#11261b] text-xs outline-none placeholder-gray-500 text-right border border-emerald-900/15"
                   />
                   <div className="flex items-center gap-1.5 justify-end">
                     <button
                       type="submit"
-                      className="px-4 py-2 rounded-lg bg-[#064326] dark:bg-[#00ff99] hover:bg-[#095c34] dark:hover:bg-[#33ffad] text-white dark:text-[#051a0f] text-xs font-bold transition-colors cursor-pointer whitespace-nowrap min-h-[38px]"
+                      className="px-3.5 py-1.5 rounded-lg bg-[#064326] dark:bg-[#00ff99] hover:bg-[#095c34] dark:hover:bg-[#33ffad] text-white dark:text-[#051a0f] text-[11px] font-bold transition-colors cursor-pointer whitespace-nowrap min-h-[34px]"
                     >
                       آن کریں
                     </button>
                     <button
                       type="button"
                       onClick={() => setShowNotifyForm(false)}
-                      className="px-3 py-2 rounded-lg text-xs opacity-75 hover:opacity-100 hover:bg-black/5 dark:hover:bg-white/10 transition-colors cursor-pointer whitespace-nowrap min-h-[38px]"
+                      className="px-3 py-1.5 rounded-lg text-[11px] opacity-75 hover:opacity-100 hover:bg-black/5 dark:hover:bg-white/10 transition-colors cursor-pointer whitespace-nowrap min-h-[34px]"
                     >
                       بعد میں
                     </button>
@@ -893,28 +923,28 @@ export const SmartDashboardHome: React.FC<Props> = ({
           </div>
         </section>
 
-        {/* 3B. Separate Beautiful Box: Latest Uploaded Bayanat */}
+        {/* 3B. Compact Box: Latest Uploaded Bayanat */}
         <section
-          className={`rounded-3xl border-2 border-[#d4af37]/60 p-4 sm:p-5 shadow-md space-y-3.5 transition-colors ${
+          className={`rounded-3xl border-2 border-[#d4af37]/60 p-3 sm:p-4 shadow-md space-y-2.5 transition-colors ${
             isDark
               ? 'bg-[#0b1f14] text-emerald-50'
               : 'bg-white text-[#11261b]'
           }`}
         >
-          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#d4af37]/25 pb-2.5">
-            <div className="flex items-center gap-2.5">
+          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#d4af37]/20 pb-2">
+            <div className="flex items-center gap-2">
               <div
-                className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${
+                className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${
                   isDark ? 'bg-[#d4af37]/15 text-[#d4af37]' : 'bg-[#ebf2ee] text-[#064326]'
                 }`}
               >
-                <Headphones className="w-5 h-5" />
+                <Headphones className="w-4 h-4" />
               </div>
               <div>
-                <h2 className="text-sm sm:text-base font-bold text-[#064326] dark:text-[#d4af37]">
+                <h2 className="text-[13px] sm:text-sm font-bold text-[#064326] dark:text-[#d4af37]">
                   تازہ ترین اپلوڈ شدہ بیانات
                 </h2>
-                <p className="text-[11px] opacity-75">
+                <p className="text-[10px] opacity-75">
                   سب سے آخر میں شامل کیے گئے بیانات (7 دن تک &quot;نیا&quot; نشان کے ساتھ)
                 </p>
               </div>
@@ -922,48 +952,50 @@ export const SmartDashboardHome: React.FC<Props> = ({
 
             <button
               onClick={onOpenLibrary}
-              className="inline-flex items-center gap-1 text-xs font-bold text-[#064326] dark:text-[#00ff99] hover:underline cursor-pointer whitespace-nowrap"
+              className="inline-flex items-center gap-1 text-[11px] font-bold text-[#064326] dark:text-[#00ff99] hover:underline cursor-pointer whitespace-nowrap"
             >
               <span>تمام بیانات دیکھیں</span>
               <ArrowLeft className="w-3.5 h-3.5" />
             </button>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
-            {latestUploadedBayanat.map((bayan) => {
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+            {latestUploadedBayanat.map((bayan, idx) => {
               const isPlaying = currentPlayingBayanId === bayan.id;
               const isDownloading = activeDownloadIds.has(bayan.id);
-              const isNew = isBayanNew(bayan);
+              const showNeonNew = isBayanNew(bayan) || idx < 2;
               const dateLabel = formatBayanDateUrdu(bayan);
+              const fullTitle = bayan.urduTitle || bayan.title;
 
               return (
                 <div
                   key={bayan.id}
-                  className={`p-3 rounded-2xl border flex items-center justify-between gap-2.5 transition-all ${
+                  className={`p-2.5 rounded-2xl border flex flex-col gap-1.5 transition-all ${
                     isPlaying
                       ? isDark
-                        ? 'bg-[#0f3822] border-[#00ff99]'
-                        : 'bg-[#ebf2ee] border-[#064326]'
+                        ? 'bg-[#0f3822] border-[#00ff99] shadow-md'
+                        : 'bg-[#ebf2ee] border-[#064326] shadow-md'
                       : isDark
                       ? 'bg-[#0e2418] border-[#d4af37]/30 hover:border-[#d4af37]'
                       : 'bg-[#f8faf9] border-emerald-900/15 hover:border-[#d4af37]'
                   }`}
                 >
+                  {/* Top Row: Animated Red Neon NEW Badge + Complete Single-Line Title (auto-slides if overflow) */}
                   <button
                     onClick={() => onPlayAudio(bayan)}
-                    className="flex-1 min-w-0 text-right cursor-pointer"
+                    className="w-full text-right cursor-pointer space-y-1"
+                    title={fullTitle}
                   >
-                    <div className="flex items-center gap-1.5">
-                      {isNew && (
-                        <span className="px-1.5 py-0.5 rounded bg-[#064326] dark:bg-[#00ff99] text-white dark:text-[#051a0f] text-[10px] font-extrabold shrink-0">
-                          نیا
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      {showNeonNew && (
+                        <span className="khanqah-new-neon-badge px-1.5 py-0.5 rounded text-[9.5px] font-extrabold tracking-wide shrink-0 whitespace-nowrap leading-none">
+                          NEW · نیا
                         </span>
                       )}
-                      <p className="text-xs sm:text-sm font-bold truncate">
-                        {bayan.urduTitle || bayan.title}
-                      </p>
+                      <SlidingBayanTitle text={fullTitle} />
                     </div>
-                    <div className="flex items-center gap-1.5 text-[11px] opacity-75 mt-1 truncate">
+
+                    <div className="flex items-center gap-1.5 text-[10px] opacity-75 truncate">
                       <span className="text-[#8c6514] dark:text-[#d4af37] font-semibold truncate">
                         {bayan.collectionUrdu}
                       </span>
@@ -977,7 +1009,7 @@ export const SmartDashboardHome: React.FC<Props> = ({
                         <>
                           <span aria-hidden="true">·</span>
                           <span className="inline-flex items-center gap-0.5 tabular-nums shrink-0">
-                            <Clock className="w-3 h-3" />
+                            <Clock className="w-2.5 h-2.5" />
                             {Math.max(1, Math.floor(parseFloat(bayan.length) / 60))} منٹ
                           </span>
                         </>
@@ -985,23 +1017,25 @@ export const SmartDashboardHome: React.FC<Props> = ({
                     </div>
                   </button>
 
-                  <div className="flex items-center gap-1.5 shrink-0">
+                  {/* Bottom Row: Play, Download & Share Buttons BELOW the title (compact single-line) */}
+                  <div className="grid grid-cols-3 gap-1.5 pt-1.5 border-t border-emerald-900/10 dark:border-[#d4af37]/20">
                     <button
                       onClick={() => onPlayAudio(bayan)}
-                      className={`min-w-[38px] min-h-[38px] rounded-xl flex items-center justify-center transition-all active:scale-95 cursor-pointer ${
+                      className={`h-8 px-1.5 rounded-xl flex items-center justify-center gap-1 text-[10px] sm:text-[10.5px] font-bold whitespace-nowrap transition-all active:scale-95 cursor-pointer ${
                         isPlaying
                           ? 'bg-[#00ff99] text-[#051a0f]'
                           : 'bg-[#064326] hover:bg-[#095c34] text-white dark:bg-[#d4af37] dark:text-[#051a0f]'
                       }`}
                       title="بیان سنیں"
                     >
-                      <Play className="w-4 h-4 fill-current" />
+                      <Play className="w-3 h-3 fill-current shrink-0" />
+                      <span>{isPlaying ? 'چل رہا' : 'پلے'}</span>
                     </button>
 
                     <button
                       onClick={() => downloadSingleBayan(bayan, onNotify)}
                       disabled={isDownloading}
-                      className={`min-w-[38px] min-h-[38px] rounded-xl flex items-center justify-center transition-all active:scale-95 cursor-pointer disabled:opacity-60 ${
+                      className={`h-8 px-1.5 rounded-xl flex items-center justify-center gap-1 text-[10px] sm:text-[10.5px] font-bold whitespace-nowrap transition-all active:scale-95 cursor-pointer disabled:opacity-60 ${
                         isDark
                           ? 'bg-white/10 hover:bg-emerald-600 text-white'
                           : 'bg-emerald-900/10 hover:bg-[#064326] text-[#064326] hover:text-white'
@@ -1009,18 +1043,20 @@ export const SmartDashboardHome: React.FC<Props> = ({
                       title="ڈاؤنلوڈ کریں (اسی صفحے پر)"
                     >
                       {isDownloading ? (
-                        <Loader2 className="w-4 h-4 animate-spin" />
+                        <Loader2 className="w-3 h-3 animate-spin shrink-0" />
                       ) : (
-                        <Download className="w-4 h-4" />
+                        <Download className="w-3 h-3 shrink-0" />
                       )}
+                      <span>{isDownloading ? 'لوڈنگ...' : 'ڈاؤنلوڈ'}</span>
                     </button>
 
                     <button
                       onClick={() => shareBayanOnWhatsApp(bayan)}
-                      className="min-w-[38px] min-h-[38px] rounded-xl bg-[#25D366] hover:bg-[#1faa4e] text-white flex items-center justify-center transition-all active:scale-95 cursor-pointer"
+                      className="h-8 px-1.5 rounded-xl bg-[#25D366] hover:bg-[#1faa4e] text-white flex items-center justify-center gap-1 text-[10px] sm:text-[10.5px] font-bold whitespace-nowrap transition-all active:scale-95 cursor-pointer"
                       title="واٹس ایپ پر شیئر کریں"
                     >
-                      <Share2 className="w-4 h-4" />
+                      <Share2 className="w-3 h-3 shrink-0" />
+                      <span>شیئر</span>
                     </button>
                   </div>
                 </div>
@@ -1030,9 +1066,9 @@ export const SmartDashboardHome: React.FC<Props> = ({
         </section>
 
         {/* 4. Dynamic Grid Folders */}
-        <section className="space-y-3">
+        <section className="space-y-2.5">
           <div className="flex flex-wrap items-center justify-between gap-2 px-1">
-            <h2 className="text-base sm:text-lg font-bold text-[#064326] dark:text-[#d4af37]">
+            <h2 className="text-[14px] sm:text-base font-bold text-[#064326] dark:text-[#d4af37]">
               فولڈرز اور اسلامی لائبریری
             </h2>
 
@@ -1040,48 +1076,48 @@ export const SmartDashboardHome: React.FC<Props> = ({
               <button
                 onClick={onRefreshBlogger}
                 disabled={isRefreshingBlogger}
-                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-bold transition-all cursor-pointer disabled:opacity-60 ${
+                className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl border text-[11px] font-bold transition-all cursor-pointer disabled:opacity-60 ${
                   isDark
                     ? 'bg-[#0e2217] border-[#d4af37]/40 text-[#d4af37] hover:bg-[#133021]'
                     : 'bg-white border-[#064326]/25 text-[#064326] hover:bg-emerald-50 shadow-2xs'
                 }`}
                 title="فولڈرز تازہ کریں"
               >
-                <RotateCw className={`w-3.5 h-3.5 ${isRefreshingBlogger ? 'animate-spin' : ''}`} />
+                <RotateCw className={`w-3 h-3 ${isRefreshingBlogger ? 'animate-spin' : ''}`} />
                 <span>تازہ کریں</span>
               </button>
             )}
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2.5 sm:gap-3.5">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 sm:gap-2.5">
             {bloggerLiveFolders.map((item) => {
               const IconComponent = item.icon;
               return (
                 <button
                   key={item.id}
                   onClick={item.onClick}
-                  className={`khanqah-folder-card min-h-[116px] p-3.5 rounded-2xl border flex flex-col items-center justify-center text-center gap-1.5 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#d4af37] ${
+                  className={`khanqah-folder-card min-h-[96px] p-2.5 rounded-2xl border flex flex-col items-center justify-center text-center gap-1 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#d4af37] ${
                     isDark
                       ? 'bg-[#0e2217] border-[#d4af37]/30 hover:bg-[#122e1f] text-emerald-50 shadow-sm'
                       : 'bg-white border-emerald-950/10 hover:bg-[#f9fbfa] text-[#11261b] shadow-xs'
                   }`}
                 >
                   <div
-                    className={`khanqah-folder-icon w-11 h-11 rounded-xl flex items-center justify-center ${
+                    className={`khanqah-folder-icon w-9 h-9 rounded-xl flex items-center justify-center ${
                       isDark ? 'bg-white/[0.06]' : 'bg-[#f4f7f6]'
                     } ${item.accent}`}
                   >
-                    <IconComponent className="w-5 h-5 sm:w-6 sm:h-6" />
+                    <IconComponent className="w-5 h-5" />
                   </div>
-                  <span className="text-xs sm:text-sm font-bold leading-snug line-clamp-2">
+                  <span className="text-[12px] sm:text-[13px] font-bold leading-snug line-clamp-2">
                     {item.label}
                   </span>
-                  <span className="text-[11px] opacity-65 font-medium line-clamp-1">
+                  <span className="text-[10px] opacity-65 font-medium line-clamp-1">
                     {item.subLabel}
                   </span>
                   {item.publishedDate && (
-                    <span className="inline-flex items-center gap-1 text-[10px] opacity-60 tabular-nums">
-                      <Calendar className="w-3 h-3" />
+                    <span className="inline-flex items-center gap-1 text-[9.5px] opacity-60 tabular-nums">
+                      <Calendar className="w-2.5 h-2.5" />
                       {item.publishedDate}
                     </span>
                   )}
@@ -1095,23 +1131,23 @@ export const SmartDashboardHome: React.FC<Props> = ({
                 <button
                   key={item.id}
                   onClick={item.onClick}
-                  className={`khanqah-folder-card min-h-[116px] p-3.5 rounded-2xl border flex flex-col items-center justify-center text-center gap-1.5 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#d4af37] ${
+                  className={`khanqah-folder-card min-h-[96px] p-2.5 rounded-2xl border flex flex-col items-center justify-center text-center gap-1 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#d4af37] ${
                     isDark
                       ? 'bg-[#0e2217] border-[#d4af37]/25 hover:bg-[#122e1f] text-emerald-50 shadow-sm'
                       : 'bg-white border-emerald-950/10 hover:bg-[#f9fbfa] text-[#11261b] shadow-xs'
                   }`}
                 >
                   <div
-                    className={`khanqah-folder-icon w-11 h-11 rounded-xl flex items-center justify-center ${
+                    className={`khanqah-folder-icon w-9 h-9 rounded-xl flex items-center justify-center ${
                       isDark ? 'bg-white/[0.06]' : 'bg-[#f4f7f6]'
                     } ${item.accent}`}
                   >
-                    <IconComponent className="w-5 h-5 sm:w-6 sm:h-6" />
+                    <IconComponent className="w-5 h-5" />
                   </div>
-                  <span className="text-xs sm:text-sm font-bold leading-snug line-clamp-2">
+                  <span className="text-[12px] sm:text-[13px] font-bold leading-snug line-clamp-2">
                     {item.label}
                   </span>
-                  <span className="text-[11px] opacity-65 font-medium line-clamp-1">
+                  <span className="text-[10px] opacity-65 font-medium line-clamp-1">
                     {item.subLabel}
                   </span>
                 </button>

@@ -229,8 +229,36 @@ html.dark .khanqah-folder-card:focus-visible {
   box-shadow: 0 0 16px rgba(212, 175, 55, 0.38);
 }
 
+@keyframes khanqah-neon-pulse {
+  0%, 100% {
+    box-shadow:
+      0 0 6px rgba(255, 23, 68, 0.8),
+      0 0 14px rgba(255, 0, 51, 0.45);
+    transform: scale(1);
+  }
+  50% {
+    box-shadow:
+      0 0 12px rgba(255, 55, 95, 1),
+      0 0 24px rgba(255, 23, 68, 0.85);
+    transform: scale(1.05);
+  }
+}
+
+.khanqah-new-neon-badge {
+  background: linear-gradient(135deg, #ff1744, #d50000);
+  color: #ffffff;
+  border: 1px solid #ff8a80;
+  box-shadow:
+    0 0 8px rgba(255, 23, 68, 0.85),
+    0 0 18px rgba(255, 0, 51, 0.55);
+  animation: khanqah-neon-pulse 1.5s ease-in-out infinite;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .urdu-ticker-track {
+    animation: none;
+  }
+  .khanqah-new-neon-badge {
     animation: none;
   }
   .khanqah-folder-card,

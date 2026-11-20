@@ -117,7 +117,7 @@ export const HamburgerDrawer: React.FC<Props> = ({
           <div className="bg-[#064326] text-white p-4 border-b border-[#d4af37]/50 flex items-center justify-between shrink-0">
             <div className="flex items-center gap-2.5">
               <img
-                src={`${import.meta.env.BASE_URL}app-logo.webp`}
+                src={`${import.meta.env.BASE_URL}kdf-logo-v4.webp`}
                 alt="خانقاہ دارالفلاح لوگو"
                 className="w-10 h-10 rounded-xl shadow-md object-cover shrink-0"
               />

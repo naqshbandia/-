@@ -78,7 +78,7 @@ export const Header: React.FC<Props> = ({
           title="ہوم اسکرین"
         >
           <img
-            src={`${import.meta.env.BASE_URL}app-logo.webp`}
+            src={`${import.meta.env.BASE_URL}kdf-logo-v4.webp`}
             alt="خانقاہ دارالفلاح لوگو"
             className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl shadow-xs object-cover shrink-0"
           />
