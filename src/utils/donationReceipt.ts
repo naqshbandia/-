@@ -93,7 +93,7 @@ export async function renderDonationReceiptCanvas(
     { label: 'بیعت کی نوعیت', value: bayatDisplay },
     { label: 'موبائل / واٹس ایپ', value: payload.phone.trim() || '—' },
     { label: 'تعاون کی نوعیت', value: payload.helpType || '—' },
-    { label: 'رقم (روپے)', value: payload.amount.trim() ? `Rs ${payload.amount.trim()}` : '—' },
+    { label: 'رقم (روپے)', value: payload.amount.trim() ? `${payload.amount.trim()} روپے` : '—' },
   ];
 
   // Pre-measure wrapped lines

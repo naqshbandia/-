@@ -3,169 +3,178 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>عطیات فارم - خانقاہ دارالفلاح</title>
+  <title>عطیات و صدقات فارم — خانقاہ دارالفلاح</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Arabic:wght@400;600;700;800&family=Tajawal:wght@500;700;800&display=swap" rel="stylesheet" />
   <style>
-    :root { --primary-green: #2e7d32; --light-bg: #f9fbf9; }
+    :root {
+      --bg-deep: #03150c;
+      --box-bg: #081b11;
+      --primary-green: #064326;
+      --btn-green: #2e7d32;
+      --accent-gold: #d4af37;
+      --led-green: #00ff99;
+    }
     * { box-sizing: border-box; }
     body {
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      background-color: #f4f7f6;
+      font-family: 'Tajawal', 'Noto Sans Arabic', system-ui, sans-serif;
+      background-color: var(--bg-deep);
+      background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' stroke='%23d4af37' stroke-opacity='0.09' stroke-width='1'%3E%3Cpath d='M30 0L60 30L30 60L0 30Z'/%3E%3Ccircle cx='30' cy='30' r='12'/%3E%3C/g%3E%3C/svg%3E");
       margin: 0;
-      padding: 0 8px 24px;
+      padding: 10px 8px 24px;
       text-align: center;
-      color: #333;
+      color: #ecfdf5;
       direction: rtl;
-    }
-    .logo-box {
-      text-align: center;
-      padding: 15px 0;
-      background: white;
-      border-bottom: 3px solid var(--primary-green);
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-      border-radius: 0 0 12px 12px;
-      max-width: 480px;
-      margin: 0 auto;
-    }
-    .logo-box img {
-      max-width: 240px;
-      height: auto;
-      filter: drop-shadow(0 0 8px rgba(46, 125, 50, 0.3));
+      min-height: 100vh;
     }
     .container {
       max-width: 480px;
-      background: white;
-      margin: 12px auto;
+      background: linear-gradient(180deg, #062e1b 0%, #0c2116 30%, #08170f 100%);
+      margin: 0 auto;
       padding: 14px;
-      border-radius: 12px;
-      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
-      border-top: 6px solid var(--primary-green);
+      border-radius: 16px;
+      box-shadow: 0 14px 34px rgba(0, 0, 0, 0.55);
+      border: 2px solid var(--accent-gold);
     }
+    .logo-box {
+      text-align: center;
+      padding: 8px;
+      background: var(--box-bg);
+      border-bottom: 2px solid var(--btn-green);
+      border-radius: 10px;
+      margin-bottom: 8px;
+    }
+    .logo-box img { max-height: 58px; width: auto; }
     h3 {
-      color: var(--primary-green);
-      margin: 4px 0 12px;
-      font-size: 19px;
+      color: var(--accent-gold);
+      margin: 4px 0 4px;
+      font-size: 18px;
+      font-weight: 800;
     }
-    .form-group {
-      text-align: right;
-      margin-bottom: 10px;
+    .sub-note {
+      font-size: 11px;
+      color: #a7f3d0;
+      margin: 0 0 10px;
     }
+    .form-group { text-align: right; margin-bottom: 9px; }
     label {
       display: block;
-      font-weight: bold;
-      margin-bottom: 5px;
-      color: #333;
-      font-size: 13px;
+      font-weight: 700;
+      margin-bottom: 4px;
+      color: #ecfdf5;
+      font-size: 12.5px;
     }
     input, select {
       width: 100%;
-      padding: 10px;
-      border: 1px solid #ccc;
-      border-radius: 6px;
+      padding: 9px 10px;
+      background: var(--box-bg);
+      color: #ecfdf5;
+      border: 1px solid rgba(212, 175, 55, 0.45);
+      border-radius: 9px;
       font-size: 13px;
       text-align: right;
       font-family: inherit;
+      outline: none;
     }
+    input:focus, select:focus { border-color: var(--led-green); }
     .hidden { display: none; }
     .amount-presets {
       display: flex;
       flex-wrap: wrap;
       gap: 6px;
-      margin-bottom: 8px;
+      margin-bottom: 7px;
     }
     .preset-btn {
-      background: #e8f5e9;
-      color: #1b5e20;
-      border: 1px solid #a5d6a7;
-      border-radius: 6px;
-      padding: 6px 10px;
-      font-size: 12px;
-      font-weight: bold;
+      background: var(--box-bg);
+      color: #d1fae5;
+      border: 1px solid rgba(212, 175, 55, 0.35);
+      border-radius: 7px;
+      padding: 5px 9px;
+      font-size: 11.5px;
+      font-weight: 700;
       cursor: pointer;
+      font-family: inherit;
     }
     .preset-btn.active {
-      background: var(--primary-green);
-      color: #fff;
-      border-color: #1b5e20;
+      background: var(--btn-green);
+      color: #ffffff;
+      border-color: var(--accent-gold);
     }
     .upload-box {
-      background: #f1f8e9;
-      border: 1px dashed var(--primary-green);
-      border-radius: 8px;
-      padding: 10px;
+      background: var(--box-bg);
+      border: 1px dashed rgba(212, 175, 55, 0.55);
+      border-radius: 10px;
+      padding: 9px 10px;
       text-align: right;
       margin: 10px 0;
     }
-    .note-text {
-      font-size: 12px;
-      color: #555;
-      margin: 6px 0 0;
-      line-height: 1.5;
-    }
+    .upload-box label { color: var(--led-green); }
+    .note-text { font-size: 11px; color: #a7f3d0; margin: 6px 0 0; line-height: 1.5; }
     .submit-btn {
       width: 100%;
-      background: var(--primary-green);
-      color: white;
-      border: none;
-      padding: 12px;
-      font-size: 15px;
-      font-weight: bold;
-      border-radius: 8px;
+      background: var(--btn-green);
+      color: #ffffff;
+      border: 1.5px solid var(--accent-gold);
+      padding: 11px;
+      font-size: 14px;
+      font-weight: 800;
+      border-radius: 10px;
       cursor: pointer;
-      margin-top: 8px;
+      margin-top: 6px;
+      font-family: inherit;
     }
-    .submit-btn:disabled {
-      opacity: 0.65;
-      cursor: not-allowed;
-    }
+    .submit-btn:disabled { opacity: 0.65; cursor: not-allowed; }
     .export-row {
       display: grid;
       grid-template-columns: 1fr 1fr;
       gap: 8px;
-      margin-top: 10px;
+      margin-top: 9px;
     }
     .export-btn {
       border: none;
-      padding: 10px 8px;
-      border-radius: 8px;
-      font-size: 12px;
-      font-weight: bold;
+      padding: 9px 8px;
+      border-radius: 9px;
+      font-size: 11.5px;
+      font-weight: 700;
       cursor: pointer;
       font-family: inherit;
     }
     .btn-jpg { background: #25D366; color: #fff; }
-    .btn-pdf { background: #064326; color: #d4af37; border: 1px solid #d4af37; }
+    .btn-pdf { background: var(--primary-green); color: var(--accent-gold); border: 1px solid rgba(212, 175, 55, 0.65); }
     .wa-link {
       display: inline-block;
-      margin-top: 8px;
+      margin-top: 9px;
       font-size: 12px;
-      color: #15803d;
-      font-weight: bold;
-      text-decoration: underline;
+      color: var(--led-green);
+      font-weight: 700;
+      text-decoration: none;
     }
     #statusBox {
       display: none;
-      margin-top: 10px;
-      padding: 10px;
-      border-radius: 8px;
-      font-size: 13px;
-      font-weight: bold;
+      margin-top: 9px;
+      padding: 9px;
+      border-radius: 9px;
+      font-size: 12px;
+      font-weight: 700;
     }
-    #statusBox.info { display: block; background: #fff8e1; color: #795548; border: 1px solid #ffe082; }
-    #statusBox.success { display: block; background: #e8f5e9; color: #1b5e20; border: 1px solid #a5d6a7; }
-    #statusBox.error { display: block; background: #ffebee; color: #b71c1c; border: 1px solid #ef9a9a; }
+    #statusBox.info { display: block; background: rgba(212, 175, 55, 0.16); color: #fde68a; border: 1px solid rgba(212, 175, 55, 0.5); }
+    #statusBox.success { display: block; background: rgba(16, 185, 129, 0.18); color: #a7f3d0; border: 1px solid rgba(16, 185, 129, 0.5); }
+    #statusBox.error { display: block; background: rgba(244, 63, 94, 0.18); color: #fecdd3; border: 1px solid rgba(244, 63, 94, 0.5); }
   </style>
 </head>
 <body>
-  <div class="logo-box">
-    <img
-      src="https://archive.org/download/1743133488972_202509/%D8%B5%D8%AF%D8%A7%D8%A6%DB%92-%D9%81%D9%82%DB%8C%D8%B1%D8%A7%D9%86%DB%81--1771060659812.png"
-      alt="خانقاہ دارالفلاح"
-      onerror="this.style.display='none'"
-    />
-  </div>
-
   <div class="container">
+    <div class="logo-box">
+      <img
+        src="https://archive.org/download/1743133488972_202509/%D8%B5%D8%AF%D8%A7%D8%A6%DB%92-%D9%81%D9%82%DB%8C%D8%B1%D8%A7%D9%86%DB%81--1771060659812.png"
+        alt="خانقاہ دارالفلاح"
+        onerror="this.style.display='none'"
+      />
+    </div>
+
     <h3>عطیات و صدقات فارم</h3>
+    <p class="sub-note">پیسے ادا کرنے کے بعد اسکرین شاٹ منسلک کر کے فارم ارسال کریں</p>
 
     <form
       id="mainForm"
@@ -178,18 +187,18 @@
       <input type="hidden" name="_template" value="table" />
 
       <div class="form-group">
-        <label for="userName">نام (Name)</label>
-        <input id="userName" type="text" name="user_name" required placeholder="مثال: محمد احمد" />
+        <label for="userName">نام</label>
+        <input id="userName" type="text" name="نام" required placeholder="مثال: محمد احمد" />
       </div>
 
       <div class="form-group">
-        <label for="cityVillage">شہر یا گاؤں (City/Village)</label>
-        <input id="cityVillage" type="text" name="city_village" required placeholder="مثال: بنوں، میراخیل" />
+        <label for="cityVillage">شہر یا گاؤں</label>
+        <input id="cityVillage" type="text" name="شہر-و-گاؤں" required placeholder="مثال: بنوں، میراخیل" />
       </div>
 
       <div class="form-group">
         <label for="pledgeRelation">بیعت کی نوعیت</label>
-        <select id="pledgeRelation" name="pledge_relation" required>
+        <select id="pledgeRelation" name="بیعت-کی-نوعیت" required>
           <option value="">-- منتخب کریں --</option>
           <option value="پیر محمد جمشید صاحب نقشبندی مجددی دامت برکاتہم العالیہ">
             پیر محمد جمشید صاحب نقشبندی مجددی دامت برکاتہم العالیہ
@@ -200,18 +209,18 @@
       </div>
 
       <div class="form-group hidden" id="otherSheikhGroup">
-        <label for="otherSheikhName">اپنے شیخ کا نام لکھیں</label>
-        <input id="otherSheikhName" type="text" name="other_sheikh_name" placeholder="اپنے شیخِ طریقت کا نام درج کریں..." />
+        <label for="otherSheikhName" style="color:#d4af37;">اپنے شیخ کا نام لکھیں</label>
+        <input id="otherSheikhName" type="text" name="شیخ-کا-نام" placeholder="اپنے شیخِ طریقت کا نام درج کریں..." />
       </div>
 
       <div class="form-group">
         <label for="phone">موبائل / واٹس ایپ نمبر</label>
-        <input id="phone" type="tel" name="phone" required placeholder="03xxxxxxxxx" dir="ltr" />
+        <input id="phone" type="tel" name="واٹس-ایپ-نمبر" required placeholder="03xxxxxxxxx" dir="ltr" />
       </div>
 
       <div class="form-group">
         <label for="helpType">تعاون کی نوعیت</label>
-        <select id="helpType" name="help_type" required>
+        <select id="helpType" name="تعاون-کی-نوعیت" required>
           <option value="">-- قسم منتخب کریں --</option>
           <option value="زکوٰۃ">زکوٰۃ</option>
           <option value="صدقہ">صدقہ</option>
@@ -222,19 +231,19 @@
       <div class="form-group">
         <label for="customAmount">رقم (روپے)</label>
         <div class="amount-presets" id="presetContainer">
-          <button type="button" class="preset-btn" data-val="10">Rs 10</button>
-          <button type="button" class="preset-btn" data-val="50">Rs 50</button>
-          <button type="button" class="preset-btn" data-val="100">Rs 100</button>
-          <button type="button" class="preset-btn" data-val="200">Rs 200</button>
-          <button type="button" class="preset-btn" data-val="500">Rs 500</button>
-          <button type="button" class="preset-btn" data-val="1000">Rs 1000</button>
+          <button type="button" class="preset-btn" data-val="10">10 روپے</button>
+          <button type="button" class="preset-btn" data-val="50">50 روپے</button>
+          <button type="button" class="preset-btn" data-val="100">100 روپے</button>
+          <button type="button" class="preset-btn" data-val="200">200 روپے</button>
+          <button type="button" class="preset-btn" data-val="500">500 روپے</button>
+          <button type="button" class="preset-btn" data-val="1000">1000 روپے</button>
         </div>
-        <input id="customAmount" type="number" name="amount" min="1" required placeholder="مثال: 500" dir="ltr" />
+        <input id="customAmount" type="number" name="رقم-روپے" min="1" required placeholder="مثال: 500" dir="ltr" />
       </div>
 
       <div class="upload-box">
         <label for="screenshotInput">پیمنٹ کی رسید یا اسکرین شاٹ اپلوڈ کریں (10MB تک):</label>
-        <input id="screenshotInput" type="file" name="transaction_screenshot" accept="image/*" />
+        <input id="screenshotInput" type="file" name="رسید-اسکرین-شاٹ" accept="image/*" />
         <p class="note-text">
           پیسے ادا کرنے کے بعد اسکرین شاٹ لے کر یہاں بھیج دیں تاکہ تصدیق میں آسانی رہے۔
         </p>
@@ -324,8 +333,9 @@
 
         var formData = new FormData(form);
         if (pledgeSelect.value === 'کسی اور سے' && otherInput.value.trim()) {
-          formData.set('pledge_relation', 'کسی اور سے (' + otherInput.value.trim() + ')');
+          formData.set('بیعت-کی-نوعیت', 'کسی اور سے (' + otherInput.value.trim() + ')');
         }
+        formData.set('رقم-روپے', customAmount.value.trim() + ' روپے');
 
         fetch('https://formsubmit.co/ajax/khanqahdarulfalah@gmail.com', {
           method: 'POST',
@@ -433,7 +443,7 @@
           { label: 'بیعت کی نوعیت', value: bayat },
           { label: 'موبائل / واٹس ایپ', value: document.getElementById('phone').value.trim() || '—' },
           { label: 'تعاون کی نوعیت', value: document.getElementById('helpType').value || '—' },
-          { label: 'رقم (روپے)', value: 'Rs ' + amt }
+          { label: 'رقم (روپے)', value: amt + ' روپے' }
         ];
 
         var file = screenshotInput.files && screenshotInput.files[0];

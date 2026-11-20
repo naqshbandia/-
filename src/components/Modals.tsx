@@ -294,20 +294,20 @@ export const DonationModal: React.FC<{
     setStatusMessage('براہِ کرم انتظار فرمائیں، آپ کا فارم بھیجا جا رہا ہے...');
 
     const formData = new FormData();
-    formData.append('user_name', userName.trim());
-    formData.append('city_village', cityVillage.trim());
-    formData.append('pledge_relation', fullPledgeText);
+    formData.append('نام', userName.trim());
+    formData.append('شہر-و-گاؤں', cityVillage.trim());
+    formData.append('بیعت-کی-نوعیت', fullPledgeText);
     if (pledgeRelation === 'کسی اور سے' && otherSheikhName.trim()) {
-      formData.append('other_sheikh_name', otherSheikhName.trim());
+      formData.append('شیخ-کا-نام', otherSheikhName.trim());
     }
-    formData.append('phone', phone.trim());
-    formData.append('help_type', helpType);
-    formData.append('amount', amount.trim());
-    formData.append('_subject', `نیا عطیہ فارم — ${userName.trim()} (${helpType} · Rs ${amount.trim()})`);
+    formData.append('واٹس-ایپ-نمبر', phone.trim());
+    formData.append('تعاون-کی-نوعیت', helpType);
+    formData.append('رقم-روپے', `${amount.trim()} روپے`);
+    formData.append('_subject', `نیا عطیہ فارم — ${userName.trim()} (${helpType} · ${amount.trim()} روپے)`);
     formData.append('_captcha', 'false');
     formData.append('_template', 'table');
     if (screenshotFile) {
-      formData.append('transaction_screenshot', screenshotFile);
+      formData.append('رسید-اسکرین-شاٹ', screenshotFile);
     }
 
     try {
@@ -548,7 +548,7 @@ export const DonationModal: React.FC<{
 
             <form onSubmit={handleSubmitForm} className="space-y-2">
               <div>
-                <label className="block text-xs font-bold mb-0.5">نام (Name)</label>
+                <label className="block text-xs font-bold mb-0.5">نام</label>
                 <input
                   type="text"
                   required
@@ -560,7 +560,7 @@ export const DonationModal: React.FC<{
               </div>
 
               <div>
-                <label className="block text-xs font-bold mb-0.5">شہر یا گاؤں (City/Village)</label>
+                <label className="block text-xs font-bold mb-0.5">شہر یا گاؤں</label>
                 <input
                   type="text"
                   required
@@ -656,7 +656,7 @@ export const DonationModal: React.FC<{
                           : 'bg-emerald-50 text-[#11261b] border-emerald-700/20 hover:bg-emerald-100'
                       }`}
                     >
-                      Rs {preset}
+                      {preset} روپے
                     </button>
                   ))}
                 </div>
