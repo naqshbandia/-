@@ -19,6 +19,7 @@ import {
   WhatsAppGroupsModal,
   TermsModal,
   PrivacyPolicyModal,
+  DonationModal,
 } from './components/Modals';
 import { BayanItem } from './data/bayanatData';
 import { 
@@ -107,6 +108,7 @@ export default function App() {
   const [isWhatsAppGroupsOpen, setIsWhatsAppGroupsOpen] = useState(false);
   const [isTermsOpen, setIsTermsOpen] = useState(false);
   const [isPrivacyOpen, setIsPrivacyOpen] = useState(false);
+  const [isDonationOpen, setIsDonationOpen] = useState(false);
 
   // Audio player state
   const [currentBayan, setCurrentBayan] = useState<BayanItem | null>(null);
@@ -226,6 +228,7 @@ export default function App() {
             onOpenUrl={handleNavigateUrl}
             onOpenLibrary={() => handleOpenLibraryFolder('all')}
             onOpenWhatsAppGroups={() => setIsWhatsAppGroupsOpen(true)}
+            onOpenDonations={() => setIsDonationOpen(true)}
             onOpenIntroKhanqah={() => setIsIntroKhanqahOpen(true)}
             onOpenIntroSheikh={() => setIsIntroSheikhOpen(true)}
             onOpenContact={() => setIsContactOpen(true)}
@@ -269,6 +272,7 @@ export default function App() {
         onOpenIslahiBayanat={() => handleNavigateUrl(GOLD_LIBRARY_URL)}
         onOpenUrl={handleNavigateUrl}
         onOpenWhatsAppGroups={() => setIsWhatsAppGroupsOpen(true)}
+        onOpenDonations={() => setIsDonationOpen(true)}
         onOpenContact={() => setIsContactOpen(true)}
         onOpenWebsite={() => {
           handleNavigateUrl(BLOGGER_HOME_URL);
@@ -352,6 +356,14 @@ export default function App() {
         onClose={() => setIsPrivacyOpen(false)}
         isDark={isDark}
         lang={lang}
+      />
+
+      <DonationModal
+        isOpen={isDonationOpen}
+        onClose={() => setIsDonationOpen(false)}
+        isDark={isDark}
+        lang={lang}
+        onNotify={showNotification}
       />
     </div>
   );

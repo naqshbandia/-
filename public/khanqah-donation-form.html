@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="ur" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>عطیات فارم - خانقاہ دارالفلاح</title>
+  <style>
+    :root { --primary-green: #2e7d32; --light-bg: #f9fbf9; }
+    * { box-sizing: border-box; }
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background-color: #f4f7f6;
+      margin: 0;
+      padding: 0 8px 24px;
+      text-align: center;
+      color: #333;
+      direction: rtl;
+    }
+    .logo-box {
+      text-align: center;
+      padding: 15px 0;
+      background: white;
+      border-bottom: 3px solid var(--primary-green);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+      border-radius: 0 0 12px 12px;
+      max-width: 480px;
+      margin: 0 auto;
+    }
+    .logo-box img {
+      max-width: 240px;
+      height: auto;
+      filter: drop-shadow(0 0 8px rgba(46, 125, 50, 0.3));
+      transition: all 0.3s ease-in-out;
+    }
+    .container {
+      max-width: 480px;
+      background: white;
+      margin: 12px auto;
+      padding: 14px;
+      border-radius: 12px;
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+      border-top: 6px solid var(--primary-green);
+    }
+    h3 {
+      color: var(--primary-green);
+      margin: 4px 0 12px;
+      font-size: 19px;
+    }
+    .form-group {
+      text-align: right;
+      margin-bottom: 10px;
+    }
+    label {
+      display: block;
+      font-weight: bold;
+      margin-bottom: 5px;
+      color: #333;
+      font-size: 13px;
+    }
+    input, select {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      font-size: 13px;
+      text-align: right;
+      font-family: inherit;
+    }
+    .amount-presets {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-bottom: 8px;
+    }
+    .preset-btn {
+      background: #e8f5e9;
+      color: #1b5e20;
+      border: 1px solid #a5d6a7;
+      border-radius: 6px;
+      padding: 6px 10px;
+      font-size: 12px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+    .preset-btn.active {
+      background: var(--primary-green);
+      color: #fff;
+      border-color: #1b5e20;
+    }
+    .upload-box {
+      background: #f1f8e9;
+      border: 1px dashed var(--primary-green);
+      border-radius: 8px;
+      padding: 10px;
+      text-align: right;
+      margin: 10px 0;
+    }
+    .note-text {
+      font-size: 12px;
+      color: #555;
+      margin: 6px 0 0;
+      line-height: 1.5;
+    }
+    .submit-btn {
+      width: 100%;
+      background: var(--primary-green);
+      color: white;
+      border: none;
+      padding: 12px;
+      font-size: 15px;
+      font-weight: bold;
+      border-radius: 8px;
+      cursor: pointer;
+      margin-top: 8px;
+    }
+    .submit-btn:disabled {
+      opacity: 0.65;
+      cursor: not-allowed;
+    }
+    .whatsapp-btn {
+      display: block;
+      width: 100%;
+      margin-top: 10px;
+      background: #25D366;
+      color: white;
+      text-decoration: none;
+      padding: 10px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: bold;
+    }
+    #statusBox {
+      display: none;
+      margin-top: 10px;
+      padding: 10px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: bold;
+    }
+    #statusBox.info { display: block; background: #fff8e1; color: #795548; border: 1px solid #ffe082; }
+    #statusBox.success { display: block; background: #e8f5e9; color: #1b5e20; border: 1px solid #a5d6a7; }
+    #statusBox.error { display: block; background: #ffebee; color: #b71c1c; border: 1px solid #ef9a9a; }
+  </style>
+</head>
+<body>
+  <div class="logo-box">
+    <img
+      src="https://archive.org/download/1743133488972_202509/%D8%B5%D8%AF%D8%A7%D8%A6%DB%92-%D9%81%D9%82%DB%8C%D8%B1%D8%A7%D9%86%DB%81--1771060659812.png"
+      alt="خانقاہ دارالفلاح"
+      onerror="this.style.display='none'"
+    />
+  </div>
+
+  <div class="container">
+    <h3>عطیات و صدقات فارم</h3>
+
+    <form
+      id="mainForm"
+      action="https://formsubmit.co/khanqahdarulfalah@gmail.com"
+      method="POST"
+      enctype="multipart/form-data"
+    >
+      <input type="hidden" name="_subject" value="نیا عطیہ فارم - خانقاہ دارالفلاح" />
+      <input type="hidden" name="_captcha" value="false" />
+      <input type="hidden" name="_template" value="table" />
+
+      <div class="form-group">
+        <label for="userName">نام (Name)</label>
+        <input id="userName" type="text" name="user_name" required placeholder="مثال: محمد احمد" />
+      </div>
+
+      <div class="form-group">
+        <label for="cityVillage">شہر یا گاؤں (City/Village)</label>
+        <input id="cityVillage" type="text" name="city_village" required placeholder="مثال: بنوں، میراخیل" />
+      </div>
+
+      <div class="form-group">
+        <label for="pledgeRelation">بیعت کا تعلق (حضرت شیخ صاحب سے بیعت ہیں؟)</label>
+        <select id="pledgeRelation" name="pledge_relation" required>
+          <option value="">-- منتخب کریں --</option>
+          <option value="بیعت ہیں">بیعت ہیں</option>
+          <option value="نہیں ہیں">نہیں ہیں</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label for="phone">موبائل / واٹس ایپ نمبر</label>
+        <input id="phone" type="tel" name="phone" required placeholder="03xxxxxxxxx" dir="ltr" />
+      </div>
+
+      <div class="form-group">
+        <label for="helpType">تعاون کی نوعیت</label>
+        <select id="helpType" name="help_type" required>
+          <option value="">-- قسم منتخب کریں --</option>
+          <option value="زکوٰۃ">زکوٰۃ</option>
+          <option value="صدقہ">صدقہ</option>
+          <option value="ہدیہ شیخ صاحب">ہدیہ شیخ صاحب</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label for="customAmount">رقم (روپے)</label>
+        <div class="amount-presets" id="presetContainer">
+          <button type="button" class="preset-btn" data-val="10">Rs 10</button>
+          <button type="button" class="preset-btn" data-val="50">Rs 50</button>
+          <button type="button" class="preset-btn" data-val="100">Rs 100</button>
+          <button type="button" class="preset-btn" data-val="200">Rs 200</button>
+          <button type="button" class="preset-btn" data-val="500">Rs 500</button>
+          <button type="button" class="preset-btn" data-val="1000">Rs 1000</button>
+        </div>
+        <input id="customAmount" type="number" name="amount" min="1" required placeholder="مثال: 500" dir="ltr" />
+      </div>
+
+      <div class="upload-box">
+        <label for="screenshotInput">پیمنٹ کی رسید یا اسکرین شاٹ اپلوڈ کریں (10MB تک):</label>
+        <input id="screenshotInput" type="file" name="transaction_screenshot" accept="image/*" />
+        <p class="note-text">
+          پیسے ادا کرنے کے بعد اسکرین شاٹ لے کر یہاں بھیج دیں تاکہ تصدیق میں آسانی رہے۔
+        </p>
+      </div>
+
+      <div id="statusBox"></div>
+
+      <button id="submitBtn" type="submit" class="submit-btn">
+        تفصیلات اور اسکرین شاٹ ارسال کریں
+      </button>
+    </form>
+
+    <a
+      id="waBackupBtn"
+      href="https://api.whatsapp.com/send?phone=923369757393"
+      target="_blank"
+      rel="noreferrer"
+      class="whatsapp-btn"
+    >
+      واٹس ایپ پر اسکرین شاٹ اور تفصیل بھیجیں (03369757393)
+    </a>
+  </div>
+
+  <script>
+    (function () {
+      var form = document.getElementById('mainForm');
+      var customAmount = document.getElementById('customAmount');
+      var presetBtns = document.querySelectorAll('.preset-btn');
+      var screenshotInput = document.getElementById('screenshotInput');
+      var statusBox = document.getElementById('statusBox');
+      var submitBtn = document.getElementById('submitBtn');
+      var waBackupBtn = document.getElementById('waBackupBtn');
+
+      presetBtns.forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          presetBtns.forEach(function (b) { b.classList.remove('active'); });
+          btn.classList.add('active');
+          customAmount.value = btn.getAttribute('data-val') || '';
+        });
+      });
+
+      function updateWaLink() {
+        var uName = document.getElementById('userName').value.trim() || '—';
+        var city = document.getElementById('cityVillage').value.trim() || '—';
+        var pledge = document.getElementById('pledgeRelation').value || '—';
+        var ph = document.getElementById('phone').value.trim() || '—';
+        var hType = document.getElementById('helpType').value || '—';
+        var amt = customAmount.value.trim() || '—';
+        var msg = [
+          'السلام علیکم ورحمۃ اللہ وبرکاتہ',
+          '🕌 خانقاہ و مدرسہ دارالفلاح — عطیات فارم',
+          '• نام: ' + uName,
+          '• شہر / گاؤں: ' + city,
+          '• بیعت کا تعلق: ' + pledge,
+          '• واٹس ایپ / فون: ' + ph,
+          '• تعاون کی نوعیت: ' + hType,
+          '• رقم (روپے): ' + amt
+        ].join('\n');
+        waBackupBtn.href = 'https://api.whatsapp.com/send?phone=923369757393&text=' + encodeURIComponent(msg);
+      }
+
+      form.addEventListener('input', updateWaLink);
+      form.addEventListener('change', updateWaLink);
+
+      screenshotInput.addEventListener('change', function () {
+        var file = screenshotInput.files && screenshotInput.files[0];
+        if (file && file.size > 10 * 1024 * 1024) {
+          statusBox.className = 'error';
+          statusBox.textContent = 'فائل کا سائز 10MB سے زیادہ نہیں ہونا چاہیے۔';
+          screenshotInput.value = '';
+        } else {
+          statusBox.className = '';
+          statusBox.textContent = '';
+        }
+      });
+
+      form.addEventListener('submit', function (e) {
+        e.preventDefault();
+        if (!customAmount.value || Number(customAmount.value) <= 0) {
+          statusBox.className = 'error';
+          statusBox.textContent = 'براہِ کرم درست رقم درج کریں۔';
+          return;
+        }
+        submitBtn.disabled = true;
+        statusBox.className = 'info';
+        statusBox.textContent = 'براہِ کرم انتظار فرمائیں، آپ کا فارم بھیجا جا رہا ہے...';
+
+        var formData = new FormData(form);
+        fetch('https://formsubmit.co/ajax/khanqahdarulfalah@gmail.com', {
+          method: 'POST',
+          headers: { Accept: 'application/json' },
+          body: formData
+        })
+          .then(function (res) {
+            return res.json().catch(function () { return null; }).then(function (data) {
+              return { ok: res.ok, data: data };
+            });
+          })
+          .then(function (result) {
+            if (result.ok && result.data && (result.data.success === 'true' || result.data.success === true)) {
+              statusBox.className = 'success';
+              statusBox.textContent = 'جزاک اللہ! آپ کی معلومات اور رسید کامیابی سے بھیج دی گئی ہے۔';
+              form.reset();
+              presetBtns.forEach(function (b) { b.classList.remove('active'); });
+            } else {
+              // Fallback standard POST submission if AJAX rejects multipart file upload
+              form.submit();
+            }
+          })
+          .catch(function () {
+            statusBox.className = 'error';
+            statusBox.textContent = 'ارسال کرنے میں دشواری ہوئی۔ براہِ کرم نیچے واٹس ایپ بٹن سے تفصیل بھیج دیں۔';
+          })
+          .finally(function () {
+            submitBtn.disabled = false;
+          });
+      });
+    })();
+  </script>
+</body>
+</html>

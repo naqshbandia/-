@@ -1529,3 +1529,134 @@ export const UI_STRINGS: Record<AppLanguage, UIStrings> = {
     modalOkClose: '确定',
   },
 };
+
+export interface DonationLabels {
+  folderTitle: string;
+  folderSub: string;
+  drawerLabel: string;
+  modalTitle: string;
+  institutionBadge: string;
+  introLine: string;
+  sadqaNote: string;
+  detailsHeading: string;
+  bankLabel: string;
+  easyPaisaLabel: string;
+  nameLabel: string;
+  whatsappLabel: string;
+  websiteLabel: string;
+  hadeesHeading: string;
+  hadeesText: string;
+  hadeesRef: string;
+  openFormBtn: string;
+  backToGuideBtn: string;
+  openExternalBtn: string;
+  openHtmlPageBtn: string;
+  copiedLabel: string;
+  copyLabel: string;
+}
+
+export function getDonationLabels(lang: AppLanguage): DonationLabels {
+  if (lang === 'ps') {
+    return {
+      folderTitle: 'عطیات او صدقه جاریه',
+      folderSub: 'بینک، ایزی پیسه او فارم',
+      drawerLabel: 'عطیات او صدقه جاریه (فارم)',
+      modalTitle: '🕌 خانقاه و مدرسه دارالفلاح — عطیات',
+      institutionBadge: '🕌 خانقاه و مدرسه دارالفلاح',
+      introLine: 'الحمدلله! خانقاه و مدرسه دارالفلاح نزد ملک آډه میراخیل، بنو یو دینی، روحاني او تعلیمي اداره ده.',
+      sadqaNote: 'ستاسو ورکړل شوی مال صدقهٔ جاریه ده. راځئ! پدې نیک کار کې برخه واخلئ.',
+      detailsHeading: '🤝 عطیات او اړیکه',
+      bankLabel: 'بینک (IBAN):',
+      easyPaisaLabel: 'ایزی پیسه:',
+      nameLabel: 'نوم:',
+      whatsappLabel: 'واټساپ:',
+      websiteLabel: 'ویب پاڼه وګورئ',
+      hadeesHeading: '📖 حدیث مبارکه',
+      hadeesText: '«صدقه ګناهونه داسې وژني لکه اوبه چې اور وژني»',
+      hadeesRef: '(ترمذي)',
+      openFormBtn: 'فارم ډک کړئ',
+      backToGuideBtn: '🔙 بیرته لارښوونې ته لاړ شئ',
+      openExternalBtn: 'که فارم دلته نه خلاصېږي نو په براوزر کې یې خلاص کړئ ↗',
+      openHtmlPageBtn: 'مکمل HTML پاڼه خلاصه کړئ',
+      copiedLabel: 'کاپي شو ✓',
+      copyLabel: 'کاپي',
+    };
+  }
+  if (lang === 'ar') {
+    return {
+      folderTitle: 'التبرعات والصدقة الجارية',
+      folderSub: 'البنك، إيزي بيسا والاستمارة',
+      drawerLabel: 'التبرعات والصدقة الجارية',
+      modalTitle: '🕌 خانقاه ومدرسة دار الفلاح — التبرعات',
+      institutionBadge: '🕌 خانقاه ومدرسة دار الفلاح',
+      introLine: 'الحمد لله! خانقاه ومدرسة دار الفلاح قرب ملك أده ميراخيل، بنو مؤسسة دينية وروحية وتعليمية.',
+      sadqaNote: 'ما تنفقونه هو صدقة جارية؛ ساهموا معنا في هذا الخير.',
+      detailsHeading: '🤝 الحسابات والتواصل',
+      bankLabel: 'الحساب البنكي:',
+      easyPaisaLabel: 'إيزي بيسا:',
+      nameLabel: 'الاسم:',
+      whatsappLabel: 'واتساب:',
+      websiteLabel: 'زيارة الموقع',
+      hadeesHeading: '📖 حديث شريف',
+      hadeesText: '«الصدقة تطفئ الخطيئة كما يطفئ الماء النار»',
+      hadeesRef: '(رواه الترمذي)',
+      openFormBtn: 'تعبئة الاستمارة الآن',
+      backToGuideBtn: '🔙 العودة إلى التعليمات',
+      openExternalBtn: 'فتح الاستمارة مباشرة في المتصفح ↗',
+      openHtmlPageBtn: 'فتح صفحة HTML الكاملة',
+      copiedLabel: 'تم النسخ ✓',
+      copyLabel: 'نسخ',
+    };
+  }
+  if (lang === 'ur' || lang === 'fa') {
+    return {
+      folderTitle: 'عطیات و صدقہ جاریہ',
+      folderSub: 'بینک، ایزی پیسہ و فارم',
+      drawerLabel: 'عطیات و صدقہ جاریہ (فارم)',
+      modalTitle: '🕌 خانقاہ و مدرسہ دارالفلاح — عطیات',
+      institutionBadge: '🕌 خانقاہ و مدرسہ دارالفلاح',
+      introLine: 'الحمدللہ! خانقاہ و مدرسہ دارالفلاح نزد ملک آڈہ میراخیل، بنوں ایک دینی، روحانی اور تعلیمی ادارہ ہے۔',
+      sadqaNote: 'آپ کا دیا ہوا مال صدقۂ جاریہ ہے۔ آئیے! اس کارِ خیر میں شریک ہوں۔',
+      detailsHeading: '🤝 عطیات اور رابطہ',
+      bankLabel: 'بینک:',
+      easyPaisaLabel: 'ایزی پیسہ:',
+      nameLabel: 'نام:',
+      whatsappLabel: 'واٹس ایپ:',
+      websiteLabel: '🌐 ویب سائٹ دیکھیں',
+      hadeesHeading: '📖 حدیث مبارکہ',
+      hadeesText: '«صدقہ گناہوں کو اس طرح بجھا دیتا ہے جیسے پانی آگ کو بجھاتا ہے»',
+      hadeesRef: '(ترمذی)',
+      openFormBtn: 'فارم بھر دیجئے',
+      backToGuideBtn: '🔙 واپس ہدایت پر جائیں',
+      openExternalBtn: 'اگر فارم یہاں ظاہر نہ ہو تو براہِ راست کھولیں ↗',
+      openHtmlPageBtn: 'مکمل HTML صفحہ دیکھیں',
+      copiedLabel: 'کاپی ہو گیا ✓',
+      copyLabel: 'کاپی',
+    };
+  }
+  return {
+    folderTitle: 'Donations & Sadaqah',
+    folderSub: 'Bank, EasyPaisa & Form',
+    drawerLabel: 'Donations & Sadaqah Form',
+    modalTitle: '🕌 Khanqah & Madrasa Darul Falah — Donations',
+    institutionBadge: '🕌 Khanqah & Madrasa Darul Falah',
+    introLine: 'Alhamdulillah! Khanqah & Madrasa Darul Falah (near Malik Adda, Mirakhel, Bannu) is a spiritual and Islamic educational center.',
+    sadqaNote: 'Your contribution is Sadaqah Jariyah. Join us in supporting this noble cause.',
+    detailsHeading: '🤝 Donation Accounts & Contact',
+    bankLabel: 'Bank IBAN:',
+    easyPaisaLabel: 'EasyPaisa:',
+    nameLabel: 'Name:',
+    whatsappLabel: 'WhatsApp:',
+    websiteLabel: '🌐 Visit Website',
+    hadeesHeading: '📖 Hadith Mubarak',
+    hadeesText: '"Charity extinguishes sin just as water extinguishes fire."',
+    hadeesRef: '(Tirmidhi)',
+    openFormBtn: 'Fill Out Donation Form',
+    backToGuideBtn: '🔙 Back to Instructions',
+    openExternalBtn: 'Open Form Directly in Browser ↗',
+    openHtmlPageBtn: 'Open Full HTML Page',
+    copiedLabel: 'Copied ✓',
+    copyLabel: 'Copy',
+  };
+}
+

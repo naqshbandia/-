@@ -38,6 +38,7 @@ import {
   DEFAULT_LANGUAGE,
   UI_STRINGS,
   getDir,
+  getDonationLabels,
 } from '../data/translations';
 
 interface Props {
@@ -50,6 +51,7 @@ interface Props {
   onOpenIslahiBayanat: () => void;
   onOpenUrl?: (url: string) => void;
   onOpenWhatsAppGroups?: () => void;
+  onOpenDonations?: () => void;
   onOpenContact: () => void;
   onOpenWebsite: () => void;
   onOpenTerms?: () => void;
@@ -72,6 +74,7 @@ export const HamburgerDrawer: React.FC<Props> = ({
   onOpenIslahiBayanat,
   onOpenUrl,
   onOpenWhatsAppGroups,
+  onOpenDonations,
   onOpenContact,
   onOpenWebsite,
   onOpenTerms,
@@ -85,6 +88,7 @@ export const HamburgerDrawer: React.FC<Props> = ({
 }) => {
   if (!isOpen) return null;
   const t = UI_STRINGS[lang];
+  const donationLabels = getDonationLabels(lang);
   const dir = getDir(lang);
 
   const rowClass = `w-full flex items-center justify-between px-3 py-2.5 rounded-xl transition-all group cursor-pointer ${
@@ -292,6 +296,22 @@ export const HamburgerDrawer: React.FC<Props> = ({
                   </div>
                   <ChevronLeft className={`w-4 h-4 opacity-40 group-hover:opacity-100 shrink-0 ${dir === 'ltr' ? 'rotate-180' : ''}`} />
                 </button>
+
+                {onOpenDonations && (
+                  <button
+                    onClick={() => {
+                      onClose();
+                      onOpenDonations();
+                    }}
+                    className={rowClass}
+                  >
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <span className={iconBoxClass}><HeartHandshake className="w-4 h-4 text-rose-500" /></span>
+                      <span className="font-bold truncate">{donationLabels.drawerLabel}</span>
+                    </div>
+                    <ChevronLeft className={`w-4 h-4 opacity-40 group-hover:opacity-100 shrink-0 ${dir === 'ltr' ? 'rotate-180' : ''}`} />
+                  </button>
+                )}
               </div>
             </div>
 

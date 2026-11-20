@@ -193,11 +193,41 @@ html.dark .khanqah-folder-card:focus-visible {
   animation: khanqah-neon-pulse 1.5s ease-in-out infinite;
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .urdu-ticker-track {
-    animation: none;
+@keyframes khanqah-shine-sweep {
+  0% {
+    transform: translateX(-140%) skewX(-25deg);
   }
-  .khanqah-new-neon-badge {
+  100% {
+    transform: translateX(340%) skewX(-25deg);
+  }
+}
+
+.khanqah-shine-btn {
+  position: relative;
+  overflow: hidden;
+}
+
+.khanqah-shine-btn::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 45%;
+  height: 100%;
+  background: linear-gradient(
+    120deg,
+    rgba(255, 255, 255, 0) 0%,
+    rgba(255, 255, 255, 0.45) 50%,
+    rgba(255, 255, 255, 0) 100%
+  );
+  animation: khanqah-shine-sweep 2.5s infinite;
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .urdu-ticker-track,
+  .khanqah-new-neon-badge,
+  .khanqah-shine-btn::after {
     animation: none;
   }
   .khanqah-folder-card,

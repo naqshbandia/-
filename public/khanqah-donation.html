@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="ur" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>خانقاہ و مدرسہ دارالفلاح — عطیات و صدقہ جاریہ</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Nastaliq+Urdu:wght@400;700&family=Tajawal:wght@500;700;800&display=swap" rel="stylesheet" />
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+    body {
+      font-family: 'Noto Nastaliq Urdu', 'Tajawal', 'Jameel Noori Nastaleeq', serif;
+      direction: rtl;
+      text-align: center;
+      line-height: 1.75;
+      font-size: 14px;
+      margin: 0;
+      padding: 14px 12px 32px;
+      background: #f4f7f6;
+      color: #11261b;
+    }
+    .page-card {
+      max-width: 540px;
+      margin: 0 auto;
+      background: #ffffff;
+      border: 2px solid #d4af37;
+      border-radius: 18px;
+      padding: 16px 14px 22px;
+      box-shadow: 0 8px 24px rgba(6, 67, 38, 0.08);
+    }
+    .sheikh-logo {
+      max-width: 100%;
+      width: 300px;
+      height: auto;
+      margin: 0 auto 8px;
+      display: block;
+    }
+    .badge-teal {
+      background: #064326;
+      color: #d4af37;
+      border: 1px solid #d4af37;
+      padding: 5px 14px;
+      border-radius: 8px;
+      display: inline-block;
+      margin: 6px 0;
+      font-size: 16px;
+      font-weight: bold;
+    }
+    .badge-sub {
+      background: #009970;
+      color: #ffffff;
+      padding: 4px 12px;
+      border-radius: 8px;
+      display: inline-block;
+      margin: 8px 0 4px;
+      font-size: 14px;
+      font-weight: bold;
+    }
+    .info-box {
+      background: #f8faf9;
+      border: 1px solid rgba(6, 67, 38, 0.16);
+      border-radius: 12px;
+      padding: 10px 12px;
+      margin: 8px 0;
+      font-size: 15px;
+    }
+    .copy-row {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin: 5px 0;
+    }
+    .copy-btn {
+      background: #064326;
+      color: #ffffff;
+      border: 1px solid #d4af37;
+      border-radius: 6px;
+      padding: 3px 9px;
+      font-size: 11px;
+      font-family: 'Tajawal', sans-serif;
+      font-weight: bold;
+      cursor: pointer;
+    }
+    .copy-btn:active {
+      transform: scale(0.96);
+    }
+    .hadees-quote {
+      border-right: 4px solid #00a78e;
+      padding: 8px 12px;
+      background: #f3faf7;
+      border-radius: 8px;
+      margin: 6px auto 0;
+      display: inline-block;
+      font-size: 13px;
+      max-width: 100%;
+    }
+    #openFormBtn {
+      position: relative;
+      overflow: hidden;
+      background: #2e7d32;
+      color: #ffffff;
+      font-size: 16px;
+      font-weight: bold;
+      padding: 14px 28px;
+      border: 2px solid #d4af37;
+      border-radius: 12px;
+      cursor: pointer;
+      transition: transform 0.2s, background 0.2s;
+      font-family: inherit;
+    }
+    #openFormBtn:active {
+      transform: scale(0.97);
+    }
+    .shine {
+      position: absolute;
+      top: 0;
+      left: -75%;
+      width: 50%;
+      height: 100%;
+      background: linear-gradient(120deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.5) 50%, rgba(255,255,255,0) 100%);
+      transform: skewX(-25deg);
+      animation: shineAnim 2.5s infinite;
+    }
+    @keyframes shineAnim {
+      0% { left: -75%; }
+      100% { left: 125%; }
+    }
+    #formFrameContainer {
+      margin-top: 16px;
+      display: none;
+      max-width: 500px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+    #formFrame {
+      width: 100%;
+      height: 650px;
+      border: 3px solid #2e7d32;
+      border-radius: 12px;
+      background: #ffffff;
+    }
+    #closeFormBtn {
+      background: #009688;
+      color: #ffffff;
+      font-size: 14px;
+      font-weight: bold;
+      padding: 9px 18px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-family: inherit;
+    }
+    .fallback-link {
+      display: inline-block;
+      margin-top: 8px;
+      font-size: 12px;
+      color: #064326;
+      font-weight: bold;
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+  <div class="page-card">
+    <!-- Sheikh Sahib PNG -->
+    <div>
+      <img
+        src="https://ia801004.us.archive.org/12/items/1743133488972_202509/Website-Logo--1761190197926.png"
+        alt="حضرت شیخ صاحب"
+        class="sheikh-logo"
+        onerror="this.style.display='none'"
+      />
+    </div>
+
+    <!-- Title -->
+    <h3 class="badge-teal">🕌 خانقاہ و مدرسہ دارالفلاح</h3>
+
+    <!-- Intro -->
+    <p style="margin:6px 0;">
+      الحمدللہ! <b>خانقاہ و مدرسہ دارالفلاح نزد ملک آڈہ میراخیل، بنوں</b><br />
+      ایک دینی، روحانی اور تعلیمی ادارہ ہے۔
+    </p>
+
+    <p style="margin:4px 0;">
+      آپ کا دیا ہوا مال <span style="color:#c62828;font-weight:bold;">صدقۂ جاریہ</span> ہے۔<br />
+      آئیے! اس کارِ خیر میں شریک ہوں۔
+    </p>
+
+    <!-- Donations -->
+    <h4 class="badge-sub">🤝 عطیات اور رابطہ</h4>
+    <div class="info-box">
+      <div class="copy-row">
+        <b>بینک:</b>
+        <span dir="ltr" id="ibanText" style="font-family:monospace;font-weight:bold;">PK61BAHL2021008100453301</span>
+        <button type="button" class="copy-btn" onclick="copyValue('ibanText', this)">کاپی</button>
+      </div>
+      <div class="copy-row">
+        <b>ایزی پیسہ:</b>
+        <span dir="ltr" id="epText" style="font-family:monospace;font-weight:bold;">03369757393</span>
+        <button type="button" class="copy-btn" onclick="copyValue('epText', this)">کاپی</button>
+      </div>
+      <div><b>نام:</b> پیر حضرت مولانا محمد جمشید صاحب</div>
+      <div>
+        <b>واٹس ایپ:</b>
+        <a href="https://api.whatsapp.com/send?phone=923369757393" target="_blank" rel="noreferrer" dir="ltr" style="color:#064326;font-weight:bold;text-decoration:none;">03369757393</a>
+      </div>
+      <div style="margin-top:4px;">
+        <a href="https://khanqahdarulfalah.blogspot.com" target="_blank" rel="noreferrer" style="color:#009970;font-weight:bold;text-decoration:none;">🌐 ویب سائٹ دیکھیں</a>
+      </div>
+    </div>
+
+    <!-- Hadees -->
+    <h4 class="badge-sub" style="background:#00a78e;">📖 حدیث مبارکہ</h4>
+    <div>
+      <blockquote class="hadees-quote">
+        "صدقہ گناہوں کو اس طرح بجھا دیتا ہے جیسے پانی آگ کو بجھاتا ہے"<br />
+        <strong>(ترمذی)</strong>
+      </blockquote>
+    </div>
+
+    <!-- Form Button -->
+    <div style="margin-top:16px; text-align:center;">
+      <button id="openFormBtn" type="button">
+        فارم بھر دیجئے
+        <span class="shine"></span>
+      </button>
+    </div>
+
+    <!-- Form iframe (hidden initially) -->
+    <div id="formFrameContainer">
+      <iframe
+        id="formFrame"
+        src=""
+        title="عطیات فارم"
+        frameborder="0"
+        loading="lazy"
+      ></iframe>
+      <div style="text-align:center; margin-top:10px;">
+        <button id="closeFormBtn" type="button">🔙 واپس ہدایت پر جائیں</button>
+        <div>
+          <a
+            href="https://khanqahdarulfalah.blogspot.com/p/donation-page-form-part.html"
+            target="_blank"
+            rel="noreferrer"
+            class="fallback-link"
+          >
+            اگر فارم یہاں ظاہر نہ ہو تو براہِ راست براؤزر میں کھولیں ↗
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    var bloggerFormURL = "./khanqah-donation-form.html";
+    var openBtn = document.getElementById('openFormBtn');
+    var formContainer = document.getElementById('formFrameContainer');
+    var formFrame = document.getElementById('formFrame');
+    var closeBtn = document.getElementById('closeFormBtn');
+
+    openBtn.addEventListener('click', function () {
+      formFrame.src = bloggerFormURL;
+      formContainer.style.display = 'block';
+      formContainer.scrollIntoView({ behavior: 'smooth' });
+    });
+
+    closeBtn.addEventListener('click', function () {
+      formContainer.style.display = 'none';
+      formFrame.src = '';
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    });
+
+    function copyValue(elementId, btn) {
+      var el = document.getElementById(elementId);
+      if (!el || !navigator.clipboard) return;
+      navigator.clipboard.writeText(el.textContent.trim()).then(function () {
+        var orig = btn.textContent;
+        btn.textContent = 'کاپی ہو گیا ✓';
+        setTimeout(function () { btn.textContent = orig; }, 2000);
+      });
+    }
+  </script>
+</body>
+</html>

@@ -6,6 +6,7 @@ import {
   MessageCircle,
   Globe,
   Landmark,
+  HeartHandshake,
   Radio,
   Play,
   Download,
@@ -71,6 +72,7 @@ import {
   getFarzLabel,
   getJamaatLabel,
   getNawafilLabel,
+  getDonationLabels,
 } from '../data/translations';
 
 interface Props {
@@ -83,6 +85,7 @@ interface Props {
   onOpenUrl: (url: string) => void;
   onOpenLibrary: () => void;
   onOpenWhatsAppGroups: () => void;
+  onOpenDonations: () => void;
   onOpenIntroKhanqah: () => void;
   onOpenIntroSheikh: () => void;
   onOpenContact: () => void;
@@ -162,6 +165,7 @@ export const SmartDashboardHome: React.FC<Props> = ({
   onOpenUrl,
   onOpenLibrary,
   onOpenWhatsAppGroups,
+  onOpenDonations,
   onOpenIntroKhanqah,
   onOpenIntroSheikh,
   onOpenContact,
@@ -172,6 +176,7 @@ export const SmartDashboardHome: React.FC<Props> = ({
   currentPlayingBayanId,
 }) => {
   const t = UI_STRINGS[lang];
+  const donationLabels = getDonationLabels(lang);
   const dir = getDir(lang);
   const [now, setNow] = useState<Date>(() => new Date());
   const [glassBannerError, setGlassBannerError] = useState(false);
@@ -409,8 +414,27 @@ export const SmartDashboardHome: React.FC<Props> = ({
         accent: 'text-[#15803d] dark:text-emerald-400',
         onClick: onOpenWhatsAppGroups,
       },
+      {
+        id: 'donations-sadaqah',
+        label: donationLabels.folderTitle,
+        subLabel: donationLabels.folderSub,
+        icon: HeartHandshake,
+        accent: 'text-rose-600 dark:text-[#d4af37]',
+        onClick: onOpenDonations,
+      },
     ],
-    [bayanatList.length, onOpenLibrary, onOpenWhatsAppGroups, t.audioLibraryTitle, t.audioLibrarySubSuffix, t.whatsappGroupsTitle, t.whatsappGroupsSub]
+    [
+      bayanatList.length,
+      onOpenLibrary,
+      onOpenWhatsAppGroups,
+      onOpenDonations,
+      t.audioLibraryTitle,
+      t.audioLibrarySubSuffix,
+      t.whatsappGroupsTitle,
+      t.whatsappGroupsSub,
+      donationLabels.folderTitle,
+      donationLabels.folderSub,
+    ]
   );
 
   // Live Blogger Posts Grid (1 Blogger post = 1 folder card, synced automatically)

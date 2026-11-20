@@ -1,11 +1,12 @@
 import React from 'react';
-import { X, MessageCircle, Youtube, Facebook, ExternalLink, User, Sparkles, ShieldCheck, FileText } from 'lucide-react';
-import { ANDROID_PACKAGE_NAME, OFFICIAL_WEBSITE_URL, OFFICIAL_WHATSAPP_LINKS, WHATSAPP_DIRECT_CHAT_URL } from '../data/appConfig';
+import { X, MessageCircle, Youtube, Facebook, ExternalLink, User, Sparkles, ShieldCheck, FileText, HeartHandshake, Copy, Check, Globe, Upload, Send, ArrowRight, CheckCircle2, AlertCircle } from 'lucide-react';
+import { ANDROID_PACKAGE_NAME, OFFICIAL_WEBSITE_URL, OFFICIAL_WHATSAPP_LINKS, WHATSAPP_DIRECT_CHAT_URL, BLOGGER_HOME_URL } from '../data/appConfig';
 import {
   AppLanguage,
   DEFAULT_LANGUAGE,
   UI_STRINGS,
   getDir,
+  getDonationLabels,
 } from '../data/translations';
 
 interface ModalProps {
@@ -185,6 +186,519 @@ export const IntroKhanqahModal: React.FC<{ isOpen: boolean; onClose: () => void;
     </BaseModal>
   );
 };
+
+// 11. عطیات و صدقہ جاریہ (Donations & Sadqa-e-Jariya Form Modal)
+const DONATION_FORM_URL = 'https://khanqahdarulfalah.blogspot.com/p/donation-page-form-part.html';
+const SHEIKH_ARCHIVE_PNG = 'https://ia801004.us.archive.org/12/items/1743133488972_202509/Website-Logo--1761190197926.png';
+const SADAQAH_FORM_LOGO = 'https://archive.org/download/1743133488972_202509/%D8%B5%D8%AF%D8%A7%D8%A6%DB%92-%D9%81%D9%82%DB%8C%D8%B1%D8%A7%D9%86%DB%81--1771060659812.png';
+const FORMSUBMIT_AJAX_URL = 'https://formsubmit.co/ajax/khanqahdarulfalah@gmail.com';
+const PRESET_AMOUNTS = ['10', '50', '100', '200', '500', '1000'];
+
+export const DonationModal: React.FC<{
+  isOpen: boolean;
+  onClose: () => void;
+  isDark?: boolean;
+  lang?: AppLanguage;
+  onNotify?: (msg: string) => void;
+}> = ({ isOpen, onClose, isDark = true, lang = DEFAULT_LANGUAGE, onNotify }) => {
+  const [showForm, setShowForm] = React.useState(false);
+  const [copiedKey, setCopiedKey] = React.useState<'iban' | 'ep' | null>(null);
+  const [imgError, setImgError] = React.useState(false);
+  const [formLogoError, setFormLogoError] = React.useState(false);
+
+  // Native form fields (NO father_name / ولدیت, NO QR code)
+  const [userName, setUserName] = React.useState('');
+  const [cityVillage, setCityVillage] = React.useState('');
+  const [pledgeRelation, setPledgeRelation] = React.useState('');
+  const [phone, setPhone] = React.useState('');
+  const [helpType, setHelpType] = React.useState('');
+  const [amount, setAmount] = React.useState('');
+  const [screenshotFile, setScreenshotFile] = React.useState<File | null>(null);
+  const [submitState, setSubmitState] = React.useState<'idle' | 'submitting' | 'success' | 'error'>('idle');
+  const [statusMessage, setStatusMessage] = React.useState('');
+
+  const labels = getDonationLabels(lang);
+
+  const handleCopy = (val: string, key: 'iban' | 'ep') => {
+    navigator.clipboard
+      ?.writeText(val)
+      .then(() => {
+        setCopiedKey(key);
+        if (onNotify) onNotify(`${val} — ${labels.copiedLabel}`);
+        setTimeout(() => setCopiedKey(null), 2200);
+      })
+      .catch(() => {
+        setCopiedKey(key);
+        setTimeout(() => setCopiedKey(null), 2200);
+      });
+  };
+
+  const handleClose = () => {
+    setShowForm(false);
+    setSubmitState('idle');
+    setStatusMessage('');
+    onClose();
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0] || null;
+    if (!file) {
+      setScreenshotFile(null);
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      setSubmitState('error');
+      setStatusMessage('فائل کا سائز 10MB سے زیادہ نہیں ہونا چاہیے۔');
+      e.target.value = '';
+      setScreenshotFile(null);
+      return;
+    }
+    setSubmitState('idle');
+    setStatusMessage('');
+    setScreenshotFile(file);
+  };
+
+  const handleSubmitForm = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!userName.trim() || !cityVillage.trim() || !pledgeRelation || !phone.trim() || !helpType || !amount.trim()) {
+      setSubmitState('error');
+      setStatusMessage('براہِ کرم تمام ضروری خانے پُر کریں۔');
+      return;
+    }
+
+    setSubmitState('submitting');
+    setStatusMessage('براہِ کرم انتظار فرمائیں، آپ کا فارم بھیجا جا رہا ہے...');
+
+    const formData = new FormData();
+    formData.append('user_name', userName.trim());
+    formData.append('city_village', cityVillage.trim());
+    formData.append('pledge_relation', pledgeRelation);
+    formData.append('phone', phone.trim());
+    formData.append('help_type', helpType);
+    formData.append('amount', amount.trim());
+    formData.append('_subject', `نیا عطیہ فارم — ${userName.trim()} (${helpType} · Rs ${amount.trim()})`);
+    formData.append('_captcha', 'false');
+    formData.append('_template', 'table');
+    if (screenshotFile) {
+      formData.append('transaction_screenshot', screenshotFile);
+    }
+
+    try {
+      const response = await fetch(FORMSUBMIT_AJAX_URL, {
+        method: 'POST',
+        headers: {
+          Accept: 'application/json',
+        },
+        body: formData,
+      });
+
+      const data = await response.json().catch(() => null);
+      if (response.ok && (data?.success === 'true' || data?.success === true || !data?.message)) {
+        setSubmitState('success');
+        setStatusMessage('جزاک اللہ! آپ کی معلومات اور رسید کامیابی سے بھیج دی گئی ہے۔ اللہ آپ کی نیکی قبول فرمائے۔');
+        if (onNotify) onNotify('عطیات فارم کامیابی سے جمع ہو گیا! جزاک اللہ');
+        setUserName('');
+        setCityVillage('');
+        setPledgeRelation('');
+        setPhone('');
+        setHelpType('');
+        setAmount('');
+        setScreenshotFile(null);
+      } else {
+        setSubmitState('error');
+        setStatusMessage(
+          data?.message ||
+            'فارم بھیجنے میں دشواری پیش آئی۔ براہِ کرم نیچے واٹس ایپ بٹن سے تفصیل اور اسکرین شاٹ بھیج دیں۔'
+        );
+      }
+    } catch {
+      setSubmitState('error');
+      setStatusMessage('انٹرنیٹ یا سرور کی خرابی کی وجہ سے فارم نہیں جا سکا۔ براہِ کرم واٹس ایپ کے ذریعے اسکرین شاٹ بھیجیں۔');
+    }
+  };
+
+  const whatsappReceiptUrl = React.useMemo(() => {
+    const lines = [
+      'السلام علیکم ورحمۃ اللہ وبرکاتہ',
+      '🕌 *خانقاہ و مدرسہ دارالفلاح — عطیات فارم*',
+      `• *نام:* ${userName || '—'}`,
+      `• *شہر / گاؤں:* ${cityVillage || '—'}`,
+      `• *بیعت کا تعلق:* ${pledgeRelation || '—'}`,
+      `• *واٹس ایپ / فون:* ${phone || '—'}`,
+      `• *تعاون کی نوعیت:* ${helpType || '—'}`,
+      `• *رقم (روپے):* ${amount || '—'}`,
+      'نوٹ: میں رقم ادا کرنے کا اسکرین شاٹ ساتھ بھیج رہا ہوں۔',
+    ].join('\n');
+    return `https://api.whatsapp.com/send?phone=923369757393&text=${encodeURIComponent(lines)}`;
+  }, [userName, cityVillage, pledgeRelation, phone, helpType, amount]);
+
+  const inputClassName = `w-full rounded-xl border px-3 py-2 text-xs sm:text-sm outline-none transition-colors ${
+    isDark
+      ? 'bg-[#081b11] border-[#d4af37]/40 text-emerald-50 placeholder:text-emerald-200/40 focus:border-[#00ff99]'
+      : 'bg-white border-emerald-700/25 text-[#11261b] placeholder:text-slate-400 focus:border-[#2e7d32]'
+  }`;
+
+  return (
+    <BaseModal isOpen={isOpen} onClose={handleClose} title={labels.modalTitle} isDark={isDark} lang={lang}>
+      <div className="space-y-3.5 text-center">
+        {!showForm ? (
+          <>
+            {!imgError && (
+              <div className="flex justify-center">
+                <img
+                  src={SHEIKH_ARCHIVE_PNG}
+                  alt="حضرت شیخ صاحب"
+                  onError={() => setImgError(true)}
+                  className="max-w-full w-[260px] h-auto object-contain mx-auto"
+                />
+              </div>
+            )}
+
+            <div>
+              <span className="inline-block px-3.5 py-1 rounded-lg bg-[#064326] text-[#d4af37] border border-[#d4af37]/60 text-sm font-bold shadow-xs">
+                {labels.institutionBadge}
+              </span>
+            </div>
+
+            <p className="text-xs sm:text-sm font-semibold leading-relaxed">
+              {labels.introLine}
+            </p>
+            <p className="text-xs text-rose-600 dark:text-rose-300 font-bold leading-relaxed">
+              {labels.sadqaNote}
+            </p>
+
+            {/* Donation Bank & EasyPaisa Card */}
+            <div
+              className={`rounded-2xl border p-3 space-y-2 text-xs sm:text-sm ${
+                isDark
+                  ? 'bg-[#081b11] border-[#d4af37]/40 text-emerald-50'
+                  : 'bg-[#f8faf9] border-[#064326]/20 text-[#11261b]'
+              }`}
+            >
+              <div className="inline-block px-3 py-0.5 rounded-md bg-[#009970] text-white text-xs font-bold">
+                {labels.detailsHeading}
+              </div>
+
+              <div className="flex flex-wrap items-center justify-center gap-1.5 pt-1">
+                <span className="font-bold">{labels.bankLabel}</span>
+                <span dir="ltr" className="font-mono font-bold text-[#064326] dark:text-[#00ff99] select-all break-all">
+                  PK61BAHL2021008100453301
+                </span>
+                <button
+                  type="button"
+                  onClick={() => handleCopy('PK61BAHL2021008100453301', 'iban')}
+                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-[#064326] hover:bg-[#095c34] text-white border border-[#d4af37]/50 text-[10px] font-bold cursor-pointer"
+                >
+                  {copiedKey === 'iban' ? <Check className="w-3 h-3 text-[#00ff99]" /> : <Copy className="w-3 h-3" />}
+                  <span>{copiedKey === 'iban' ? labels.copiedLabel : labels.copyLabel}</span>
+                </button>
+              </div>
+
+              <div className="flex flex-wrap items-center justify-center gap-1.5">
+                <span className="font-bold">{labels.easyPaisaLabel}</span>
+                <span dir="ltr" className="font-mono font-bold text-[#064326] dark:text-[#00ff99] select-all">
+                  03369757393
+                </span>
+                <button
+                  type="button"
+                  onClick={() => handleCopy('03369757393', 'ep')}
+                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-[#064326] hover:bg-[#095c34] text-white border border-[#d4af37]/50 text-[10px] font-bold cursor-pointer"
+                >
+                  {copiedKey === 'ep' ? <Check className="w-3 h-3 text-[#00ff99]" /> : <Copy className="w-3 h-3" />}
+                  <span>{copiedKey === 'ep' ? labels.copiedLabel : labels.copyLabel}</span>
+                </button>
+              </div>
+
+              <div className="text-xs">
+                <span className="font-bold">{labels.nameLabel}</span> پیر حضرت مولانا محمد جمشید صاحب
+              </div>
+
+              <div className="flex flex-wrap items-center justify-center gap-3 pt-1 text-xs">
+                <a
+                  href={WHATSAPP_DIRECT_CHAT_URL}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[#25D366] hover:bg-[#1faa4e] text-white font-bold"
+                >
+                  <MessageCircle className="w-3.5 h-3.5 fill-white" />
+                  <span>{labels.whatsappLabel} 03369757393</span>
+                </a>
+                <a
+                  href={BLOGGER_HOME_URL}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg border border-[#009970]/40 text-[#009970] dark:text-[#00ff99] font-bold hover:underline"
+                >
+                  <Globe className="w-3.5 h-3.5" />
+                  <span>{labels.websiteLabel}</span>
+                </a>
+              </div>
+            </div>
+
+            {/* Hadees Blockquote */}
+            <div className="space-y-1.5">
+              <div className="inline-block px-3 py-0.5 rounded-md bg-[#00a78e] text-white text-xs font-bold">
+                {labels.hadeesHeading}
+              </div>
+              <blockquote
+                className={`border-r-4 border-[#00a78e] px-3 py-2 rounded-xl text-xs leading-relaxed ${
+                  isDark ? 'bg-[#081b11] text-emerald-100' : 'bg-[#f3faf7] text-[#11261b]'
+                }`}
+              >
+                {labels.hadeesText}{' '}
+                <strong className="text-[#8c6514] dark:text-[#d4af37]">{labels.hadeesRef}</strong>
+              </blockquote>
+            </div>
+
+            {/* Open Form Sparkling Button + Standalone HTML Page Link */}
+            <div className="pt-1 flex flex-col items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setShowForm(true)}
+                className="khanqah-shine-btn inline-flex items-center justify-center gap-2 px-7 py-3 rounded-xl bg-[#2e7d32] hover:bg-[#1b5e20] text-white text-sm sm:text-base font-bold border-2 border-[#d4af37] shadow-lg active:scale-95 transition-transform cursor-pointer"
+              >
+                <HeartHandshake className="w-4 h-4 text-[#d4af37]" />
+                <span>{labels.openFormBtn}</span>
+              </button>
+
+              <a
+                href={`${import.meta.env.BASE_URL}khanqah-donation.html`}
+                target="_blank"
+                rel="noreferrer"
+                className="text-[11px] font-bold text-[#064326] dark:text-[#d4af37] hover:underline inline-flex items-center gap-1"
+              >
+                <span>{labels.openHtmlPageBtn}</span>
+                <ExternalLink className="w-3 h-3" />
+              </a>
+            </div>
+          </>
+        ) : (
+          <div className="space-y-3 text-right" dir="rtl">
+            {/* Form Logo */}
+            {!formLogoError && (
+              <div className={`rounded-xl p-2 border-b-2 border-[#2e7d32] text-center ${isDark ? 'bg-[#081b11]' : 'bg-white'}`}>
+                <img
+                  src={SADAQAH_FORM_LOGO}
+                  alt="خانقاہ دارالفلاح لوگو"
+                  onError={() => setFormLogoError(true)}
+                  className="max-w-[200px] h-auto mx-auto"
+                />
+              </div>
+            )}
+
+            <div className="text-center">
+              <h4 className="text-base sm:text-lg font-bold text-[#2e7d32] dark:text-[#d4af37]">
+                عطیات و صدقات فارم
+              </h4>
+              <p className="text-[11px] opacity-75">
+                پیسے ادا کرنے کے بعد اسکرین شاٹ منسلک کر کے فارم ارسال کریں
+              </p>
+            </div>
+
+            <form onSubmit={handleSubmitForm} className="space-y-2.5">
+              <div>
+                <label className="block text-xs font-bold mb-1">نام (Name)</label>
+                <input
+                  type="text"
+                  required
+                  value={userName}
+                  onChange={(e) => setUserName(e.target.value)}
+                  placeholder="مثال: محمد احمد"
+                  className={inputClassName}
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold mb-1">شہر یا گاؤں (City/Village)</label>
+                <input
+                  type="text"
+                  required
+                  value={cityVillage}
+                  onChange={(e) => setCityVillage(e.target.value)}
+                  placeholder="مثال: بنوں، میراخیل"
+                  className={inputClassName}
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <div>
+                  <label className="block text-xs font-bold mb-1">بیعت کا تعلق</label>
+                  <select
+                    required
+                    value={pledgeRelation}
+                    onChange={(e) => setPledgeRelation(e.target.value)}
+                    className={inputClassName}
+                  >
+                    <option value="">-- منتخب کریں --</option>
+                    <option value="بیعت ہیں">بیعت ہیں</option>
+                    <option value="نہیں ہیں">نہیں ہیں</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold mb-1">واٹس ایپ / موبائل نمبر</label>
+                  <input
+                    type="tel"
+                    dir="ltr"
+                    required
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    placeholder="03xxxxxxxxx"
+                    className={`${inputClassName} text-right`}
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold mb-1">تعاون کی نوعیت</label>
+                <select
+                  required
+                  value={helpType}
+                  onChange={(e) => setHelpType(e.target.value)}
+                  className={inputClassName}
+                >
+                  <option value="">-- قسم منتخب کریں --</option>
+                  <option value="زکوٰۃ">زکوٰۃ</option>
+                  <option value="صدقہ">صدقہ</option>
+                  <option value="ہدیہ شیخ صاحب">ہدیہ شیخ صاحب</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold mb-1">رقم (روپے)</label>
+                <div className="flex flex-wrap gap-1.5 mb-2">
+                  {PRESET_AMOUNTS.map((preset) => (
+                    <button
+                      key={preset}
+                      type="button"
+                      onClick={() => setAmount(preset)}
+                      className={`px-2.5 py-1 rounded-lg text-xs font-bold border cursor-pointer transition-colors ${
+                        amount === preset
+                          ? 'bg-[#2e7d32] text-white border-[#d4af37]'
+                          : isDark
+                          ? 'bg-[#081b11] text-emerald-100 border-[#d4af37]/30 hover:border-[#d4af37]'
+                          : 'bg-emerald-50 text-[#11261b] border-emerald-700/20 hover:bg-emerald-100'
+                      }`}
+                    >
+                      Rs {preset}
+                    </button>
+                  ))}
+                </div>
+                <input
+                  type="number"
+                  min={1}
+                  required
+                  dir="ltr"
+                  value={amount}
+                  onChange={(e) => setAmount(e.target.value)}
+                  placeholder="مثال: 500"
+                  className={`${inputClassName} text-right`}
+                />
+              </div>
+
+              {/* Screenshot Upload */}
+              <div
+                className={`rounded-xl border border-dashed p-3 space-y-1.5 ${
+                  isDark ? 'bg-[#081b11] border-[#d4af37]/50' : 'bg-[#f4fbf5] border-[#2e7d32]/50'
+                }`}
+              >
+                <label className="flex items-center gap-1.5 text-xs font-bold text-[#2e7d32] dark:text-[#00ff99]">
+                  <Upload className="w-4 h-4 shrink-0" />
+                  <span>پیمنٹ کی رسید یا اسکرین شاٹ اپلوڈ کریں (لازمی نہیں، 10MB تک)</span>
+                </label>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleFileChange}
+                  className="block w-full text-xs file:ml-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:bg-[#2e7d32] file:text-white file:font-bold file:cursor-pointer cursor-pointer"
+                />
+                {screenshotFile && (
+                  <p className="text-[11px] font-bold text-emerald-600 dark:text-[#00ff99]">
+                    منتخب فائل: {screenshotFile.name}
+                  </p>
+                )}
+                <p className="text-[11px] opacity-75">
+                  پیسے ادا کرنے کے بعد اسکرین شاٹ لے کر یہاں بھیج دیں تاکہ تصدیق میں آسانی رہے۔
+                </p>
+              </div>
+
+              {submitState !== 'idle' && (
+                <div
+                  className={`rounded-xl p-2.5 text-xs font-bold flex items-start gap-2 ${
+                    submitState === 'success'
+                      ? 'bg-emerald-600/20 text-emerald-700 dark:text-emerald-200 border border-emerald-500/40'
+                      : submitState === 'error'
+                      ? 'bg-rose-600/20 text-rose-700 dark:text-rose-200 border border-rose-500/40'
+                      : 'bg-amber-500/20 text-amber-800 dark:text-amber-200 border border-amber-500/40'
+                  }`}
+                >
+                  {submitState === 'success' ? (
+                    <CheckCircle2 className="w-4 h-4 shrink-0 mt-0.5" />
+                  ) : (
+                    <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+                  )}
+                  <span>{statusMessage}</span>
+                </div>
+              )}
+
+              <button
+                type="submit"
+                disabled={submitState === 'submitting'}
+                className="w-full py-2.5 px-4 rounded-xl bg-[#2e7d32] hover:bg-[#1b5e20] disabled:opacity-60 text-white font-bold text-sm flex items-center justify-center gap-2 shadow-md border border-[#d4af37]/60 cursor-pointer active:scale-98 transition-all"
+              >
+                <Send className="w-4 h-4" />
+                <span>{submitState === 'submitting' ? 'بھیجا جا رہا ہے...' : 'تفصیلات اور اسکرین شاٹ ارسال کریں'}</span>
+              </button>
+            </form>
+
+            {/* 1-Tap WhatsApp Receipt Backup + Navigation Links */}
+            <div className="pt-1 flex flex-col items-center gap-2">
+              <a
+                href={whatsappReceiptUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="w-full py-2 px-3 rounded-xl bg-[#25D366] hover:bg-[#1faa4e] text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm"
+              >
+                <MessageCircle className="w-4 h-4 fill-white" />
+                <span>واٹس ایپ پر اسکرین شاٹ اور تفصیل بھیجیں (03369757393)</span>
+              </a>
+
+              <div className="flex flex-wrap items-center justify-center gap-3 pt-1">
+                <button
+                  type="button"
+                  onClick={() => setShowForm(false)}
+                  className="inline-flex items-center gap-1 px-4 py-1.5 rounded-lg bg-[#009688] hover:bg-[#00796b] text-white text-xs font-bold shadow-xs cursor-pointer"
+                >
+                  <ArrowRight className="w-3.5 h-3.5" />
+                  <span>{labels.backToGuideBtn}</span>
+                </button>
+                <a
+                  href={`${import.meta.env.BASE_URL}khanqah-donation-form.html`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-[11px] font-bold text-[#064326] dark:text-[#d4af37] hover:underline inline-flex items-center gap-1"
+                >
+                  <span>علیحدہ فارم صفحہ</span>
+                  <ExternalLink className="w-3 h-3" />
+                </a>
+                <a
+                  href={DONATION_FORM_URL}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-[11px] font-bold text-[#064326] dark:text-[#d4af37] hover:underline inline-flex items-center gap-1"
+                >
+                  <span>بلاگر لنک</span>
+                  <ExternalLink className="w-3 h-3" />
+                </a>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    </BaseModal>
+  );
+};
+
 
 // 2. شیخ حضرت مولانا محمد جمشید صاحب نقشبندی مجددی دامت برکاتہم کا تعارف
 export const IntroSheikhModal: React.FC<{ isOpen: boolean; onClose: () => void; isDark?: boolean; lang?: AppLanguage }> = ({ isOpen, onClose, isDark = true, lang = DEFAULT_LANGUAGE }) => {
@@ -724,3 +1238,5 @@ export const PrivacyPolicyModal: React.FC<{ isOpen: boolean; onClose: () => void
     </BaseModal>
   );
 };
+
+
