@@ -69,26 +69,30 @@ export const PWAInstallBanner: React.FC<Props> = ({
           </div>
 
           <div className="flex items-center gap-1.5 shrink-0">
+            {isInstallable && (
+              <button
+                onClick={handlePWAInstall}
+                className="inline-flex px-3 py-1.5 bg-[#064326] hover:bg-[#095c34] text-white font-bold rounded-lg shadow-xs border border-[#d4af37]/70 items-center gap-1 active:scale-95 transition-all text-xs whitespace-nowrap cursor-pointer"
+              >
+                <Smartphone className="w-3.5 h-3.5 text-[#d4af37]" />
+                <span>{t.bannerWebApp}</span>
+              </button>
+            )}
+
             {/* Direct Archive.org APK Download / Install Link */}
             <a
               href={OFFICIAL_APK_URL}
               download="khanqah-Darul-falah.apk"
               onClick={handleAPKDownload}
-              className="px-3 py-1.5 bg-[#064326] hover:bg-[#095c34] text-white font-bold rounded-lg shadow-xs border border-[#d4af37]/60 flex items-center gap-1.5 active:scale-95 transition-all text-xs whitespace-nowrap"
+              className={`px-2.5 py-1.5 font-bold rounded-lg shadow-xs flex items-center gap-1 active:scale-95 transition-all text-xs whitespace-nowrap ${
+                isInstallable
+                  ? 'bg-[#d4af37] hover:bg-[#c29b29] text-[#051a0f]'
+                  : 'bg-[#064326] hover:bg-[#095c34] text-white border border-[#d4af37]/60'
+              }`}
             >
-              <Download className="w-3.5 h-3.5 text-[#d4af37]" />
+              <Download className={`w-3.5 h-3.5 ${isInstallable ? 'text-[#051a0f]' : 'text-[#d4af37]'}`} />
               <span>{t.bannerInstallApk}</span>
             </a>
-
-            {isInstallable && (
-              <button
-                onClick={handlePWAInstall}
-                className="inline-flex px-2.5 py-1.5 bg-[#d4af37] hover:bg-[#c29b29] text-[#051a0f] font-bold rounded-lg shadow-xs items-center gap-1 active:scale-95 transition-all text-xs whitespace-nowrap cursor-pointer"
-              >
-                <Smartphone className="w-3.5 h-3.5" />
-                <span>{t.bannerWebApp}</span>
-              </button>
-            )}
 
             <button
               onClick={() => setIsDismissed(true)}

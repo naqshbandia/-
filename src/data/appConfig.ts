@@ -5,17 +5,29 @@ export const ANDROID_APP_NAME_URDU = "خانقاہ دارالفلاح";
 // Official Verified Android APK Download Link on Archive.org
 export const OFFICIAL_APK_URL = "https://archive.org/download/khanqah-darul-falah/%20khanqah%20Darul%20falah.apk";
 
-// Official WhatsApp Gift Share Link (shares the direct Archive.org APK download link)
-export const APP_GIFT_WHATSAPP_SHARE_URL = `https://wa.me/?text=${encodeURIComponent(
-  [
-    '🎁 *خانقاہ دارالفلاح — دینی تحفہ (آفیشل اینڈرائڈ ایپ)*',
-    '',
-    'شیخ الحدیث حضرت مولانا پیر محمد جمشید نقشبندی مجددی (دامت برکاتہم) کے اصلاحی بیانات، دروسِ قرآن، کتب اور اوقاتِ نماز کی آفیشل ایپ بطورِ ہدیہ قبول فرمائیں۔',
-    '',
-    '📲 *فوری ڈاؤنلوڈ اور انسٹال کرنے کے لیے اس لنک کو دبائیں:*',
-    OFFICIAL_APK_URL,
-  ].join('\n')
-)}`;
+// Official WhatsApp Gift Share Link (includes live Web App URL for latest icon + Mobile Mode, plus APK download link)
+export function getAppGiftWhatsAppShareUrl(): string {
+  const liveWebUrl =
+    typeof window !== 'undefined'
+      ? `${window.location.origin}${import.meta.env.BASE_URL}`
+      : 'https://naqshbandia.github.io/index.html/';
+
+  return `https://wa.me/?text=${encodeURIComponent(
+    [
+      '🎁 *خانقاہ دارالفلاح — دینی تحفہ (آفیشل موبائل ایپ)*',
+      '',
+      'شیخ الحدیث حضرت مولانا پیر محمد جمشید نقشبندی مجددی (دامت برکاتہم) کے اصلاحی بیانات، دروسِ قرآن، کتب اور اوقاتِ نماز کی آفیشل ایپ بطورِ ہدیہ قبول فرمائیں۔',
+      '',
+      '🌐 *فوری ویب ایپ کھولیں / موبائل اسکرین پر انسٹال کریں (نئے آئیکن کے ساتھ):*',
+      liveWebUrl,
+      '',
+      '📲 *یا پرانی اینڈرائڈ APK فائل:*',
+      OFFICIAL_APK_URL,
+    ].join('\n')
+  )}`;
+}
+
+export const APP_GIFT_WHATSAPP_SHARE_URL = getAppGiftWhatsAppShareUrl();
 
 // Official Sheikh / Khanqah Top Title Calligraphy Banner (Glass Crystal Card PNG)
 export const SHEIKH_TITLE_BANNER_URL = "https://archive.org/download/20260422_20260422_1213/%D8%B4%DB%8C%D8%AE%20%D8%B5%D8%A7%D8%AD%D8%A8%20%D9%84%D9%88%DA%AF%D9%88%20%D9%84%DA%A9%DA%91%DB%8C%20%D9%88%D8%A7%D9%84%D8%A7.png";

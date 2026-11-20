@@ -44,7 +44,7 @@ export const Header: React.FC<Props> = ({
   isSearchOpen,
   isDark,
   onToggleTheme,
-  viewMode = 'desktop',
+  viewMode = 'mobile',
   onToggleViewMode,
   isDashboard = true,
   onGoHome,
@@ -90,10 +90,10 @@ export const Header: React.FC<Props> = ({
         dir={dir}
       >
         {/* Start: Three-line hamburger menu button */}
-        <div className="flex items-center gap-1 shrink-0">
+        <div className="flex items-center gap-0.5 sm:gap-1 shrink-0">
           <button
             onClick={onToggleMenu}
-            className={`min-w-[38px] min-h-[38px] rounded-lg active:scale-95 transition-all flex items-center justify-center cursor-pointer ${
+            className={`min-w-[34px] min-h-[36px] sm:min-w-[38px] sm:min-h-[38px] rounded-lg active:scale-95 transition-all flex items-center justify-center cursor-pointer ${
               isDark
                 ? 'text-[#d4af37] hover:text-white hover:bg-[#d4af37]/15'
                 : 'text-[#064326] hover:bg-emerald-50'
@@ -101,13 +101,13 @@ export const Header: React.FC<Props> = ({
             title={t.headerMenuTitle}
             aria-label={t.headerMenuTitle}
           >
-            <Menu className="w-6 h-6" />
+            <Menu className="w-5 h-5 sm:w-6 sm:h-6" />
           </button>
 
           {!isDashboard && onGoHome && (
             <button
               onClick={onGoHome}
-              className={`min-w-[38px] min-h-[38px] rounded-lg active:scale-95 transition-all flex items-center justify-center cursor-pointer ${
+              className={`min-w-[34px] min-h-[36px] sm:min-w-[38px] sm:min-h-[38px] rounded-lg active:scale-95 transition-all flex items-center justify-center cursor-pointer ${
                 isDark
                   ? 'text-emerald-300 hover:text-white hover:bg-emerald-900/40'
                   : 'text-[#064326] hover:bg-emerald-50'
@@ -115,7 +115,7 @@ export const Header: React.FC<Props> = ({
               title={t.headerHomeTitle}
               aria-label={t.headerHomeTitle}
             >
-              <Home className="w-5 h-5" />
+              <Home className="w-4 h-4 sm:w-5 sm:h-5" />
             </button>
           )}
         </div>
@@ -123,28 +123,28 @@ export const Header: React.FC<Props> = ({
         {/* Center: App Name with Official Emblem Logo */}
         <button
           onClick={onGoHome}
-          className="flex items-center justify-center text-center px-1.5 flex-1 gap-1.5 sm:gap-2 min-w-0 cursor-pointer"
+          className="flex items-center justify-center text-center px-1 sm:px-1.5 flex-1 gap-1 sm:gap-2 min-w-0 cursor-pointer"
           title={t.headerHomeTitle}
         >
           <img
             src={`${import.meta.env.BASE_URL}kdf-logo-v4.webp`}
             alt={t.appName}
-            className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl shadow-xs object-cover shrink-0"
+            className="w-6 h-6 sm:w-8 sm:h-8 rounded-lg sm:rounded-xl shadow-xs object-cover shrink-0"
           />
-          <h1 className="text-sm sm:text-lg font-extrabold font-lalezar tracking-wide truncate">
+          <h1 className="text-[13px] sm:text-lg font-extrabold font-lalezar tracking-wide truncate">
             {t.appName}
           </h1>
         </button>
 
         {/* End: Language Switcher, View Mode, Theme Switcher, and Search button */}
-        <div className="flex items-center gap-1 shrink-0">
-          {/* Top-Bar Language Switcher (Default Urdu, switchable to English & Arabic) */}
+        <div className="flex items-center gap-0.5 sm:gap-1 shrink-0">
+          {/* Top-Bar Language Switcher (Default Urdu, switchable to 14 languages) */}
           {onChangeLang && (
             <div className="relative" ref={langMenuRef}>
               <button
                 type="button"
                 onClick={() => setIsLangMenuOpen((prev) => !prev)}
-                className={`h-9 px-2 rounded-lg active:scale-95 transition-all flex items-center justify-center gap-1 border text-[11px] font-bold cursor-pointer ${
+                className={`h-8 sm:h-9 px-1.5 sm:px-2 rounded-lg active:scale-95 transition-all flex items-center justify-center gap-1 border text-[10.5px] sm:text-[11px] font-bold cursor-pointer ${
                   isLangMenuOpen
                     ? 'bg-[#064326] text-white border-[#d4af37]'
                     : isDark
@@ -225,7 +225,7 @@ export const Header: React.FC<Props> = ({
           {onToggleViewMode && (
             <button
               onClick={onToggleViewMode}
-              className={`min-w-[36px] min-h-[38px] px-1.5 rounded-lg active:scale-95 transition-all flex items-center justify-center gap-1 cursor-pointer ${
+              className={`min-w-[32px] min-h-[34px] sm:min-w-[36px] sm:min-h-[38px] px-1 sm:px-1.5 rounded-lg active:scale-95 transition-all flex items-center justify-center gap-1 cursor-pointer ${
                 viewMode === 'desktop'
                   ? 'bg-[#064326] text-[#d4af37] border border-[#d4af37]/60 shadow-xs'
                   : isDark
@@ -254,7 +254,7 @@ export const Header: React.FC<Props> = ({
 
           <button
             onClick={onToggleTheme}
-            className={`min-w-[36px] min-h-[38px] rounded-lg active:scale-95 transition-all flex items-center justify-center cursor-pointer ${
+            className={`min-w-[32px] min-h-[34px] sm:min-w-[36px] sm:min-h-[38px] rounded-lg active:scale-95 transition-all flex items-center justify-center cursor-pointer ${
               isDark
                 ? 'text-[#d4af37] hover:text-white hover:bg-[#d4af37]/15'
                 : 'text-[#064326] hover:bg-emerald-50'
@@ -271,7 +271,7 @@ export const Header: React.FC<Props> = ({
 
           <button
             onClick={onToggleSearch}
-            className={`min-w-[36px] min-h-[38px] rounded-lg transition-all active:scale-95 flex items-center justify-center cursor-pointer ${
+            className={`min-w-[32px] min-h-[34px] sm:min-w-[36px] sm:min-h-[38px] rounded-lg transition-all active:scale-95 flex items-center justify-center cursor-pointer ${
               isSearchOpen
                 ? 'bg-[#064326] text-white shadow-xs'
                 : isDark

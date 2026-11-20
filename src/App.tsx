@@ -73,13 +73,13 @@ export default function App() {
     }
   });
 
-  // View Mode state: Defaults to Desktop Mode, while allowing users to switch to Mobile Mode anytime
+  // View Mode state: Defaults to Mobile Mode for clean fit on phones; users can still toggle Desktop Mode anytime
   const [viewMode, setViewMode] = useState<'mobile' | 'desktop'>(() => {
     try {
-      const saved = localStorage.getItem('khanqah_view_mode_v2');
-      return saved === 'mobile' ? 'mobile' : 'desktop';
+      const saved = localStorage.getItem('khanqah_view_mode_v3');
+      return saved === 'desktop' ? 'desktop' : 'mobile';
     } catch {
-      return 'desktop';
+      return 'mobile';
     }
   });
 
@@ -98,7 +98,7 @@ export default function App() {
         'content',
         isDesktop
           ? 'width=800, initial-scale=0.8, minimum-scale=0.35, maximum-scale=6.0, user-scalable=yes, viewport-fit=cover'
-          : 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover'
+          : 'width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover'
       );
     }
   }, [viewMode]);
@@ -138,7 +138,7 @@ export default function App() {
     setViewMode((prev) => {
       const next = prev === 'desktop' ? 'mobile' : 'desktop';
       try {
-        localStorage.setItem('khanqah_view_mode_v2', next);
+        localStorage.setItem('khanqah_view_mode_v3', next);
       } catch {}
       showNotification(
         next === 'desktop'

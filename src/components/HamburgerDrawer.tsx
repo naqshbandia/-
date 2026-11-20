@@ -83,7 +83,7 @@ export const HamburgerDrawer: React.FC<Props> = ({
   onOpenAbout,
   isDark,
   onToggleTheme,
-  viewMode = 'desktop',
+  viewMode = 'mobile',
   onToggleViewMode,
   onRefreshBlogger,
   isRefreshingBlogger = false,

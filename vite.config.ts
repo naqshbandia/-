@@ -26,19 +26,19 @@ export default defineConfig(() => {
     scope: base,
     icons: [
       {
-        src: `${base}kdf-icon-192-v4.png`,
+        src: `${base}kdf-icon-192-v4.png?v=5`,
         sizes: '192x192',
         type: 'image/png',
         purpose: 'any' as const,
       },
       {
-        src: `${base}kdf-icon-512-v4.png`,
+        src: `${base}kdf-icon-512-v4.png?v=5`,
         sizes: '512x512',
         type: 'image/png',
         purpose: 'any' as const,
       },
       {
-        src: `${base}kdf-icon-maskable-v4.png`,
+        src: `${base}kdf-icon-maskable-v4.png?v=5`,
         sizes: '512x512',
         type: 'image/png',
         purpose: 'maskable' as const,

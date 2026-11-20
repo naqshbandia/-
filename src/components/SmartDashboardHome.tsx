@@ -33,7 +33,7 @@ import {
   SHEIKH_GLASS_BANNER_URL,
   WHATSAPP_DIRECT_CHAT_URL,
   DEVELOPER_WHATSAPP_URL,
-  APP_GIFT_WHATSAPP_SHARE_URL,
+  getAppGiftWhatsAppShareUrl,
   BloggerPostTab,
 } from '../data/appConfig';
 import { BAYANAT_DATABASE, BayanItem } from '../data/bayanatData';
@@ -686,19 +686,19 @@ export const SmartDashboardHome: React.FC<Props> = ({
                 </div>
 
                 {!isEditingJamaat ? (
-                  <div className="grid grid-cols-6 gap-1 sm:gap-1.5">
+                  <div className="grid grid-cols-6 gap-0.5 sm:gap-1.5">
                     {jamaatCards.map((item) => (
                       <div
                         key={item.key}
-                        className="rounded-xl py-2 px-0.5 sm:px-1 text-center border bg-[#d4af37]/[0.10] border-[#d4af37]/30 text-emerald-50 overflow-hidden"
+                        className="rounded-lg sm:rounded-xl py-1.5 sm:py-2 px-0.5 sm:px-1 text-center border bg-[#d4af37]/[0.10] border-[#d4af37]/30 text-emerald-50 overflow-hidden"
                       >
-                        <div className="text-[10px] sm:text-xs font-bold text-[#d4af37] whitespace-nowrap">
+                        <div className="text-[9.5px] sm:text-xs font-bold text-[#d4af37] whitespace-nowrap">
                           {getJamaatLabel(lang, item.key)}
                         </div>
-                        <div className="text-[9.5px] sm:text-xs font-bold text-[#00ff99] tabular-nums mt-1 whitespace-nowrap" dir="ltr">
+                        <div className="text-[8px] sm:text-xs font-bold text-[#00ff99] tabular-nums mt-0.5 sm:mt-1 whitespace-nowrap tracking-tighter sm:tracking-normal" dir="ltr">
                           {item.resolved12}
                         </div>
-                        <div className="text-[8px] sm:text-[9px] text-emerald-100/70 mt-0.5 whitespace-nowrap">
+                        <div className="text-[7.5px] sm:text-[9px] text-emerald-100/70 mt-0.5 whitespace-nowrap">
                           {item.mode === 'custom' || item.key === 'Jummah'
                             ? t.fixedBadge
                             : `+${item.offsetMinutes} ${t.minuteUnit}`}
@@ -813,22 +813,22 @@ export const SmartDashboardHome: React.FC<Props> = ({
               </div>
 
               {/* Single-line 6-card horizontal strip */}
-              <div className="grid grid-cols-6 gap-1 sm:gap-1.5">
+              <div className="grid grid-cols-6 gap-0.5 sm:gap-1.5">
                 {khanqahCards.map((item) => (
                   <div
                     key={`khanqah-row-${item.key}`}
                     className="rounded-lg py-1.5 px-0.5 sm:px-1 text-center border bg-[#042414]/90 border-[#d4af37]/35 text-emerald-50 overflow-hidden"
                   >
-                    <div className="text-[10px] sm:text-xs font-bold text-[#d4af37] whitespace-nowrap">
+                    <div className="text-[9.5px] sm:text-xs font-bold text-[#d4af37] whitespace-nowrap">
                       {getJamaatLabel(lang, item.key)}
                     </div>
                     <div
-                      className="text-[9.5px] sm:text-xs font-bold text-[#00ff99] tabular-nums mt-0.5 whitespace-nowrap"
+                      className="text-[8px] sm:text-xs font-bold text-[#00ff99] tabular-nums mt-0.5 whitespace-nowrap tracking-tighter sm:tracking-normal"
                       dir="ltr"
                     >
                       {item.resolved12}
                     </div>
-                    <div className="text-[8px] sm:text-[9px] text-emerald-100/70 whitespace-nowrap">
+                    <div className="text-[7.5px] sm:text-[9px] text-emerald-100/70 whitespace-nowrap">
                       {item.mode === 'custom' || item.key === 'Jummah'
                         ? t.fixedBadge
                         : `+${item.offsetMinutes} ${t.minuteUnit}`}
@@ -1298,7 +1298,7 @@ export const SmartDashboardHome: React.FC<Props> = ({
               </a>
 
               <a
-                href={APP_GIFT_WHATSAPP_SHARE_URL}
+                href={getAppGiftWhatsAppShareUrl()}
                 target="_blank"
                 rel="noreferrer"
                 onClick={() => onNotify(t.giftShareToast)}
