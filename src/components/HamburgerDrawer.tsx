@@ -35,6 +35,12 @@ import {
   NEWS_UPDATES_URL,
   DEVELOPER_WHATSAPP_URL,
 } from '../data/appConfig';
+import {
+  AppLanguage,
+  DEFAULT_LANGUAGE,
+  UI_STRINGS,
+  getDir,
+} from '../data/translations';
 
 interface Props {
   isOpen: boolean;
@@ -57,6 +63,7 @@ interface Props {
   onToggleViewMode?: () => void;
   onRefreshBlogger?: () => void;
   isRefreshingBlogger?: boolean;
+  lang?: AppLanguage;
 }
 
 export const HamburgerDrawer: React.FC<Props> = ({
@@ -80,10 +87,15 @@ export const HamburgerDrawer: React.FC<Props> = ({
   onToggleViewMode,
   onRefreshBlogger,
   isRefreshingBlogger = false,
+  lang = DEFAULT_LANGUAGE,
 }) => {
   if (!isOpen) return null;
+  const t = UI_STRINGS[lang];
+  const dir = getDir(lang);
 
-  const rowClass = `w-full flex items-center justify-between px-3 py-2.5 rounded-xl transition-all group text-right cursor-pointer ${
+  const rowClass = `w-full flex items-center justify-between px-3 py-2.5 rounded-xl transition-all group cursor-pointer ${
+    dir === 'ltr' ? 'text-left' : 'text-right'
+  } ${
     isDark
       ? 'hover:bg-[#103321] text-emerald-50 border border-transparent hover:border-[#d4af37]/30'
       : 'hover:bg-emerald-50 text-[#11261b] border border-transparent hover:border-emerald-900/10'
@@ -96,7 +108,7 @@ export const HamburgerDrawer: React.FC<Props> = ({
     'px-3 pt-3 pb-1 text-[11px] font-bold tracking-wide text-[#8c6514] dark:text-[#d4af37]/90';
 
   return (
-    <div className="fixed inset-0 z-50 overflow-hidden select-none" dir="rtl">
+    <div className="fixed inset-0 z-50 overflow-hidden select-none" dir={dir}>
       {/* Backdrop */}
       <div
         className="absolute inset-0 bg-black/65 backdrop-blur-xs transition-opacity animate-in fade-in duration-200"
@@ -104,9 +116,13 @@ export const HamburgerDrawer: React.FC<Props> = ({
       />
 
       {/* Drawer Panel */}
-      <div className="absolute inset-y-0 right-0 max-w-[90vw] flex">
+      <div className={`absolute inset-y-0 ${dir === 'ltr' ? 'left-0' : 'right-0'} max-w-[90vw] flex`}>
         <div
-          className={`w-80 sm:w-88 border-l-2 border-[#d4af37] shadow-2xl flex flex-col justify-between animate-in slide-in-from-right duration-200 transition-colors overflow-hidden ${
+          className={`w-80 sm:w-88 ${
+            dir === 'ltr'
+              ? 'border-r-2 animate-in slide-in-from-left'
+              : 'border-l-2 animate-in slide-in-from-right'
+          } border-[#d4af37] shadow-2xl flex flex-col justify-between duration-200 transition-colors overflow-hidden ${
             isDark
               ? 'bg-[#081910] text-emerald-50'
               : 'bg-white text-[#11261b]'
@@ -118,12 +134,12 @@ export const HamburgerDrawer: React.FC<Props> = ({
             <div className="flex items-center gap-2.5">
               <img
                 src={`${import.meta.env.BASE_URL}kdf-logo-v4.webp`}
-                alt="خانقاہ دارالفلاح لوگو"
+                alt={t.appName}
                 className="w-10 h-10 rounded-xl shadow-md object-cover shrink-0"
               />
               <div>
                 <h3 className="text-lg font-extrabold font-lalezar leading-tight">
-                  خانقاہ دارالفلاح
+                  {t.appName}
                 </h3>
                 <p className="text-[10px] text-[#d4af37] font-sans font-semibold tracking-wide">
                   KHANQAH DAR-UL-FALAH
@@ -134,7 +150,7 @@ export const HamburgerDrawer: React.FC<Props> = ({
             <button
               onClick={onClose}
               className="p-2 rounded-lg text-[#d4af37] hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
-              title="بند کریں"
+              title={t.drawerCloseTitle}
             >
               <X className="w-5 h-5" />
             </button>
@@ -154,7 +170,7 @@ export const HamburgerDrawer: React.FC<Props> = ({
                   }`}
                 >
                   {isDark ? <Sun className="w-4 h-4 text-amber-300" /> : <Moon className="w-4 h-4 text-[#064326]" />}
-                  <span>{isDark ? 'لائٹ تھیم' : 'ڈارک تھیم'}</span>
+                  <span>{isDark ? t.drawerLightTheme : t.drawerDarkTheme}</span>
                 </button>
 
                 {onRefreshBlogger && (
@@ -168,7 +184,7 @@ export const HamburgerDrawer: React.FC<Props> = ({
                     }`}
                   >
                     <RotateCw className={`w-3.5 h-3.5 ${isRefreshingBlogger ? 'animate-spin' : ''}`} />
-                    <span>{isRefreshingBlogger ? 'تازہ جاری...' : 'اپ ڈیٹ'}</span>
+                    <span>{isRefreshingBlogger ? t.refreshingBtn : t.drawerUpdate}</span>
                   </button>
                 )}
               </div>
@@ -195,12 +211,12 @@ export const HamburgerDrawer: React.FC<Props> = ({
                     )}
                     <span>
                       {viewMode === 'desktop'
-                        ? 'موبائل موڈ پر جائیں (نارمل سائز)'
-                        : 'ڈیسک ٹاپ موڈ آن کریں'}
+                        ? t.drawerSwitchToMobile
+                        : t.drawerSwitchToDesktop}
                     </span>
                   </div>
                   <span className="text-[10px] px-2 py-0.5 rounded bg-black/15">
-                    {viewMode === 'desktop' ? 'ڈیسک ٹاپ' : 'موبائل'}
+                    {viewMode === 'desktop' ? t.drawerDesktopTag : t.drawerMobileTag}
                   </span>
                 </button>
               )}
@@ -213,7 +229,7 @@ export const HamburgerDrawer: React.FC<Props> = ({
               >
                 <div className="flex items-center gap-2">
                   <Download className="w-4 h-4 text-[#d4af37]" />
-                  <span>اینڈرائڈ APK ایپ ڈاؤنلوڈ کریں</span>
+                  <span>{t.drawerDownloadApk}</span>
                 </div>
                 <span className="text-[10px] bg-[#d4af37] text-[#051a0f] px-2 py-0.5 rounded font-sans font-bold">
                   APK
@@ -221,9 +237,9 @@ export const HamburgerDrawer: React.FC<Props> = ({
               </a>
             </div>
 
-            {/* Section 1: صفحات و لائبریری */}
+            {/* Section 1 */}
             <div className="pb-2">
-              <div className={sectionLabelClass}>صفحات و آڈیو لائبریری</div>
+              <div className={sectionLabelClass}>{t.drawerSec1}</div>
               <div className="space-y-0.5 font-lalezar text-xs sm:text-[13px]">
                 {onGoHome && (
                   <button
@@ -235,9 +251,9 @@ export const HamburgerDrawer: React.FC<Props> = ({
                   >
                     <div className="flex items-center gap-2.5 min-w-0">
                       <span className={iconBoxClass}><Home className="w-4 h-4" /></span>
-                      <span className="font-bold truncate">1. ہوم ڈیش بورڈ</span>
+                      <span className="font-bold truncate">{t.drawerItemHome}</span>
                     </div>
-                    <ChevronLeft className="w-4 h-4 opacity-40 group-hover:opacity-100 shrink-0" />
+                    <ChevronLeft className={`w-4 h-4 opacity-40 group-hover:opacity-100 shrink-0 ${dir === 'ltr' ? 'rotate-180' : ''}`} />
                   </button>
                 )}
 
@@ -250,9 +266,9 @@ export const HamburgerDrawer: React.FC<Props> = ({
                 >
                   <div className="flex items-center gap-2.5 min-w-0">
                     <span className={iconBoxClass}><Headphones className="w-4 h-4" /></span>
-                    <span className="font-bold truncate">2. تمام بیانات (فولڈر وائز)</span>
+                    <span className="font-bold truncate">{t.drawerItemAllBayanat}</span>
                   </div>
-                  <ChevronLeft className="w-4 h-4 opacity-40 group-hover:opacity-100 shrink-0" />
+                  <ChevronLeft className={`w-4 h-4 opacity-40 group-hover:opacity-100 shrink-0 ${dir === 'ltr' ? 'rotate-180' : ''}`} />
                 </button>
 
                 <button
@@ -264,9 +280,9 @@ export const HamburgerDrawer: React.FC<Props> = ({
                 >
                   <div className="flex items-center gap-2.5 min-w-0">
                     <span className={iconBoxClass}><HeartHandshake className="w-4 h-4" /></span>
-                    <span className="font-bold truncate">3. گولڈ آڈیو پیج و مجالس</span>
+                    <span className="font-bold truncate">{t.drawerItemGoldAudio}</span>
                   </div>
-                  <ChevronLeft className="w-4 h-4 opacity-40 group-hover:opacity-100 shrink-0" />
+                  <ChevronLeft className={`w-4 h-4 opacity-40 group-hover:opacity-100 shrink-0 ${dir === 'ltr' ? 'rotate-180' : ''}`} />
                 </button>
 
                 {onOpenUrl && (
@@ -280,9 +296,9 @@ export const HamburgerDrawer: React.FC<Props> = ({
                     >
                       <div className="flex items-center gap-2.5 min-w-0">
                         <span className={iconBoxClass}><BookOpen className="w-4 h-4" /></span>
-                        <span className="font-bold truncate">4. اسلامی اردو کتب لائبریری</span>
+                        <span className="font-bold truncate">{t.drawerItemBooks}</span>
                       </div>
-                      <ChevronLeft className="w-4 h-4 opacity-40 group-hover:opacity-100 shrink-0" />
+                      <ChevronLeft className={`w-4 h-4 opacity-40 group-hover:opacity-100 shrink-0 ${dir === 'ltr' ? 'rotate-180' : ''}`} />
                     </button>
 
                     <button
@@ -294,9 +310,9 @@ export const HamburgerDrawer: React.FC<Props> = ({
                     >
                       <div className="flex items-center gap-2.5 min-w-0">
                         <span className={iconBoxClass}><Bell className="w-4 h-4" /></span>
-                        <span className="font-bold truncate">5. خبریں اور اعلانات</span>
+                        <span className="font-bold truncate">{t.drawerItemNews}</span>
                       </div>
-                      <ChevronLeft className="w-4 h-4 opacity-40 group-hover:opacity-100 shrink-0" />
+                      <ChevronLeft className={`w-4 h-4 opacity-40 group-hover:opacity-100 shrink-0 ${dir === 'ltr' ? 'rotate-180' : ''}`} />
                     </button>
                   </>
                 )}
@@ -310,16 +326,16 @@ export const HamburgerDrawer: React.FC<Props> = ({
                 >
                   <div className="flex items-center gap-2.5 min-w-0">
                     <span className={iconBoxClass}><Globe className="w-4 h-4" /></span>
-                    <span className="font-bold truncate">6. آفیشل ویب سائٹ (بلاگر)</span>
+                    <span className="font-bold truncate">{t.drawerItemWebsite}</span>
                   </div>
-                  <ChevronLeft className="w-4 h-4 opacity-40 group-hover:opacity-100 shrink-0" />
+                  <ChevronLeft className={`w-4 h-4 opacity-40 group-hover:opacity-100 shrink-0 ${dir === 'ltr' ? 'rotate-180' : ''}`} />
                 </button>
               </div>
             </div>
 
-            {/* Section 2: تعارف و شرائط */}
+            {/* Section 2 */}
             <div className="pb-2">
-              <div className={sectionLabelClass}>تعارف و پالیسیاں</div>
+              <div className={sectionLabelClass}>{t.drawerSec2}</div>
               <div className="space-y-0.5 font-lalezar text-xs sm:text-[13px]">
                 <button
                   onClick={() => {
@@ -330,9 +346,9 @@ export const HamburgerDrawer: React.FC<Props> = ({
                 >
                   <div className="flex items-center gap-2.5 min-w-0">
                     <span className={iconBoxClass}><Landmark className="w-4 h-4" /></span>
-                    <span className="font-bold truncate">7. خانقاہ دارالفلاح کا تعارف</span>
+                    <span className="font-bold truncate">{t.drawerItemIntroKhanqah}</span>
                   </div>
-                  <ChevronLeft className="w-4 h-4 opacity-40 group-hover:opacity-100 shrink-0" />
+                  <ChevronLeft className={`w-4 h-4 opacity-40 group-hover:opacity-100 shrink-0 ${dir === 'ltr' ? 'rotate-180' : ''}`} />
                 </button>
 
                 <button
@@ -344,9 +360,9 @@ export const HamburgerDrawer: React.FC<Props> = ({
                 >
                   <div className="flex items-center gap-2.5 min-w-0">
                     <span className={iconBoxClass}><UserCheck className="w-4 h-4" /></span>
-                    <span className="font-bold truncate">8. تعارف شیخ مولانا محمد جمشید صاحب</span>
+                    <span className="font-bold truncate">{t.drawerItemIntroSheikh}</span>
                   </div>
-                  <ChevronLeft className="w-4 h-4 opacity-40 group-hover:opacity-100 shrink-0" />
+                  <ChevronLeft className={`w-4 h-4 opacity-40 group-hover:opacity-100 shrink-0 ${dir === 'ltr' ? 'rotate-180' : ''}`} />
                 </button>
 
                 {onOpenTerms && (
@@ -359,9 +375,9 @@ export const HamburgerDrawer: React.FC<Props> = ({
                   >
                     <div className="flex items-center gap-2.5 min-w-0">
                       <span className={iconBoxClass}><FileText className="w-4 h-4" /></span>
-                      <span className="font-bold truncate">9. شرائط و ضوابط (Terms)</span>
+                      <span className="font-bold truncate">{t.drawerItemTerms}</span>
                     </div>
-                    <ChevronLeft className="w-4 h-4 opacity-40 group-hover:opacity-100 shrink-0" />
+                    <ChevronLeft className={`w-4 h-4 opacity-40 group-hover:opacity-100 shrink-0 ${dir === 'ltr' ? 'rotate-180' : ''}`} />
                   </button>
                 )}
 
@@ -375,17 +391,17 @@ export const HamburgerDrawer: React.FC<Props> = ({
                   >
                     <div className="flex items-center gap-2.5 min-w-0">
                       <span className={iconBoxClass}><ShieldCheck className="w-4 h-4" /></span>
-                      <span className="font-bold truncate">10. پرائیویسی پالیسی (Privacy)</span>
+                      <span className="font-bold truncate">{t.drawerItemPrivacy}</span>
                     </div>
-                    <ChevronLeft className="w-4 h-4 opacity-40 group-hover:opacity-100 shrink-0" />
+                    <ChevronLeft className={`w-4 h-4 opacity-40 group-hover:opacity-100 shrink-0 ${dir === 'ltr' ? 'rotate-180' : ''}`} />
                   </button>
                 )}
               </div>
             </div>
 
-            {/* Section 3: رابطہ و ایپ */}
+            {/* Section 3 */}
             <div className="pb-1">
-              <div className={sectionLabelClass}>رابطہ و کمیونٹی</div>
+              <div className={sectionLabelClass}>{t.drawerSec3}</div>
               <div className="space-y-0.5 font-lalezar text-xs sm:text-[13px]">
                 <button
                   onClick={() => {
@@ -396,7 +412,9 @@ export const HamburgerDrawer: React.FC<Props> = ({
                       onOpenContact();
                     }
                   }}
-                  className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl transition-all group text-right border cursor-pointer ${
+                  className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl transition-all group border cursor-pointer ${
+                    dir === 'ltr' ? 'text-left' : 'text-right'
+                  } ${
                     isDark
                       ? 'border-emerald-600/40 bg-emerald-950/40 hover:bg-emerald-900/50 text-emerald-100'
                       : 'border-emerald-600/25 bg-emerald-50 hover:bg-emerald-100 text-emerald-950'
@@ -406,10 +424,10 @@ export const HamburgerDrawer: React.FC<Props> = ({
                     <span className="w-8 h-8 shrink-0 rounded-lg bg-[#25D366] text-white flex items-center justify-center">
                       <MessageCircle className="w-4 h-4 fill-white" />
                     </span>
-                    <span className="font-bold truncate">واٹس ایپ گروپس و چینل</span>
+                    <span className="font-bold truncate">{t.drawerItemWaGroups}</span>
                   </div>
                   <span className="text-[10px] font-sans font-bold bg-[#25D366] text-white px-2 py-0.5 rounded shrink-0">
-                    جوائن
+                    {t.drawerJoinTag}
                   </span>
                 </button>
 
@@ -422,9 +440,9 @@ export const HamburgerDrawer: React.FC<Props> = ({
                 >
                   <div className="flex items-center gap-2.5 min-w-0">
                     <span className={iconBoxClass}><PhoneCall className="w-4 h-4" /></span>
-                    <span className="font-bold truncate">رابطہ کریں (Contact Us)</span>
+                    <span className="font-bold truncate">{t.drawerItemContact}</span>
                   </div>
-                  <ChevronLeft className="w-4 h-4 opacity-40 group-hover:opacity-100 shrink-0" />
+                  <ChevronLeft className={`w-4 h-4 opacity-40 group-hover:opacity-100 shrink-0 ${dir === 'ltr' ? 'rotate-180' : ''}`} />
                 </button>
 
                 <button
@@ -436,9 +454,9 @@ export const HamburgerDrawer: React.FC<Props> = ({
                 >
                   <div className="flex items-center gap-2.5 min-w-0">
                     <span className={iconBoxClass}><Info className="w-4 h-4" /></span>
-                    <span className="font-bold truncate">ایپلیکیشن کے بارے میں</span>
+                    <span className="font-bold truncate">{t.drawerItemAbout}</span>
                   </div>
-                  <ChevronLeft className="w-4 h-4 opacity-40 group-hover:opacity-100 shrink-0" />
+                  <ChevronLeft className={`w-4 h-4 opacity-40 group-hover:opacity-100 shrink-0 ${dir === 'ltr' ? 'rotate-180' : ''}`} />
                 </button>
               </div>
             </div>

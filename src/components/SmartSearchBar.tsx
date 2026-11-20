@@ -21,6 +21,12 @@ import {
   isBayanNew,
   formatBayanDateUrdu,
 } from '../utils/archiveService';
+import {
+  AppLanguage,
+  DEFAULT_LANGUAGE,
+  UI_STRINGS,
+  getDir,
+} from '../data/translations';
 
 interface Props {
   isOpen: boolean;
@@ -31,6 +37,7 @@ interface Props {
   isDark: boolean;
   bayanatList?: BayanItem[];
   bloggerTabs?: BloggerPostTab[];
+  lang?: AppLanguage;
 }
 
 export type UnifiedSearchResult =
@@ -54,7 +61,10 @@ export const SmartSearchBar: React.FC<Props> = ({
   isDark,
   bayanatList = BAYANAT_DATABASE,
   bloggerTabs = [],
+  lang = DEFAULT_LANGUAGE,
 }) => {
+  const t = UI_STRINGS[lang];
+  const dir = getDir(lang);
   const [query, setQuery] = useState('');
   const [selectedFilter, setSelectedFilter] = useState<
     'all' | 'folders' | 'bayanat' | 'islahi' | 'dars' | 'posts'
@@ -231,7 +241,7 @@ export const SmartSearchBar: React.FC<Props> = ({
       className={`absolute top-0 left-0 right-0 z-40 border-b-2 border-[#d4af37] shadow-2xl animate-in slide-in-from-top-3 duration-200 transition-colors ${
         isDark ? 'bg-[#081b11] text-emerald-50' : 'bg-[#f4f7f6] text-[#11261b]'
       }`}
-      dir="rtl"
+      dir={dir}
     >
       <div className="max-w-5xl mx-auto p-3">
         {/* Search Input Box */}
@@ -246,14 +256,14 @@ export const SmartSearchBar: React.FC<Props> = ({
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="بیان کا نام، فولڈر، تاریخ (2026)، مقام (مسجد اسلام دین، دارالہدیٰ) یا اشتہار تلاش کریں..."
+            placeholder={t.searchPlaceholder}
             className="w-full bg-transparent border-none outline-hidden text-sm font-lalezar leading-normal placeholder-gray-400"
           />
           {query && (
             <button
               onClick={() => setQuery('')}
               className="p-1 rounded-md text-[#b08d43] hover:text-emerald-600 cursor-pointer"
-              title="صاف کریں"
+              title={t.clearBtn}
             >
               <X className="w-4 h-4" />
             </button>
@@ -262,7 +272,7 @@ export const SmartSearchBar: React.FC<Props> = ({
             onClick={onClose}
             className="px-3 py-1.5 bg-[#064326] hover:bg-[#095c34] text-white text-xs rounded-lg font-lalezar font-bold tracking-wide shadow-xs cursor-pointer"
           >
-            بند کریں
+            {t.closeBtn}
           </button>
         </div>
 
@@ -272,7 +282,7 @@ export const SmartSearchBar: React.FC<Props> = ({
             <div className="flex items-center gap-2">
               <Loader2 className="w-4 h-4 animate-spin text-emerald-400" />
               <span>
-                فولڈر ڈاؤنلوڈ جاری ہے: {folderProgress.current} / {folderProgress.total} ({folderProgress.title})
+                {t.downloadingText} {folderProgress.current} / {folderProgress.total} ({folderProgress.title})
               </span>
             </div>
             <span className="text-[10px] bg-emerald-800 px-2 py-0.5 rounded-full text-white font-sans">
@@ -285,16 +295,16 @@ export const SmartSearchBar: React.FC<Props> = ({
         <div className="flex items-center gap-1.5 mt-2 overflow-x-auto pb-1 text-xs font-lalezar no-scrollbar">
           <span className="text-[#8c6514] dark:text-[#d4af37] text-[11px] shrink-0 flex items-center gap-1 pl-1 font-bold">
             <Filter className="w-3.5 h-3.5" />
-            فلٹر:
+            {t.filterLabel}
           </span>
           {(
             [
-              ['all', 'سب مواد'],
-              ['folders', `فولڈرز (${foldersList.length})`],
-              ['bayanat', `تمام بیانات (${bayanatList.length})`],
-              ['islahi', 'اصلاحی مجالس'],
-              ['dars', 'دروسِ قرآن'],
-              ['posts', 'کتب و اشتہارات'],
+              ['all', t.filterAll],
+              ['folders', `${t.filterFolders} (${foldersList.length})`],
+              ['bayanat', `${t.filterBayanat} (${bayanatList.length})`],
+              ['islahi', t.filterIslahi],
+              ['dars', t.filterDars],
+              ['posts', t.filterPosts],
             ] as const
           ).map(([key, label]) => (
             <button
@@ -349,12 +359,12 @@ export const SmartSearchBar: React.FC<Props> = ({
                       {isDownloading ? (
                         <>
                           <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                          <span>ڈاؤنلوڈ جاری ہے...</span>
+                          <span>{t.downloadingText}</span>
                         </>
                       ) : (
                         <>
                           <FolderDown className="w-3.5 h-3.5 text-[#d4af37]" />
-                          <span>پورا فولڈر ڈاؤنلوڈ کریں ({folder.items.length} فائلیں)</span>
+                          <span>{t.downloadWholeFolder} ({folder.items.length} {t.filesWord})</span>
                         </>
                       )}
                     </button>
@@ -377,15 +387,15 @@ export const SmartSearchBar: React.FC<Props> = ({
                 isDark ? 'bg-[#062214] text-[#d4af37]' : 'bg-[#ebf2ee] text-[#064326]'
               }`}
             >
-              <span className="font-bold">دستیاب نتائج: {searchResults.length}</span>
+              <span className="font-bold">{t.resultsAvailable} {searchResults.length}</span>
               <span className="text-[10px] opacity-75">
-                اسی صفحے سے ڈاؤنلوڈ یا واٹس ایپ پر شیئر کریں
+                {t.searchHint}
               </span>
             </div>
 
             {searchResults.length === 0 ? (
               <div className="p-6 text-center opacity-70 font-lalezar text-base">
-                کوئی نتیجہ نہیں ملا۔ دوسرا لفظ، تاریخ یا مقام تلاش کیجیے۔
+                {t.noResults}
               </div>
             ) : (
               searchResults.map((item, idx) => {
@@ -418,7 +428,7 @@ export const SmartSearchBar: React.FC<Props> = ({
                               </span>
                             )}
                             <span className="text-[#064326] dark:text-[#d4af37] font-bold">
-                              پوسٹ کھولیں
+                              {t.openPost}
                             </span>
                           </div>
                         </div>
@@ -449,7 +459,7 @@ export const SmartSearchBar: React.FC<Props> = ({
                           <div className="flex items-center gap-1.5">
                             {isNew && (
                               <span className="px-1.5 py-0.5 rounded bg-[#d4af37] text-[#051a0f] text-[10px] font-bold shrink-0">
-                                نیا
+                                {t.newShortBadge}
                               </span>
                             )}
                             <h4 className="text-sm sm:text-base font-bold font-lalezar leading-tight truncate">
@@ -470,7 +480,7 @@ export const SmartSearchBar: React.FC<Props> = ({
                               <>
                                 <span aria-hidden="true">·</span>
                                 <span className="tabular-nums">
-                                  {Math.max(1, Math.floor(parseFloat(bayan.length) / 60))} منٹ
+                                  {Math.max(1, Math.floor(parseFloat(bayan.length) / 60))} {t.minuteUnit}
                                 </span>
                               </>
                             )}
@@ -482,7 +492,7 @@ export const SmartSearchBar: React.FC<Props> = ({
                         <button
                           onClick={(e) => handleShareSingle(e, bayan)}
                           className="p-2 rounded-lg bg-[#25D366] hover:bg-[#1faa4e] text-white shadow-xs active:scale-95 transition-all cursor-pointer"
-                          title="واٹس ایپ پر شیئر کریں"
+                          title={t.shareLabel}
                         >
                           <Share2 className="w-3.5 h-3.5" />
                         </button>
@@ -494,14 +504,14 @@ export const SmartSearchBar: React.FC<Props> = ({
                               ? 'bg-amber-600 cursor-wait opacity-90'
                               : 'bg-[#064326] hover:bg-[#095c34]'
                           }`}
-                          title="موبائل میموری میں خودکار ڈاؤنلوڈ کریں"
+                          title={t.downloadLabel}
                         >
                           {activeDownloadIds.has(bayan.id) ? (
                             <Loader2 className="w-3.5 h-3.5 animate-spin" />
                           ) : (
                             <>
                               <Download className="w-3.5 h-3.5" />
-                              <span className="hidden xs:inline">ڈاؤنلوڈ</span>
+                              <span className="hidden xs:inline">{t.downloadLabel}</span>
                             </>
                           )}
                         </button>

@@ -3,15 +3,30 @@ import { Play, Pause, Volume2, VolumeX, Download, X, Loader2, Share2 } from 'luc
 import { BayanItem } from '../data/bayanatData';
 import { downloadSingleBayan, subscribeToDownloads } from '../utils/downloadHelper';
 import { shareBayanOnWhatsApp } from '../utils/archiveService';
+import {
+  AppLanguage,
+  DEFAULT_LANGUAGE,
+  UI_STRINGS,
+  getDir,
+} from '../data/translations';
 
 interface Props {
   currentBayan: BayanItem | null;
   onClose: () => void;
   onNotify?: (message: string) => void;
   isDark: boolean;
+  lang?: AppLanguage;
 }
 
-export const AudioPlayerBar: React.FC<Props> = ({ currentBayan, onClose, onNotify, isDark }) => {
+export const AudioPlayerBar: React.FC<Props> = ({
+  currentBayan,
+  onClose,
+  onNotify,
+  isDark,
+  lang = DEFAULT_LANGUAGE,
+}) => {
+  const t = UI_STRINGS[lang];
+  const dir = getDir(lang);
   const audioRef = useRef<HTMLAudioElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
@@ -97,7 +112,7 @@ export const AudioPlayerBar: React.FC<Props> = ({ currentBayan, onClose, onNotif
           ? 'bg-gradient-to-t from-[#1b120a] to-[#2d1e13] text-amber-100'
           : 'bg-gradient-to-t from-[#f5eedc] to-[#fcf9f2] text-[#3d2e21]'
       }`}
-      dir="rtl"
+      dir={dir}
     >
       <audio
         ref={audioRef}
@@ -156,17 +171,17 @@ export const AudioPlayerBar: React.FC<Props> = ({ currentBayan, onClose, onNotif
                   ? 'bg-amber-600 cursor-wait opacity-90'
                   : 'bg-[#064326] hover:bg-[#095c34]'
               }`}
-              title="موبائل میموری میں خودکار ڈاؤنلوڈ کریں (بغیر کوئی اور پیج کھولے)"
+              title={t.downloadLabel}
             >
               {activeDownloadIds.has(currentBayan.id) ? (
                 <>
                   <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                  <span>ڈاؤنلوڈ...</span>
+                  <span>{t.loadingLabel}</span>
                 </>
               ) : (
                 <>
                   <Download className="w-3.5 h-3.5" />
-                  <span>ڈاؤنلوڈ</span>
+                  <span>{t.downloadLabel}</span>
                 </>
               )}
             </button>
@@ -175,16 +190,16 @@ export const AudioPlayerBar: React.FC<Props> = ({ currentBayan, onClose, onNotif
             <button
               onClick={() => shareBayanOnWhatsApp(currentBayan)}
               className="px-2.5 py-1 bg-[#25D366] hover:bg-[#1faa4e] text-white font-lalezar text-xs rounded-md shadow flex items-center gap-1 transition-all active:scale-95 cursor-pointer"
-              title="واٹس ایپ پر دوستوں کو بھیجیں"
+              title={t.shareLabel}
             >
               <Share2 className="w-3.5 h-3.5" />
-              <span className="hidden xs:inline">شیئر</span>
+              <span className="hidden xs:inline">{t.shareLabel}</span>
             </button>
 
             <button
               onClick={onClose}
               className="p-1.5 rounded text-red-500 hover:text-red-400 cursor-pointer"
-              title="پلیئر بند کریں"
+              title={t.closeBtn}
             >
               <X className="w-4 h-4" />
             </button>

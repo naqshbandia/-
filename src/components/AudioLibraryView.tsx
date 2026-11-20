@@ -40,6 +40,12 @@ import {
 } from '../utils/downloadHelper';
 import { OFFICIAL_WHATSAPP_LINKS, OFFICIAL_APK_URL, SHEIKH_GLASS_BANNER_URL, WHATSAPP_DIRECT_CHAT_URL } from '../data/appConfig';
 import { shareBayanOnWhatsApp, isBayanNew, normalizeSearchText } from '../utils/archiveService';
+import {
+  AppLanguage,
+  DEFAULT_LANGUAGE,
+  UI_STRINGS,
+  getDir,
+} from '../data/translations';
 
 interface Props {
   onPlayAudio: (bayan: BayanItem) => void;
@@ -50,6 +56,7 @@ interface Props {
   currentPlayingBayanId?: string | null;
   bayanatList?: BayanItem[];
   initialFolderId?: string;
+  lang?: AppLanguage;
 }
 
 export interface FolderInfo {
@@ -72,7 +79,10 @@ export const AudioLibraryView: React.FC<Props> = ({
   currentPlayingBayanId,
   bayanatList = BAYANAT_DATABASE,
   initialFolderId = 'all',
+  lang = DEFAULT_LANGUAGE,
 }) => {
+  const t = UI_STRINGS[lang];
+  const dir = getDir(lang);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedFolderId, setSelectedFolderId] = useState<string>(initialFolderId);
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
@@ -208,7 +218,7 @@ export const AudioLibraryView: React.FC<Props> = ({
       className={`flex-1 w-full h-full flex flex-col overflow-y-auto select-none transition-colors duration-200 font-modern ${
         isDark ? 'bg-[#18110b] text-amber-50' : 'bg-[#faf6ee] text-[#2c1f15]'
       }`}
-      dir="rtl"
+      dir={dir}
     >
       {/* 
         AUTHENTIC HOME HERO SECTION (Exactly matching Screenshot_20261111-184312_cd06ab0b.png)
@@ -357,22 +367,24 @@ export const AudioLibraryView: React.FC<Props> = ({
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="بیان کا نام یا مقام سرچ کریں"
-            className="flex-1 px-3.5 py-2.5 text-sm sm:text-base text-[#2c1f15] bg-white outline-none placeholder-gray-500 font-medium text-right"
-            dir="rtl"
+            placeholder={t.searchPlaceholder}
+            className={`flex-1 px-3.5 py-2.5 text-sm sm:text-base text-[#2c1f15] bg-white outline-none placeholder-gray-500 font-medium ${
+              dir === 'ltr' ? 'text-left' : 'text-right'
+            }`}
+            dir={dir}
           />
           {searchQuery && (
             <button
               onClick={() => setSearchQuery('')}
               className="px-2 text-xs text-amber-700 hover:text-amber-900 bg-amber-50 font-bold"
             >
-              صاف کریں
+              {t.clearBtn}
             </button>
           )}
           <button
             onClick={() => {}}
             className="bg-[#b08d43] hover:bg-[#9a7b38] text-white px-5 flex items-center justify-center transition-colors active:scale-95"
-            title="تلاش کریں"
+            title={t.headerSearchTitle}
           >
             <Search className="w-5 h-5" />
           </button>
@@ -688,7 +700,7 @@ export const AudioLibraryView: React.FC<Props> = ({
                     <div className="flex items-center gap-1.5">
                       {isBayanNew(bayan) && (
                         <span className="px-1.5 py-0.5 rounded bg-[#d4af37] text-[#051a0f] text-[10px] font-bold shrink-0">
-                          نیا
+                          {t.newShortBadge}
                         </span>
                       )}
                       <h3
@@ -717,7 +729,7 @@ export const AudioLibraryView: React.FC<Props> = ({
                       {bayan.length && (
                         <span className="font-sans text-[11px] text-gray-400 flex items-center gap-1">
                           <Clock className="w-3 h-3 text-gray-400" />
-                          {Math.floor(parseFloat(bayan.length) / 60)} منٹ
+                          {Math.floor(parseFloat(bayan.length) / 60)} {t.minuteUnit}
                         </span>
                       )}
 
@@ -746,7 +758,7 @@ export const AudioLibraryView: React.FC<Props> = ({
                       shareBayanOnWhatsApp(bayan);
                     }}
                     className="p-2 rounded-xl bg-[#25D366] hover:bg-[#1faa4e] text-white shadow-sm transition-all active:scale-95 cursor-pointer"
-                    title="واٹس ایپ پر دوستوں کو شیئر کریں"
+                    title={t.shareLabel}
                   >
                     <Share2 className="w-3.5 h-3.5" />
                   </button>
@@ -761,10 +773,10 @@ export const AudioLibraryView: React.FC<Props> = ({
                         ? 'bg-amber-900/30 text-amber-200 border border-[#b08d43]/40 hover:bg-[#b08d43] hover:text-white'
                         : 'bg-amber-50 text-[#3d2e21] border border-[#b08d43]/40 hover:bg-[#b08d43] hover:text-white'
                     }`}
-                    title="بیان سنیں"
+                    title={t.playLabel}
                   >
                     <Play className={`w-3.5 h-3.5 ${isPlayingThis ? 'fill-white text-white' : 'fill-current'}`} />
-                    <span>{isPlayingThis ? 'چل رہا ہے' : 'سنیں'}</span>
+                    <span>{isPlayingThis ? t.playingLabel : t.listenLabel}</span>
                   </button>
 
                   {/* INSTANT DOWNLOAD BUTTON - CRITICAL USER REQUIREMENT */}
@@ -776,17 +788,17 @@ export const AudioLibraryView: React.FC<Props> = ({
                         ? 'bg-amber-600 text-white cursor-wait opacity-90'
                         : 'bg-[#064326] hover:bg-[#095c34] text-white shadow-emerald-900/20 hover:shadow-md'
                     }`}
-                    title="فورا موبائل میموری میں ڈاؤنلوڈ کریں (بغیر کوئی اور پیج کھولے)"
+                    title={t.downloadLabel}
                   >
                     {isDownloadingThis ? (
                       <>
                         <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                        <span>ڈاؤنلوڈ جاری ہے...</span>
+                        <span>{t.loadingLabel}</span>
                       </>
                     ) : (
                       <>
                         <Download className="w-3.5 h-3.5" />
-                        <span>ڈاؤنلوڈ</span>
+                        <span>{t.downloadLabel}</span>
                       </>
                     )}
                   </button>

@@ -29,6 +29,14 @@ import { useBloggerTabs } from './utils/bloggerService';
 import { useArchiveBayanat } from './utils/archiveService';
 import { PWAInstallBanner } from './components/PWAInstallBanner';
 import { DownloadCloud } from 'lucide-react';
+import {
+  AppLanguage,
+  DEFAULT_LANGUAGE,
+  LANG_STORAGE_KEY,
+  UI_STRINGS,
+  getDir,
+  isValidAppLanguage,
+} from './data/translations';
 
 export default function App() {
   // Home Screen defaults to the clean Islamic Smart Dashboard
@@ -37,6 +45,17 @@ export default function App() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [selectedLibraryFolderId, setSelectedLibraryFolderId] = useState<string>('all');
+
+  // App Language state: Always opens in Urdu ('ur') by default unless user explicitly switches
+  const [lang, setLang] = useState<AppLanguage>(() => {
+    try {
+      const saved = localStorage.getItem(LANG_STORAGE_KEY);
+      if (isValidAppLanguage(saved)) {
+        return saved;
+      }
+    } catch {}
+    return DEFAULT_LANGUAGE;
+  });
 
   // Dynamic Blogger Posts & Libraries (automatically updates when new posts are published on Blogger)
   const { tabs, isRefreshing, refreshPosts } = useBloggerTabs();
@@ -84,6 +103,12 @@ export default function App() {
     }
   }, [viewMode]);
 
+  // Sync HTML lang and direction attribute whenever language changes
+  useEffect(() => {
+    document.documentElement.lang = lang;
+    document.documentElement.dir = getDir(lang);
+  }, [lang]);
+
   // Toast notification message
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
@@ -117,11 +142,19 @@ export default function App() {
       } catch {}
       showNotification(
         next === 'desktop'
-          ? 'ڈیسک ٹاپ موڈ فعال کر دیا گیا ہے'
-          : 'موبائل موڈ فعال کر دیا گیا ہے'
+          ? UI_STRINGS[lang].toastDesktopMode
+          : UI_STRINGS[lang].toastMobileMode
       );
       return next;
     });
+  };
+
+  const handleChangeLanguage = (nextLang: AppLanguage) => {
+    setLang(nextLang);
+    try {
+      localStorage.setItem(LANG_STORAGE_KEY, nextLang);
+    } catch {}
+    showNotification(UI_STRINGS[nextLang].toastLangChanged);
   };
 
   const showNotification = (msg: string) => {
@@ -188,10 +221,12 @@ export default function App() {
         onToggleViewMode={toggleViewMode}
         isDashboard={activeView === 'dashboard'}
         onGoHome={() => setActiveView('dashboard')}
+        lang={lang}
+        onChangeLang={handleChangeLanguage}
       />
 
       {/* PWA 1-Click Android App Install Banner */}
-      <PWAInstallBanner isDark={isDark} onNotify={showNotification} />
+      <PWAInstallBanner isDark={isDark} onNotify={showNotification} lang={lang} />
 
       {/* Smart Search Bar */}
       <div className="relative">
@@ -204,6 +239,7 @@ export default function App() {
           isDark={isDark}
           bayanatList={bayanat}
           bloggerTabs={tabs}
+          lang={lang}
         />
       </div>
 
@@ -212,6 +248,7 @@ export default function App() {
         {activeView === 'dashboard' ? (
           <SmartDashboardHome
             isDark={isDark}
+            lang={lang}
             bayanatList={bayanat}
             bloggerTabs={tabs}
             onRefreshBlogger={handleManualRefresh}
@@ -238,6 +275,7 @@ export default function App() {
             currentPlayingBayanId={currentBayan?.id || null}
             bayanatList={bayanat}
             initialFolderId={selectedLibraryFolderId}
+            lang={lang}
           />
         ) : (
           <WebViewContainer
@@ -274,6 +312,7 @@ export default function App() {
         onToggleViewMode={toggleViewMode}
         onRefreshBlogger={handleManualRefresh}
         isRefreshingBlogger={isRefreshing || isSyncingArchive}
+        lang={lang}
       />
 
       {/* Floating Audio Player with 1-Click Memory Download */}
@@ -282,42 +321,47 @@ export default function App() {
         onClose={() => setCurrentBayan(null)}
         onNotify={showNotification}
         isDark={isDark}
+        lang={lang}
       />
 
       {/* Real-time Download & Sync Toast Notification */}
       {toastMessage && (
         <div
           className="fixed top-20 left-1/2 -translate-x-1/2 z-50 bg-[#064326] text-white px-5 py-2.5 rounded-full shadow-2xl border border-[#d4af37] flex items-center gap-2.5 font-lalezar text-sm animate-in slide-in-from-top-3 duration-200"
-          dir="rtl"
+          dir={getDir(lang)}
         >
           <DownloadCloud className="w-5 h-5 text-[#00ff99] shrink-0" />
           <span className="truncate max-w-xs sm:max-w-md">{toastMessage}</span>
         </div>
       )}
 
-      {/* Urdu Information Modals */}
+      {/* Information Modals */}
       <IntroKhanqahModal
         isOpen={isIntroKhanqahOpen}
         onClose={() => setIsIntroKhanqahOpen(false)}
         isDark={isDark}
+        lang={lang}
       />
 
       <IntroSheikhModal
         isOpen={isIntroSheikhOpen}
         onClose={() => setIsIntroSheikhOpen(false)}
         isDark={isDark}
+        lang={lang}
       />
 
       <WhatsAppGroupsModal
         isOpen={isWhatsAppGroupsOpen}
         onClose={() => setIsWhatsAppGroupsOpen(false)}
         isDark={isDark}
+        lang={lang}
       />
 
       <ContactModal
         isOpen={isContactOpen}
         onClose={() => setIsContactOpen(false)}
         isDark={isDark}
+        lang={lang}
         onOpenWhatsAppGroups={() => setIsWhatsAppGroupsOpen(true)}
       />
 
@@ -325,18 +369,21 @@ export default function App() {
         isOpen={isAboutOpen}
         onClose={() => setIsAboutOpen(false)}
         isDark={isDark}
+        lang={lang}
       />
 
       <TermsModal
         isOpen={isTermsOpen}
         onClose={() => setIsTermsOpen(false)}
         isDark={isDark}
+        lang={lang}
       />
 
       <PrivacyPolicyModal
         isOpen={isPrivacyOpen}
         onClose={() => setIsPrivacyOpen(false)}
         isDark={isDark}
+        lang={lang}
       />
     </div>
   );

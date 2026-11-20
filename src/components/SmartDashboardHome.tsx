@@ -62,9 +62,20 @@ import {
   loadCachedTickerMessage,
   fetchKhanqahTickerMessage,
 } from '../utils/khanqahScheduleService';
+import {
+  AppLanguage,
+  DEFAULT_LANGUAGE,
+  UI_STRINGS,
+  getDir,
+  getDateLocale,
+  getFarzLabel,
+  getJamaatLabel,
+  getNawafilLabel,
+} from '../data/translations';
 
 interface Props {
   isDark: boolean;
+  lang?: AppLanguage;
   bayanatList?: BayanItem[];
   bloggerTabs?: BloggerPostTab[];
   onRefreshBlogger?: () => void;
@@ -143,6 +154,7 @@ const SlidingBayanTitle: React.FC<{ text: string }> = ({ text }) => {
 
 export const SmartDashboardHome: React.FC<Props> = ({
   isDark,
+  lang = DEFAULT_LANGUAGE,
   bayanatList = BAYANAT_DATABASE,
   bloggerTabs = [],
   onRefreshBlogger,
@@ -159,6 +171,8 @@ export const SmartDashboardHome: React.FC<Props> = ({
   onNotify,
   currentPlayingBayanId,
 }) => {
+  const t = UI_STRINGS[lang];
+  const dir = getDir(lang);
   const [now, setNow] = useState<Date>(() => new Date());
   const [glassBannerError, setGlassBannerError] = useState(false);
   const [tickerMessage, setTickerMessage] = useState<string>(() => loadCachedTickerMessage());
@@ -229,10 +243,10 @@ export const SmartDashboardHome: React.FC<Props> = ({
         setKhanqahOfficialSchedule(parsed);
         setIsKhanqahSyncedHtml(true);
         if (notify) {
-          onNotify('خانقاہ دارالفلاح کے باجماعت اوقات تازہ ہو گئے!');
+          onNotify(t.khanqahScheduleRefreshed);
         }
       } else if (notify) {
-        onNotify('موجودہ محفوظ شدہ اوقات دکھائے جا رہے ہیں۔');
+        onNotify(t.khanqahScheduleCached);
       }
     } finally {
       setIsRefreshingKhanqah(false);
@@ -356,7 +370,7 @@ export const SmartDashboardHome: React.FC<Props> = ({
     e.preventDefault();
     const trimmed = notifyEmailInput.trim();
     if (!trimmed.includes('@') || !trimmed.includes('.')) {
-      onNotify('براہ کرم درست Gmail پتہ درج کریں');
+      onNotify(t.invalidEmailToast);
       return;
     }
     try {
@@ -365,7 +379,7 @@ export const SmartDashboardHome: React.FC<Props> = ({
     setSavedNotifyEmail(trimmed);
     setShowNotifyForm(false);
     setNotifyEmailInput('');
-    onNotify('جزاک اللہ! لائیو بیان نوٹیفیکیشن کے لیے آپ کی Gmail محفوظ ہو گئی ہے۔');
+    onNotify(t.savedEmailToast);
   };
 
   const handleClearNotify = () => {
@@ -373,7 +387,7 @@ export const SmartDashboardHome: React.FC<Props> = ({
       localStorage.removeItem(NOTIFY_EMAIL_KEY);
     } catch {}
     setSavedNotifyEmail('');
-    onNotify('نوٹیفیکیشن ای میل ہٹا دیا گیا ہے۔');
+    onNotify(t.clearedEmailToast);
   };
 
   // Native App-Only Utility Cards (Archive.org MP3 Library + Official WhatsApp Groups)
@@ -381,22 +395,22 @@ export const SmartDashboardHome: React.FC<Props> = ({
     () => [
       {
         id: 'audio-library',
-        label: 'آڈیو لائبریری (MP3)',
-        subLabel: `${bayanatList.length} بیانات · آف لائن ڈاؤنلوڈ`,
+        label: t.audioLibraryTitle,
+        subLabel: `${bayanatList.length} ${t.audioLibrarySubSuffix}`,
         icon: Headphones,
         accent: 'text-[#064326] dark:text-[#00ff99]',
         onClick: onOpenLibrary,
       },
       {
         id: 'whatsapp-groups',
-        label: 'واٹس ایپ گروپس',
-        subLabel: 'آفیشل چینل و گروپس',
+        label: t.whatsappGroupsTitle,
+        subLabel: t.whatsappGroupsSub,
         icon: MessageCircle,
         accent: 'text-[#15803d] dark:text-emerald-400',
         onClick: onOpenWhatsAppGroups,
       },
     ],
-    [bayanatList.length, onOpenLibrary, onOpenWhatsAppGroups]
+    [bayanatList.length, onOpenLibrary, onOpenWhatsAppGroups, t.audioLibraryTitle, t.audioLibrarySubSuffix, t.whatsappGroupsTitle, t.whatsappGroupsSub]
   );
 
   // Live Blogger Posts Grid (1 Blogger post = 1 folder card, synced automatically)
@@ -437,7 +451,7 @@ export const SmartDashboardHome: React.FC<Props> = ({
       className={`flex-1 w-full h-full overflow-y-auto transition-colors duration-200 ${
         isDark ? 'bg-[#09150f] text-emerald-50' : 'bg-[#f4f7f6] text-[#11261b]'
       }`}
-      dir="rtl"
+      dir={dir}
     >
       <div className="max-w-5xl mx-auto px-3 sm:px-5 py-3 space-y-3">
         {/* 1. Top Sheikh Title Calligraphy Banner (Glass Crystal Card PNG Showcase) */}
@@ -450,7 +464,7 @@ export const SmartDashboardHome: React.FC<Props> = ({
             <div className="w-full flex items-center justify-center bg-gradient-to-l from-[#064326]/10 via-transparent to-[#064326]/10 px-4 py-3 sm:py-4">
               <img
                 src={SHEIKH_GLASS_BANNER_URL}
-                alt="پیر طریقت رہبر شریعت حضرت شیخ پیر محمد جمشید نقشبندی مجددی دامت برکاتہم"
+                alt={t.sheikhFullTitle}
                 onError={() => setGlassBannerError(true)}
                 className="max-h-36 sm:max-h-44 md:max-h-48 w-full max-w-2xl object-contain mx-auto drop-shadow-sm"
               />
@@ -458,10 +472,10 @@ export const SmartDashboardHome: React.FC<Props> = ({
           ) : (
             <div className="py-5 px-4 text-center bg-[#064326] text-white">
               <p className="text-lg sm:text-xl font-bold text-[#d4af37]">
-                خانقاہ دارالفلاح (سلسلہ عالیہ نقشبندیہ مجددیہ)
+                {t.appName} ({t.appSubtitle})
               </p>
               <p className="text-xs sm:text-sm text-emerald-100 mt-1">
-                شیخ الحدیث حضرت مولانا پیر محمد جمشید نقشبندی مجددی دامت برکاتہم
+                {t.sheikhFullTitle}
               </p>
             </div>
           )}
@@ -469,14 +483,14 @@ export const SmartDashboardHome: React.FC<Props> = ({
 
         {/* 2. Single-Line Urdu Scrolling Ticker Bar (Synced from GitHub khanqah-message.html) */}
         <section
-          aria-label="اہم پیغام"
+          aria-label={t.tickerBadge}
           className={`rounded-2xl border-2 border-[#d4af37]/80 shadow-sm overflow-hidden flex items-center transition-colors ${
             isDark ? 'bg-[#0c2317] text-emerald-50' : 'bg-white text-[#064326]'
           }`}
         >
-          <div className="bg-[#064326] text-[#d4af37] px-3 py-2.5 flex items-center gap-1.5 text-xs font-bold shrink-0 border-l border-[#d4af37]/40">
+          <div className="bg-[#064326] text-[#d4af37] px-3 py-2.5 flex items-center gap-1.5 text-xs font-bold shrink-0 border-e border-[#d4af37]/40">
             <Megaphone className="w-3.5 h-3.5 text-[#00ff99] shrink-0" />
-            <span>پیغام</span>
+            <span>{t.tickerBadge}</span>
           </div>
 
           <div className="urdu-ticker-viewport flex-1 min-w-0 py-2 px-1">
@@ -501,10 +515,10 @@ export const SmartDashboardHome: React.FC<Props> = ({
               {formattedClock}
             </div>
             <div className="text-base sm:text-lg font-bold text-[#d4af37] mt-1">
-              {prayerData?.hijriDate || 'ہجری تاریخ لوڈ ہو رہی ہے...'}
+              {prayerData?.hijriDate || t.hijriLoading}
             </div>
             <div className="text-xs text-emerald-100/75 mt-0.5 tabular-nums">
-              {now.toLocaleDateString('ur-PK', {
+              {now.toLocaleDateString(getDateLocale(lang), {
                 weekday: 'long',
                 year: 'numeric',
                 month: 'long',
@@ -513,7 +527,7 @@ export const SmartDashboardHome: React.FC<Props> = ({
             </div>
           </div>
 
-          {/* 3 Tab Buttons Right Above Prayer Cards: فرض نمازیں | دیگر نمازیں | جماعت اوقات */}
+          {/* 3 Tab Buttons Right Above Prayer Cards */}
           <div className="pt-2 border-t border-[#d4af37]/20 space-y-3">
             <div className="grid grid-cols-3 gap-1.5 sm:gap-2">
               <button
@@ -524,7 +538,7 @@ export const SmartDashboardHome: React.FC<Props> = ({
                     : 'bg-white/[0.06] text-emerald-100 border-[#d4af37]/30 hover:bg-white/10'
                 }`}
               >
-                فرض نمازیں
+                {t.tabFarz}
               </button>
               <button
                 onClick={() => setPrayerTab('nawafil')}
@@ -534,7 +548,7 @@ export const SmartDashboardHome: React.FC<Props> = ({
                     : 'bg-white/[0.06] text-emerald-100 border-[#d4af37]/30 hover:bg-white/10'
                 }`}
               >
-                دیگر نمازیں
+                {t.tabNawafil}
               </button>
               <button
                 onClick={() => setPrayerTab('jamaat')}
@@ -544,11 +558,11 @@ export const SmartDashboardHome: React.FC<Props> = ({
                     : 'bg-white/[0.06] text-emerald-100 border-[#d4af37]/30 hover:bg-white/10'
                 }`}
               >
-                جماعت اوقات
+                {t.tabJamaat}
               </button>
             </div>
 
-            {/* TAB 1: فرض نمازیں (Same clean 5-card architecture with Start & End Times) */}
+            {/* TAB 1: Farz Prayers */}
             {prayerTab === 'farz' && (
               prayerData ? (
                 <div className="grid grid-cols-5 gap-1.5 sm:gap-2">
@@ -564,9 +578,11 @@ export const SmartDashboardHome: React.FC<Props> = ({
                         }`}
                       >
                         <div className="text-[11px] sm:text-xs font-bold text-[#d4af37]">
-                          {p.name}
+                          {getFarzLabel(lang, p.key)}
                           {isNext && (
-                            <span className="block text-[9px] text-[#00ff99] mt-0.5">اگلی نماز</span>
+                            <span className="block text-[9px] text-[#00ff99] mt-0.5">
+                              {t.nextPrayer}
+                            </span>
                           )}
                         </div>
                         <div className="text-[11px] sm:text-xs font-bold tabular-nums mt-1" dir="ltr">
@@ -576,7 +592,7 @@ export const SmartDashboardHome: React.FC<Props> = ({
                           className="text-[9px] sm:text-[10px] text-emerald-100/70 tabular-nums mt-0.5"
                           dir="ltr"
                         >
-                          تا {p.end12}
+                          {t.untilPrefix} {p.end12}
                         </div>
                       </div>
                     );
@@ -584,12 +600,12 @@ export const SmartDashboardHome: React.FC<Props> = ({
                 </div>
               ) : (
                 <div className="text-center text-xs text-emerald-200/70 py-3">
-                  فرض نمازوں کے اوقات لوڈ ہو رہے ہیں...
+                  {t.farzLoading}
                 </div>
               )
             )}
 
-            {/* TAB 2: دیگر نمازیں / نوافل (Exact Same 5-Card Golden Architecture) */}
+            {/* TAB 2: Nawafil & Sunnah */}
             {prayerTab === 'nawafil' && (
               nawafilList.length > 0 ? (
                 <div className="space-y-1.5">
@@ -608,7 +624,7 @@ export const SmartDashboardHome: React.FC<Props> = ({
                             item.isProhibited ? 'text-rose-300' : 'text-[#d4af37]'
                           }`}
                         >
-                          {item.name}
+                          {getNawafilLabel(lang, item.key)}
                         </div>
                         <div className="text-[11px] sm:text-xs font-bold tabular-nums mt-1" dir="ltr">
                           {item.start12}
@@ -617,30 +633,33 @@ export const SmartDashboardHome: React.FC<Props> = ({
                           className="text-[9px] sm:text-[10px] text-emerald-100/75 tabular-nums mt-0.5"
                           dir="ltr"
                         >
-                          تا {item.end12}
+                          {t.untilPrefix} {item.end12}
                         </div>
                       </div>
                     ))}
                   </div>
                   <p className="text-[11px] text-center text-emerald-100/75">
-                    طلوعِ آفتاب: <span className="tabular-nums text-[#d4af37]" dir="ltr">{formatTo12Hour(prayerData?.sunrise24 || '06:00')}</span>
+                    {t.sunriseLabel}{' '}
+                    <span className="tabular-nums text-[#d4af37]" dir="ltr">
+                      {formatTo12Hour(prayerData?.sunrise24 || '06:00')}
+                    </span>
                     <span aria-hidden="true"> · </span>
-                    مکروہ زوال کے وقت (ظہر سے 10 منٹ قبل) نماز ممنوع ہے
+                    {t.zawalNote}
                   </p>
                 </div>
               ) : (
                 <div className="text-center text-xs text-emerald-200/70 py-3">
-                  نوافل کے اوقات لوڈ ہو رہے ہیں...
+                  {t.nawafilLoading}
                 </div>
               )
             )}
 
-            {/* TAB 3: اپنی مسجد کے جماعت اوقات (ہر صارف خود سیٹ کر سکتا ہے) */}
+            {/* TAB 3: User Mosque Jamaat Times */}
             {prayerTab === 'jamaat' && (
               <div className="space-y-2.5">
                 <div className="flex flex-wrap items-center justify-between gap-2 px-1">
                   <span className="text-xs text-amber-200 font-semibold">
-                    {myMosqueName || 'میری مسجد'} — اپنی مسجد کے باجماعت اوقات
+                    {myMosqueName === 'میری مسجد' ? t.myMosqueDefault : myMosqueName || t.myMosqueDefault} — {t.myMosqueScheduleLabel}
                   </span>
                   <div className="flex items-center gap-2">
                     <button
@@ -648,19 +667,19 @@ export const SmartDashboardHome: React.FC<Props> = ({
                       className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[#d4af37]/20 hover:bg-[#d4af37]/30 border border-[#d4af37]/50 text-[#d4af37] text-[11px] font-bold cursor-pointer"
                     >
                       {isEditingJamaat ? <Check className="w-3.5 h-3.5" /> : <Pencil className="w-3.5 h-3.5" />}
-                      <span>{isEditingJamaat ? 'محفوظ / بند کریں' : 'اوقات سیٹ / تبدیل کریں'}</span>
+                      <span>{isEditingJamaat ? t.saveCloseBtn : t.editTimesBtn}</span>
                     </button>
                     {isEditingJamaat && (
                       <button
                         onClick={() => {
                           setJamaatSchedule(DEFAULT_JAMAAT_SCHEDULE);
-                          setMyMosqueName('میری مسجد');
-                          onNotify('مسجد کے اوقات ڈیفالٹ سیٹنگ پر بحال کر دیے گئے۔');
+                          setMyMosqueName(t.myMosqueDefault);
+                          onNotify(t.resetDefaultNotice);
                         }}
                         className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-[11px] text-emerald-100 cursor-pointer"
                       >
                         <RotateCcw className="w-3 h-3" />
-                        <span>ڈیفالٹ</span>
+                        <span>{t.resetDefaultBtn}</span>
                       </button>
                     )}
                   </div>
@@ -674,15 +693,15 @@ export const SmartDashboardHome: React.FC<Props> = ({
                         className="rounded-xl py-2 px-0.5 sm:px-1 text-center border bg-[#d4af37]/[0.10] border-[#d4af37]/30 text-emerald-50 overflow-hidden"
                       >
                         <div className="text-[10px] sm:text-xs font-bold text-[#d4af37] whitespace-nowrap">
-                          {item.name.replace(' جماعت', '')}
+                          {getJamaatLabel(lang, item.key)}
                         </div>
                         <div className="text-[9.5px] sm:text-xs font-bold text-[#00ff99] tabular-nums mt-1 whitespace-nowrap" dir="ltr">
                           {item.resolved12}
                         </div>
                         <div className="text-[8px] sm:text-[9px] text-emerald-100/70 mt-0.5 whitespace-nowrap">
                           {item.mode === 'custom' || item.key === 'Jummah'
-                            ? 'مقررہ'
-                            : `+${item.offsetMinutes} منٹ`}
+                            ? t.fixedBadge
+                            : `+${item.offsetMinutes} ${t.minuteUnit}`}
                         </div>
                       </div>
                     ))}
@@ -690,13 +709,13 @@ export const SmartDashboardHome: React.FC<Props> = ({
                 ) : (
                   <div className="space-y-2.5 bg-black/30 p-3 rounded-2xl border border-[#d4af37]/40">
                     <div className="flex flex-wrap items-center gap-2 pb-1 border-b border-white/10">
-                      <label className="text-[11px] font-bold text-[#d4af37]">اپنی مسجد کا نام:</label>
+                      <label className="text-[11px] font-bold text-[#d4af37]">{t.mosqueNameLabel}</label>
                       <input
                         type="text"
                         value={myMosqueName}
                         onChange={(e) => setMyMosqueName(e.target.value)}
                         maxLength={60}
-                        placeholder="مثلاً جامع مسجد رحمانیہ..."
+                        placeholder={t.mosqueNamePlaceholder}
                         className="flex-1 min-w-[160px] bg-white text-[#11261b] rounded-lg px-2.5 py-1 text-xs font-bold outline-none"
                       />
                     </div>
@@ -706,7 +725,9 @@ export const SmartDashboardHome: React.FC<Props> = ({
                           key={item.key}
                           className="flex flex-wrap items-center justify-between gap-2 p-2 rounded-xl bg-white/[0.06] border border-white/10 text-xs"
                         >
-                          <span className="font-bold text-[#d4af37] min-w-[78px]">{item.name}</span>
+                          <span className="font-bold text-[#d4af37] min-w-[78px]">
+                            {getJamaatLabel(lang, item.key)} {t.jamaatSuffix}
+                          </span>
 
                           {item.key !== 'Jummah' && (
                             <select
@@ -720,8 +741,8 @@ export const SmartDashboardHome: React.FC<Props> = ({
                               }}
                               className="bg-[#062214] text-white border border-[#d4af37]/40 rounded-lg px-2 py-1 text-[11px]"
                             >
-                              <option value="auto">اذان کے بعد (منٹ)</option>
-                              <option value="custom">مقررہ وقت</option>
+                              <option value="auto">{t.modeAutoLabel}</option>
+                              <option value="custom">{t.modeCustomLabel}</option>
                             </select>
                           )}
 
@@ -741,7 +762,7 @@ export const SmartDashboardHome: React.FC<Props> = ({
                                 }}
                                 className="w-14 bg-white text-[#11261b] rounded-lg px-2 py-1 text-xs font-bold text-center"
                               />
-                              <span className="text-[11px] opacity-80">منٹ</span>
+                              <span className="text-[11px] opacity-80">{t.minuteUnit}</span>
                             </div>
                           ) : (
                             <input
@@ -765,17 +786,17 @@ export const SmartDashboardHome: React.FC<Props> = ({
               </div>
             )}
 
-            {/* خانقاہ دارالفلاح کے باجماعت اوقات — ایک لائن میں (صرف ایڈمن HTML فائل سے اپڈیٹ) */}
+            {/* Official Khanqah Darul Falah Jama'at Schedule — Single Row */}
             <div className="pt-2.5 border-t border-[#d4af37]/25 space-y-1.5">
               <div className="flex items-center justify-between gap-2 px-0.5">
                 <div className="flex items-center gap-1.5 min-w-0">
                   <Landmark className="w-3.5 h-3.5 text-[#d4af37] shrink-0" />
                   <span className="text-[11px] sm:text-xs font-bold text-[#d4af37] truncate">
-                    خانقاہ دارالفلاح کے باجماعت اوقات
+                    {t.khanqahScheduleTitle}
                   </span>
                   {isKhanqahSyncedHtml && (
                     <span className="px-1.5 py-0.5 rounded bg-[#00ff99]/15 border border-[#00ff99]/35 text-[#00ff99] text-[9px] font-bold shrink-0">
-                      آفیشل
+                      {t.officialBadge}
                     </span>
                   )}
                 </div>
@@ -784,10 +805,10 @@ export const SmartDashboardHome: React.FC<Props> = ({
                   onClick={() => syncKhanqahScheduleFromHtml(true)}
                   disabled={isRefreshingKhanqah}
                   className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-white/[0.07] hover:bg-white/[0.14] border border-[#d4af37]/30 text-[10px] text-amber-100 cursor-pointer disabled:opacity-50 shrink-0"
-                  title="خانقاہ دارالفلاح کے تازہ ترین اوقات چیک کریں"
+                  title={t.refreshBtn}
                 >
                   <RotateCw className={`w-3 h-3 text-[#d4af37] ${isRefreshingKhanqah ? 'animate-spin' : ''}`} />
-                  <span>تازہ کریں</span>
+                  <span>{t.refreshBtn}</span>
                 </button>
               </div>
 
@@ -799,7 +820,7 @@ export const SmartDashboardHome: React.FC<Props> = ({
                     className="rounded-lg py-1.5 px-0.5 sm:px-1 text-center border bg-[#042414]/90 border-[#d4af37]/35 text-emerald-50 overflow-hidden"
                   >
                     <div className="text-[10px] sm:text-xs font-bold text-[#d4af37] whitespace-nowrap">
-                      {item.name.replace(' جماعت', '')}
+                      {getJamaatLabel(lang, item.key)}
                     </div>
                     <div
                       className="text-[9.5px] sm:text-xs font-bold text-[#00ff99] tabular-nums mt-0.5 whitespace-nowrap"
@@ -809,8 +830,8 @@ export const SmartDashboardHome: React.FC<Props> = ({
                     </div>
                     <div className="text-[8px] sm:text-[9px] text-emerald-100/70 whitespace-nowrap">
                       {item.mode === 'custom' || item.key === 'Jummah'
-                        ? 'مقررہ'
-                        : `+${item.offsetMinutes} منٹ`}
+                        ? t.fixedBadge
+                        : `+${item.offsetMinutes} ${t.minuteUnit}`}
                     </div>
                   </div>
                 ))}
@@ -835,23 +856,21 @@ export const SmartDashboardHome: React.FC<Props> = ({
                 </div>
                 <div className="min-w-0">
                   <h2 className="text-sm sm:text-base font-bold text-[#064326] dark:text-[#d4af37]">
-                    لائیو آڈیو بیان (Mixlr)
+                    {t.mixlrTitle}
                   </h2>
                   <p className="text-[11px] opacity-80 leading-snug">
-                    اس وقت کوئی لائیو آڈیو بیان نشر نہیں ہو رہا — نشر ہوتے ہی یہاں براہِ راست چلے گا
+                    {t.mixlrSubtitle}
                   </p>
                 </div>
               </div>
 
               <button
                 type="button"
-                onClick={() =>
-                  onNotify('اس وقت کوئی لائیو آڈیو نشر نہیں ہو رہا؛ شروع ہوتے ہی خودکار طور پر یہاں آڈیو چلے گا۔')
-                }
+                onClick={() => onNotify(t.mixlrOfflineToast)}
                 className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#064326] hover:bg-[#095c34] text-white border border-[#d4af37]/65 text-[11px] font-bold shadow-sm transition-all active:scale-95 shrink-0 cursor-pointer min-h-[38px]"
               >
                 <Headphones className="w-3.5 h-3.5 text-[#00ff99] shrink-0" />
-                <span>لائیو آڈیو نشریات (Mixlr)</span>
+                <span>{t.mixlrBtn}</span>
               </button>
             </div>
 
@@ -860,7 +879,7 @@ export const SmartDashboardHome: React.FC<Props> = ({
               {savedNotifyEmail && !showNotifyForm ? (
                 <div className="flex flex-wrap items-center justify-center gap-2 text-[11px] text-[#064326] dark:text-[#00ff99] font-semibold">
                   <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
-                  <span>لائیو نوٹیفیکیشن فعال ہے: {savedNotifyEmail}</span>
+                  <span>{t.liveNotifyActive} {savedNotifyEmail}</span>
                   <button
                     onClick={() => {
                       setNotifyEmailInput(savedNotifyEmail);
@@ -868,14 +887,14 @@ export const SmartDashboardHome: React.FC<Props> = ({
                     }}
                     className="text-[#8c6514] dark:text-[#d4af37] hover:underline text-[10.5px] cursor-pointer"
                   >
-                    تبدیل کریں
+                    {t.changeBtn}
                   </button>
                   <span aria-hidden="true" className="opacity-40">·</span>
                   <button
                     onClick={handleClearNotify}
                     className="text-rose-600 dark:text-rose-300 hover:underline text-[10.5px] cursor-pointer"
                   >
-                    بند کریں
+                    {t.turnOffBtn}
                   </button>
                 </div>
               ) : !showNotifyForm ? (
@@ -884,7 +903,7 @@ export const SmartDashboardHome: React.FC<Props> = ({
                   className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-xl border border-[#064326]/35 dark:border-[#d4af37]/70 text-[#064326] dark:text-[#d4af37] hover:bg-[#064326] hover:text-white dark:hover:bg-[#d4af37] dark:hover:text-[#051a0f] text-[11px] font-bold transition-all cursor-pointer min-h-[36px]"
                 >
                   <Bell className="w-3.5 h-3.5" />
-                  <span>لائیو بیان نوٹیفیکیشن آن کریں</span>
+                  <span>{t.enableLiveNotifyBtn}</span>
                 </button>
               ) : (
                 <form
@@ -897,24 +916,24 @@ export const SmartDashboardHome: React.FC<Props> = ({
                     type="email"
                     value={notifyEmailInput}
                     onChange={(e) => setNotifyEmailInput(e.target.value)}
-                    placeholder="اپنی Gmail یہاں لکھیں..."
+                    placeholder={t.emailPlaceholder}
                     required
                     dir="ltr"
-                    className="flex-1 px-3 py-1.5 rounded-lg bg-white text-[#11261b] text-xs outline-none placeholder-gray-500 text-right border border-emerald-900/15"
+                    className="flex-1 px-3 py-1.5 rounded-lg bg-white text-[#11261b] text-xs outline-none placeholder-gray-500 border border-emerald-900/15"
                   />
                   <div className="flex items-center gap-1.5 justify-end">
                     <button
                       type="submit"
                       className="px-3.5 py-1.5 rounded-lg bg-[#064326] dark:bg-[#00ff99] hover:bg-[#095c34] dark:hover:bg-[#33ffad] text-white dark:text-[#051a0f] text-[11px] font-bold transition-colors cursor-pointer whitespace-nowrap min-h-[34px]"
                     >
-                      آن کریں
+                      {t.turnOnBtn}
                     </button>
                     <button
                       type="button"
                       onClick={() => setShowNotifyForm(false)}
                       className="px-3 py-1.5 rounded-lg text-[11px] opacity-75 hover:opacity-100 hover:bg-black/5 dark:hover:bg-white/10 transition-colors cursor-pointer whitespace-nowrap min-h-[34px]"
                     >
-                      بعد میں
+                      {t.laterBtn}
                     </button>
                   </div>
                 </form>
@@ -942,10 +961,10 @@ export const SmartDashboardHome: React.FC<Props> = ({
               </div>
               <div>
                 <h2 className="text-[13px] sm:text-sm font-bold text-[#064326] dark:text-[#d4af37]">
-                  تازہ ترین اپلوڈ شدہ بیانات
+                  {t.latestBayanatTitle}
                 </h2>
                 <p className="text-[10px] opacity-75">
-                  سب سے آخر میں شامل کیے گئے بیانات (7 دن تک &quot;نیا&quot; نشان کے ساتھ)
+                  {t.latestBayanatSub}
                 </p>
               </div>
             </div>
@@ -954,8 +973,8 @@ export const SmartDashboardHome: React.FC<Props> = ({
               onClick={onOpenLibrary}
               className="inline-flex items-center gap-1 text-[11px] font-bold text-[#064326] dark:text-[#00ff99] hover:underline cursor-pointer whitespace-nowrap"
             >
-              <span>تمام بیانات دیکھیں</span>
-              <ArrowLeft className="w-3.5 h-3.5" />
+              <span>{t.viewAllBayanat}</span>
+              <ArrowLeft className={`w-3.5 h-3.5 ${dir === 'ltr' ? 'rotate-180' : ''}`} />
             </button>
           </div>
 
@@ -983,13 +1002,13 @@ export const SmartDashboardHome: React.FC<Props> = ({
                   {/* Top Row: Animated Red Neon NEW Badge + Complete Single-Line Title (auto-slides if overflow) */}
                   <button
                     onClick={() => onPlayAudio(bayan)}
-                    className="w-full text-right cursor-pointer space-y-1"
+                    className={`w-full cursor-pointer space-y-1 ${dir === 'ltr' ? 'text-left' : 'text-right'}`}
                     title={fullTitle}
                   >
                     <div className="flex items-center gap-1.5 min-w-0">
                       {showNeonNew && (
                         <span className="khanqah-new-neon-badge px-1.5 py-0.5 rounded text-[9.5px] font-extrabold tracking-wide shrink-0 whitespace-nowrap leading-none">
-                          NEW · نیا
+                          {t.newBadge}
                         </span>
                       )}
                       <SlidingBayanTitle text={fullTitle} />
@@ -1010,7 +1029,7 @@ export const SmartDashboardHome: React.FC<Props> = ({
                           <span aria-hidden="true">·</span>
                           <span className="inline-flex items-center gap-0.5 tabular-nums shrink-0">
                             <Clock className="w-2.5 h-2.5" />
-                            {Math.max(1, Math.floor(parseFloat(bayan.length) / 60))} منٹ
+                            {Math.max(1, Math.floor(parseFloat(bayan.length) / 60))} {t.minuteUnit}
                           </span>
                         </>
                       )}
@@ -1026,10 +1045,10 @@ export const SmartDashboardHome: React.FC<Props> = ({
                           ? 'bg-[#00ff99] text-[#051a0f]'
                           : 'bg-[#064326] hover:bg-[#095c34] text-white dark:bg-[#d4af37] dark:text-[#051a0f]'
                       }`}
-                      title="بیان سنیں"
+                      title={t.playLabel}
                     >
                       <Play className="w-3 h-3 fill-current shrink-0" />
-                      <span>{isPlaying ? 'چل رہا' : 'پلے'}</span>
+                      <span>{isPlaying ? t.playingLabel : t.playLabel}</span>
                     </button>
 
                     <button
@@ -1040,23 +1059,23 @@ export const SmartDashboardHome: React.FC<Props> = ({
                           ? 'bg-white/10 hover:bg-emerald-600 text-white'
                           : 'bg-emerald-900/10 hover:bg-[#064326] text-[#064326] hover:text-white'
                       }`}
-                      title="ڈاؤنلوڈ کریں (اسی صفحے پر)"
+                      title={t.downloadLabel}
                     >
                       {isDownloading ? (
                         <Loader2 className="w-3 h-3 animate-spin shrink-0" />
                       ) : (
                         <Download className="w-3 h-3 shrink-0" />
                       )}
-                      <span>{isDownloading ? 'لوڈنگ...' : 'ڈاؤنلوڈ'}</span>
+                      <span>{isDownloading ? t.loadingLabel : t.downloadLabel}</span>
                     </button>
 
                     <button
                       onClick={() => shareBayanOnWhatsApp(bayan)}
                       className="h-8 px-1.5 rounded-xl bg-[#25D366] hover:bg-[#1faa4e] text-white flex items-center justify-center gap-1 text-[10px] sm:text-[10.5px] font-bold whitespace-nowrap transition-all active:scale-95 cursor-pointer"
-                      title="واٹس ایپ پر شیئر کریں"
+                      title={t.shareLabel}
                     >
                       <Share2 className="w-3 h-3 shrink-0" />
-                      <span>شیئر</span>
+                      <span>{t.shareLabel}</span>
                     </button>
                   </div>
                 </div>
@@ -1069,7 +1088,7 @@ export const SmartDashboardHome: React.FC<Props> = ({
         <section className="space-y-2.5">
           <div className="flex flex-wrap items-center justify-between gap-2 px-1">
             <h2 className="text-[14px] sm:text-base font-bold text-[#064326] dark:text-[#d4af37]">
-              فولڈرز اور اسلامی لائبریری
+              {t.foldersHeading}
             </h2>
 
             {onRefreshBlogger && (
@@ -1081,10 +1100,10 @@ export const SmartDashboardHome: React.FC<Props> = ({
                     ? 'bg-[#0e2217] border-[#d4af37]/40 text-[#d4af37] hover:bg-[#133021]'
                     : 'bg-white border-[#064326]/25 text-[#064326] hover:bg-emerald-50 shadow-2xs'
                 }`}
-                title="فولڈرز تازہ کریں"
+                title={t.refreshFoldersTitle}
               >
                 <RotateCw className={`w-3 h-3 ${isRefreshingBlogger ? 'animate-spin' : ''}`} />
-                <span>تازہ کریں</span>
+                <span>{t.refreshBtn}</span>
               </button>
             )}
           </div>
@@ -1156,166 +1175,141 @@ export const SmartDashboardHome: React.FC<Props> = ({
           </div>
         </section>
 
-        {/* 5. Clean Website-Style Footer Cards */}
+        {/* 5. Compact Emerald-Green Folder-Style Footer Boxes + Developer Bar */}
         <footer
-          className={`rounded-3xl border-2 border-[#d4af37]/35 p-4 sm:p-5 space-y-4 ${
+          className={`rounded-3xl border-2 border-[#d4af37]/45 p-3.5 sm:p-4 space-y-3.5 ${
             isDark
               ? 'bg-[#0b1c13] text-emerald-50'
               : 'bg-white text-[#11261b] shadow-xs'
           }`}
         >
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
-            {/* Card 1 */}
-            <div
-              className={`p-3.5 rounded-2xl border flex flex-col justify-between gap-2.5 text-center ${
-                isDark
-                  ? 'bg-[#0e2418] border-[#d4af37]/25'
-                  : 'bg-[#f8faf9] border-emerald-900/10'
-              }`}
+          {/* Compact Emerald-Green Box Folders (Styled like تعارفِ خانقاہ green folder button) */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2">
+            <button
+              type="button"
+              onClick={onOpenIntroKhanqah}
+              className="khanqah-folder-card rounded-2xl bg-[#064326] hover:bg-[#095c34] text-white border border-[#d4af37]/70 p-2.5 flex flex-col items-center justify-center text-center gap-1 shadow-sm cursor-pointer min-h-[78px]"
             >
-              <div className="space-y-1.5">
-                <div className="flex items-center justify-center gap-2 text-[#064326] dark:text-[#d4af37]">
-                  <Landmark className="w-4 h-4 shrink-0" />
-                  <h3 className="text-sm font-bold">تعارفِ خانقاہ و شیخ</h3>
-                </div>
-                <p className="text-xs opacity-80 leading-relaxed">
-                  شیخ الحدیث حضرت مولانا پیر محمد جمشید نقشبندی مجددی دامت برکاتہم کی سرپرستی میں دینی و اصلاحی مرکز۔
-                </p>
+              <div className="khanqah-folder-icon w-8 h-8 rounded-xl bg-white/10 border border-[#d4af37]/45 text-[#d4af37] flex items-center justify-center shrink-0">
+                <Landmark className="w-4 h-4" />
               </div>
-              <div className="flex items-center gap-2 pt-1">
-                <button
-                  onClick={onOpenIntroKhanqah}
-                  className="flex-1 py-1.5 px-2.5 rounded-lg bg-[#064326] hover:bg-[#095c34] text-white text-[11px] font-bold transition-colors cursor-pointer"
-                >
-                  تعارفِ خانقاہ
-                </button>
-                <button
-                  onClick={onOpenIntroSheikh}
-                  className="flex-1 py-1.5 px-2.5 rounded-lg border border-[#d4af37]/60 text-[#064326] dark:text-[#d4af37] hover:bg-[#d4af37]/15 text-[11px] font-bold transition-colors cursor-pointer"
-                >
-                  تعارفِ شیخ
-                </button>
-              </div>
-            </div>
+              <span className="text-[11.5px] sm:text-xs font-bold leading-tight">
+                {t.footerFolderKhanqah}
+              </span>
+              <span className="text-[9.5px] text-emerald-100/75 leading-none">
+                {t.footerFolderKhanqahSub}
+              </span>
+            </button>
 
-            {/* Card 2 */}
-            <div
-              className={`p-3.5 rounded-2xl border flex flex-col justify-between gap-2.5 text-center ${
-                isDark
-                  ? 'bg-[#0e2418] border-[#d4af37]/25'
-                  : 'bg-[#f8faf9] border-emerald-900/10'
-              }`}
+            <button
+              type="button"
+              onClick={onOpenIntroSheikh}
+              className="khanqah-folder-card rounded-2xl bg-[#064326] hover:bg-[#095c34] text-white border border-[#d4af37]/70 p-2.5 flex flex-col items-center justify-center text-center gap-1 shadow-sm cursor-pointer min-h-[78px]"
             >
-              <div className="space-y-1.5">
-                <div className="flex items-center justify-center gap-2 text-[#064326] dark:text-[#d4af37]">
-                  <FileText className="w-4 h-4 shrink-0" />
-                  <h3 className="text-sm font-bold">شرائط و ضوابط</h3>
-                </div>
-                <p className="text-xs opacity-80 leading-relaxed">
-                  تمام بیانات، دروس اور کتب خالصتاً اصلاحی و دینی اشاعت کے لیے بلا معاوضہ فراہم کی گئی ہیں۔
-                </p>
+              <div className="khanqah-folder-icon w-8 h-8 rounded-xl bg-white/10 border border-[#d4af37]/45 text-[#d4af37] flex items-center justify-center shrink-0">
+                <BookOpen className="w-4 h-4" />
               </div>
-              <button
-                onClick={onOpenTerms}
-                className="w-full py-1.5 px-3 rounded-lg border border-[#064326]/30 dark:border-[#d4af37]/50 text-[#064326] dark:text-[#d4af37] hover:bg-[#064326] hover:text-white text-xs font-bold transition-colors cursor-pointer"
+              <span className="text-[11.5px] sm:text-xs font-bold leading-tight">
+                {t.footerFolderSheikh}
+              </span>
+              <span className="text-[9.5px] text-emerald-100/75 leading-none">
+                {t.footerFolderSheikhSub}
+              </span>
+            </button>
+
+            <button
+              type="button"
+              onClick={onOpenTerms}
+              className="khanqah-folder-card rounded-2xl bg-[#064326] hover:bg-[#095c34] text-white border border-[#d4af37]/70 p-2.5 flex flex-col items-center justify-center text-center gap-1 shadow-sm cursor-pointer min-h-[78px]"
+            >
+              <div className="khanqah-folder-icon w-8 h-8 rounded-xl bg-white/10 border border-[#d4af37]/45 text-[#d4af37] flex items-center justify-center shrink-0">
+                <FileText className="w-4 h-4" />
+              </div>
+              <span className="text-[11.5px] sm:text-xs font-bold leading-tight">
+                {t.footerFolderTerms}
+              </span>
+              <span className="text-[9.5px] text-emerald-100/75 leading-none">
+                {t.footerFolderTermsSub}
+              </span>
+            </button>
+
+            <button
+              type="button"
+              onClick={onOpenPrivacy}
+              className="khanqah-folder-card rounded-2xl bg-[#064326] hover:bg-[#095c34] text-white border border-[#d4af37]/70 p-2.5 flex flex-col items-center justify-center text-center gap-1 shadow-sm cursor-pointer min-h-[78px]"
+            >
+              <div className="khanqah-folder-icon w-8 h-8 rounded-xl bg-white/10 border border-[#d4af37]/45 text-[#d4af37] flex items-center justify-center shrink-0">
+                <ShieldCheck className="w-4 h-4" />
+              </div>
+              <span className="text-[11.5px] sm:text-xs font-bold leading-tight">
+                {t.footerFolderPrivacy}
+              </span>
+              <span className="text-[9.5px] text-emerald-100/75 leading-none">
+                {t.footerFolderPrivacySub}
+              </span>
+            </button>
+
+            <button
+              type="button"
+              onClick={onOpenContact}
+              className="khanqah-folder-card col-span-2 sm:col-span-1 rounded-2xl bg-[#064326] hover:bg-[#095c34] text-white border border-[#d4af37]/70 p-2.5 flex flex-col items-center justify-center text-center gap-1 shadow-sm cursor-pointer min-h-[78px]"
+            >
+              <div className="khanqah-folder-icon w-8 h-8 rounded-xl bg-white/10 border border-[#d4af37]/45 text-[#d4af37] flex items-center justify-center shrink-0">
+                <PhoneCall className="w-4 h-4" />
+              </div>
+              <span className="text-[11.5px] sm:text-xs font-bold leading-tight">
+                {t.footerFolderContact}
+              </span>
+              <span className="text-[9.5px] text-emerald-100/75 leading-none">
+                {t.footerFolderContactSub}
+              </span>
+            </button>
+          </div>
+
+          {/* Compact Centered Social Icons + Gift App Share + Developer Bar */}
+          <div className="pt-2.5 border-t border-emerald-900/10 dark:border-white/10 text-center text-xs space-y-2.5">
+            <div className="flex flex-wrap items-center justify-center gap-2">
+              <a
+                href={WHATSAPP_DIRECT_CHAT_URL}
+                target="_blank"
+                rel="noreferrer"
+                className="w-9 h-9 rounded-xl bg-[#25D366] text-white hover:opacity-90 transition-opacity flex items-center justify-center shadow-xs"
+                title="WhatsApp"
               >
-                شرائط و ضوابط پڑھیں
-              </button>
-            </div>
-
-            {/* Card 3 */}
-            <div
-              className={`p-3.5 rounded-2xl border flex flex-col justify-between gap-2.5 text-center ${
-                isDark
-                  ? 'bg-[#0e2418] border-[#d4af37]/25'
-                  : 'bg-[#f8faf9] border-emerald-900/10'
-              }`}
-            >
-              <div className="space-y-1.5">
-                <div className="flex items-center justify-center gap-2 text-[#064326] dark:text-[#d4af37]">
-                  <ShieldCheck className="w-4 h-4 shrink-0" />
-                  <h3 className="text-sm font-bold">پرائیویسی پالیسی</h3>
-                </div>
-                <p className="text-xs opacity-80 leading-relaxed">
-                  صارفین کی رازداری کا مکمل احترام؛ ایپ اشتہارات سے پاک ہے اور کوئی ذاتی ڈیٹا جمع نہیں کرتی۔
-                </p>
-              </div>
-              <button
-                onClick={onOpenPrivacy}
-                className="w-full py-1.5 px-3 rounded-lg border border-[#064326]/30 dark:border-[#d4af37]/50 text-[#064326] dark:text-[#d4af37] hover:bg-[#064326] hover:text-white text-xs font-bold transition-colors cursor-pointer"
+                <MessageCircle className="w-4 h-4" />
+              </a>
+              <a
+                href="https://youtube.com/@peermolanamuhammadjamshedn1391"
+                target="_blank"
+                rel="noreferrer"
+                className="w-9 h-9 rounded-xl bg-[#FF0000] text-white hover:opacity-90 transition-opacity flex items-center justify-center shadow-xs"
+                title="YouTube"
               >
-                پرائیویسی پالیسی دیکھیں
-              </button>
-            </div>
-
-            {/* Card 4 */}
-            <div
-              className={`p-3.5 rounded-2xl border flex flex-col justify-between gap-2.5 text-center ${
-                isDark
-                  ? 'bg-[#0e2418] border-[#d4af37]/25'
-                  : 'bg-[#f8faf9] border-emerald-900/10'
-              }`}
-            >
-              <div className="space-y-1.5">
-                <div className="flex items-center justify-center gap-2 text-[#064326] dark:text-[#d4af37]">
-                  <PhoneCall className="w-4 h-4 shrink-0" />
-                  <h3 className="text-sm font-bold">رابطہ و آفیشل ایپ</h3>
-                </div>
-                <p className="text-xs opacity-80 leading-relaxed">
-                  آفیشل واٹس ایپ، سوشل میڈیا اور اینڈرائڈ ایپ لنکس:
-                </p>
-                <div className="flex flex-wrap items-center justify-center gap-2 pt-0.5">
-                  <a
-                    href={WHATSAPP_DIRECT_CHAT_URL}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="p-2 rounded-lg bg-[#25D366] text-white hover:opacity-90 transition-opacity"
-                    title="شیخ صاحب سے براہِ راست واٹس ایپ رابطہ"
-                  >
-                    <MessageCircle className="w-4 h-4" />
-                  </a>
-                  <a
-                    href="https://youtube.com/@peermolanamuhammadjamshedn1391"
-                    target="_blank"
-                    rel="noreferrer"
-                    className="p-2 rounded-lg bg-[#FF0000] text-white hover:opacity-90 transition-opacity"
-                    title="یوٹیوب چینل"
-                  >
-                    <Youtube className="w-4 h-4" />
-                  </a>
-                  <a
-                    href="https://www.facebook.com/profile.php?id=100068373408345"
-                    target="_blank"
-                    rel="noreferrer"
-                    className="p-2 rounded-lg bg-[#1877F2] text-white hover:opacity-90 transition-opacity"
-                    title="فیس بک پیج"
-                  >
-                    <Facebook className="w-4 h-4" />
-                  </a>
-                  <button
-                    onClick={onOpenContact}
-                    className="px-2.5 py-1.5 rounded-lg border border-[#d4af37]/50 text-[11px] font-bold hover:bg-[#d4af37]/15 cursor-pointer"
-                  >
-                    مزید رابطہ
-                  </button>
-                </div>
-              </div>
+                <Youtube className="w-4 h-4" />
+              </a>
+              <a
+                href="https://www.facebook.com/profile.php?id=100068373408345"
+                target="_blank"
+                rel="noreferrer"
+                className="w-9 h-9 rounded-xl bg-[#1877F2] text-white hover:opacity-90 transition-opacity flex items-center justify-center shadow-xs"
+                title="Facebook"
+              >
+                <Facebook className="w-4 h-4" />
+              </a>
 
               <a
                 href={APP_GIFT_WHATSAPP_SHARE_URL}
                 target="_blank"
                 rel="noreferrer"
-                onClick={() => onNotify('واٹس ایپ پر دوستوں کو ایپ بطورِ ہدیہ شیئر کریں...')}
-                className="w-full py-2 px-3 rounded-xl bg-[#064326] hover:bg-[#095c34] text-white text-xs font-bold flex items-center justify-center gap-1.5 border border-[#d4af37]/60 shadow-xs transition-all active:scale-95"
-                title="واٹس ایپ پر دوستوں کو ایپ بطورِ ہدیہ شیئر کریں"
+                onClick={() => onNotify(t.giftShareToast)}
+                className="py-2 px-3.5 rounded-xl bg-[#064326] hover:bg-[#095c34] text-white text-[11px] font-bold inline-flex items-center justify-center gap-1.5 border border-[#d4af37]/60 shadow-xs transition-all active:scale-95"
+                title={t.giftShareAppBtn}
               >
                 <Share2 className="w-3.5 h-3.5 text-[#25D366] shrink-0" />
-                <span>یہ ایپ دوستوں کو بطورِ ہدیہ شیئر کریں</span>
+                <span>{t.giftShareAppBtn}</span>
               </a>
             </div>
-          </div>
 
-          <div className="pt-3 border-t border-emerald-900/10 dark:border-white/10 text-center text-xs space-y-2.5">
             <div className="flex justify-center">
               <a
                 href={DEVELOPER_WHATSAPP_URL}
@@ -1328,12 +1322,13 @@ export const SmartDashboardHome: React.FC<Props> = ({
                 }`}
               >
                 <MessageCircle className="w-3.5 h-3.5 shrink-0" />
-                <span>رہنمائی یا مشورہ کے لیے اور کاروباری ویب سائٹس یا ایپ بنانے کے لیے یہاں کلک کریں</span>
+                <span>{t.devCtaBtn}</span>
               </a>
             </div>
+
             <div className="space-y-1">
               <p className="font-bold text-[#064326] dark:text-[#d4af37]">
-                خانقاہ دارالفلاح · تمام حقوق محفوظ ہیں © 2026
+                {t.copyrightLine}
               </p>
               <a
                 href={DEVELOPER_WHATSAPP_URL}
@@ -1341,7 +1336,7 @@ export const SmartDashboardHome: React.FC<Props> = ({
                 rel="noreferrer"
                 dir="ltr"
                 className="inline-flex items-center gap-1.5 text-[11px] font-medium hover:text-[#25D366] transition-colors cursor-pointer"
-                title="واٹس ایپ پر براہِ راست رابطہ کریں"
+                title="WhatsApp"
               >
                 <span className="opacity-75">Developed by</span>
                 <b className="text-[#064326] dark:text-[#00ff99] underline decoration-[#d4af37]/70 underline-offset-4">
