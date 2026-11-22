@@ -33,10 +33,8 @@ import { DownloadCloud } from 'lucide-react';
 import {
   AppLanguage,
   DEFAULT_LANGUAGE,
-  LANG_STORAGE_KEY,
   UI_STRINGS,
   getDir,
-  isValidAppLanguage,
 } from './data/translations';
 import {
   IslamicThemePalette,
@@ -57,32 +55,17 @@ export default function App() {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [selectedLibraryFolderId, setSelectedLibraryFolderId] = useState<string>('all');
 
-  // App Language state: Always opens in Urdu ('ur') by default unless user explicitly switches
-  const [lang, setLang] = useState<AppLanguage>(() => {
-    try {
-      const saved = localStorage.getItem(LANG_STORAGE_KEY);
-      if (isValidAppLanguage(saved)) {
-        return saved;
-      }
-    } catch {}
-    return DEFAULT_LANGUAGE;
-  });
+  // App Language state: Always starts in Urdu ('ur'); user can switch anytime during use
+  const [lang, setLang] = useState<AppLanguage>(DEFAULT_LANGUAGE);
 
   // Dynamic Blogger Posts & Libraries (automatically updates when new posts are published on Blogger)
   const { tabs, isRefreshing, refreshPosts } = useBloggerTabs();
 
   // Dynamic Archive.org Bayanat sync (auto-discovers latest bayanat across all collections)
   const { bayanat, isSyncingArchive, syncArchive } = useArchiveBayanat();
-  
-  // Theme state: Default to clean Islamic Light theme (matches the Smart Dashboard aesthetic)
-  const [isDark, setIsDark] = useState<boolean>(() => {
-    try {
-      const saved = localStorage.getItem('khanqah_app_theme_v2');
-      return saved ? saved === 'dark' : false;
-    } catch {
-      return false;
-    }
-  });
+
+  // Theme state: Always starts in Dark Mode; user can toggle to Light Mode anytime during use
+  const [isDark, setIsDark] = useState<boolean>(true);
 
   // Remote & Local Islamic Background Color Palette (synced with GitHub khanqah-theme.html)
   const [remoteTheme, setRemoteTheme] = useState<IslamicThemePalette>(() =>
@@ -162,20 +145,11 @@ export default function App() {
   const [currentBayan, setCurrentBayan] = useState<BayanItem | null>(null);
 
   const toggleTheme = () => {
-    setIsDark((prev) => {
-      const next = !prev;
-      try {
-        localStorage.setItem('khanqah_app_theme_v2', next ? 'dark' : 'light');
-      } catch {}
-      return next;
-    });
+    setIsDark((prev) => !prev);
   };
 
   const handleChangeLanguage = (nextLang: AppLanguage) => {
     setLang(nextLang);
-    try {
-      localStorage.setItem(LANG_STORAGE_KEY, nextLang);
-    } catch {}
     showNotification(UI_STRINGS[nextLang].toastLangChanged);
   };
 
