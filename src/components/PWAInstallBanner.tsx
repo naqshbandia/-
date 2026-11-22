@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Download, X, Check, Share, Smartphone } from 'lucide-react';
 import { usePWAInstall } from '../utils/usePWAInstall';
 import { OFFICIAL_APK_URL } from '../data/appConfig';
+import { recordApkDownloadClick, recordPwaInstalledEvent } from '../utils/installStatsService';
 import {
   AppLanguage,
   DEFAULT_LANGUAGE,
@@ -31,6 +32,7 @@ export const PWAInstallBanner: React.FC<Props> = ({
   }
 
   const handleAPKDownload = () => {
+    recordApkDownloadClick();
     if (onNotify) {
       onNotify(t.bannerApkDownloading);
     }
@@ -38,7 +40,10 @@ export const PWAInstallBanner: React.FC<Props> = ({
 
   const handlePWAInstall = async () => {
     if (isInstallable) {
-      await install();
+      const ok = await install();
+      if (ok) {
+        recordPwaInstalledEvent();
+      }
     } else if (isIOS) {
       setShowHelpModal(true);
     } else {

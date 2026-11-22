@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="ur" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>خانقاہ دارالفلاح — اسلامک بیک گراؤنڈ کلر اسٹوڈیو</title>
+  <style>
+    :root {
+      --active-bg: #f4f7f6;
+      --active-dark: #09150f;
+      --active-primary: #064326;
+      --active-accent: #d4af37;
+      --active-led: #00ff99;
+    }
+    * { box-sizing: border-box; }
+    body {
+      font-family: 'Tajawal', 'Noto Sans Arabic', 'Segoe UI', Tahoma, sans-serif;
+      margin: 0;
+      padding: 16px;
+      background-color: var(--active-bg);
+      background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' stroke='%23d4af37' stroke-opacity='0.14' stroke-width='1'%3E%3Cpath d='M30 0L60 30L30 60L0 30Z'/%3E%3Ccircle cx='30' cy='30' r='12'/%3E%3C/g%3E%3C/svg%3E");
+      color: #11261b;
+      transition: background-color 0.25s ease;
+    }
+    .studio-wrap {
+      max-width: 920px;
+      margin: 0 auto;
+      background: rgba(255, 255, 255, 0.94);
+      border: 2px solid var(--active-accent);
+      border-radius: 22px;
+      box-shadow: 0 14px 36px rgba(0, 0, 0, 0.12);
+      overflow: hidden;
+    }
+    .studio-header {
+      background: var(--active-primary);
+      color: #ffffff;
+      padding: 18px 20px;
+      border-bottom: 3px solid var(--active-accent);
+      text-align: center;
+    }
+    .studio-header h1 {
+      margin: 0 0 6px 0;
+      font-size: 20px;
+      color: var(--active-accent);
+    }
+    .studio-header p {
+      margin: 0;
+      font-size: 13px;
+      opacity: 0.92;
+      line-height: 1.7;
+    }
+    .body-inner {
+      padding: 18px;
+    }
+    .instructions {
+      background: #f3f9f5;
+      border: 1.5px dashed var(--active-primary);
+      border-radius: 14px;
+      padding: 12px 14px;
+      margin-bottom: 16px;
+      font-size: 13px;
+      line-height: 1.8;
+    }
+    .code-box {
+      direction: ltr;
+      text-align: left;
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 12px;
+      background: #08180f;
+      color: #00ff99;
+      padding: 10px 12px;
+      border-radius: 10px;
+      border: 1px solid var(--active-accent);
+      overflow-x: auto;
+      margin: 8px 0;
+      white-space: nowrap;
+    }
+    .btn-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 10px;
+    }
+    .btn {
+      border: none;
+      border-radius: 10px;
+      padding: 10px 16px;
+      font-family: inherit;
+      font-size: 13px;
+      font-weight: bold;
+      cursor: pointer;
+      transition: transform 0.15s ease, opacity 0.15s ease;
+    }
+    .btn:active { transform: scale(0.97); }
+    .btn-primary {
+      background: var(--active-primary);
+      color: #ffffff;
+      border: 1px solid var(--active-accent);
+    }
+    .btn-gold {
+      background: var(--active-accent);
+      color: #08180f;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+      gap: 12px;
+      margin-top: 14px;
+    }
+    .theme-card {
+      background: #ffffff;
+      border: 2px solid rgba(6, 67, 38, 0.14);
+      border-radius: 16px;
+      padding: 12px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      text-align: right;
+    }
+    .theme-card:hover {
+      transform: translateY(-2px);
+      border-color: var(--active-accent);
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
+    }
+    .theme-card.active {
+      border-color: var(--active-accent);
+      box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.28);
+      background: #fffdf6;
+    }
+    .swatches {
+      display: flex;
+      gap: 6px;
+      margin-bottom: 10px;
+    }
+    .swatch {
+      flex: 1;
+      height: 28px;
+      border-radius: 8px;
+      border: 1px solid rgba(0, 0, 0, 0.12);
+    }
+    .theme-title {
+      font-size: 14px;
+      font-weight: bold;
+      margin: 0 0 3px 0;
+    }
+    .theme-sub {
+      font-size: 11.5px;
+      opacity: 0.78;
+      margin: 0 0 6px 0;
+    }
+    .theme-id {
+      display: inline-block;
+      direction: ltr;
+      font-family: monospace;
+      font-size: 10.5px;
+      background: #eef4f0;
+      padding: 2px 7px;
+      border-radius: 6px;
+    }
+    .status-toast {
+      margin-top: 8px;
+      font-size: 12.5px;
+      font-weight: bold;
+      color: #065f46;
+      min-height: 18px;
+    }
+  </style>
+</head>
+<body>
+
+  <!--
+    ==========================================================================
+    ہدایت برائے ایڈمن (خانقاہ دارالفلاح):
+    اس نیچے والی لائن میں data-theme="..." کی ویلیو تبدیل کر کے GitHub پر Save کریں،
+    پوری ایپ کا بیک گراؤنڈ کلر خودکار طور پر تمام صارفین کے پاس تبدیل ہو جائے گا!
+
+    دستیاب اسلامک تھیم آئی ڈیز:
+    1. emerald-sanctuary      (سبزِ مدینہ — اصل تھیم)
+    2. nabawi-olive           (زیتون و گنبدِ خضرا)
+    3. kaaba-onyx             (غلافِ کعبہ و سنہری)
+    4. haram-turquoise        (فیروزی حرم و موتی)
+    5. quba-ivory             (مسجدِ قبا سفید موتی)
+    6. midnight-sapphire      (نیلگوں تہجد و چاندی)
+    7. madinah-sand           (ریگِ مدینہ و نخلستان)
+    8. royal-burgundy         (زمرد و یاقوتِ حرم)
+    9. andalus-cedar          (اندلسی محراب و صنوبر)
+    10. azam-golden-emerald   (سبزِ اعظم و روشن طلائی)
+    ==========================================================================
+  -->
+  <div id="khanqah-active-theme" data-theme="emerald-sanctuary"></div>
+
+  <div class="studio-wrap">
+    <div class="studio-header" id="previewHeader">
+      <h1>🕌 خانقاہ دارالفلاح — اسلامک بیک گراؤنڈ کلرز</h1>
+      <p>نیچے دیے گئے خوبصورت اسلامک اسٹائلز میں سے کوئی بھی رنگ منتخب کریں، اور اپڈیٹڈ HTML فائل گٹ ہب پر اپلوڈ کر دیں</p>
+    </div>
+
+    <div class="body-inner">
+      <div class="instructions">
+        <strong>طریقۂ استعمال (نہایت آسان):</strong><br />
+        1️⃣ نیچے کسی بھی اسلامک بیک گراؤنڈ کارڈ پر کلک کریں۔<br />
+        2️⃣ <b>"اپڈیٹڈ HTML ڈاؤنلوڈ کریں"</b> بٹن دبائیں اور فائل کو اپنے GitHub فولڈر (<code>naqshbandia.github.io/index.html</code>) میں <code>khanqah-theme.html</code> کے نام سے اپلوڈ کر دیں، <b>یا</b> نیچے دیا گیا ایک لائن کا کوڈ کاپی کر کے GitHub پر بدل دیں۔
+
+        <div class="code-box" id="snippetBox">&lt;div id="khanqah-active-theme" data-theme="emerald-sanctuary"&gt;&lt;/div&gt;</div>
+
+        <div class="btn-row">
+          <button type="button" class="btn btn-primary" onclick="downloadUpdatedHtml()">📥 اپڈیٹڈ HTML ڈاؤنلوڈ کریں (khanqah-theme.html)</button>
+          <button type="button" class="btn btn-gold" onclick="copyThemeSnippet()">📋 ایک لائن کوڈ کاپی کریں</button>
+        </div>
+        <div class="status-toast" id="statusToast"></div>
+      </div>
+
+      <div class="grid" id="themeGrid"></div>
+    </div>
+  </div>
+
+  <script>
+    const THEMES = [
+      { id: 'emerald-sanctuary', name: 'سبزِ مدینہ (اصل تھیم)', desc: 'مسجدِ نبویﷺ کا روایتی سبز و طلائی امتزاج', lightBg: '#f4f7f6', darkBg: '#09150f', primary: '#064326', accent: '#d4af37', led: '#00ff99' },
+      { id: 'nabawi-olive', name: 'زیتون و گنبدِ خضرا', desc: 'پرسکون زیتونی سبز اور شاہی سنہری جھلک', lightBg: '#eff5ec', darkBg: '#0b190f', primary: '#1b5e20', accent: '#c9a227', led: '#7fffb2' },
+      { id: 'kaaba-onyx', name: 'غلافِ کعبہ و سنہری', desc: 'موقر مشکین سیاہ اور خالص سنہری خطاطی', lightBg: '#f6f3eb', darkBg: '#0f0d0a', primary: '#221d17', accent: '#d4af37', led: '#ffd54f' },
+      { id: 'haram-turquoise', name: 'فیروزی حرم و موتی', desc: 'ٹھنڈا فیروزی سنگِ مرمر اور عقیق سبز', lightBg: '#edf6f5', darkBg: '#051718', primary: '#006156', accent: '#cfb15b', led: '#4dd0e1' },
+      { id: 'quba-ivory', name: 'مسجدِ قبا سفید موتی', desc: 'گرم عاجی سفید اور کلاسیکی عنبری رنگ', lightBg: '#faf6ee', darkBg: '#11160f', primary: '#0c4a34', accent: '#c29225', led: '#6ee7b7' },
+      { id: 'midnight-sapphire', name: 'نیلگوں تہجد و چاندی', desc: 'شبِ تہجد کی گہری نیلگوں فضا اور سنہری حاشیہ', lightBg: '#eef2f9', darkBg: '#071122', primary: '#0f2c59', accent: '#d4af37', led: '#7dd3fc' },
+      { id: 'madinah-sand', name: 'ریگِ مدینہ و نخلستان', desc: 'مدینہ منورہ کی سنہری ریت اور کھجور کا سبز رنگ', lightBg: '#f6f0e4', darkBg: '#14110b', primary: '#19543e', accent: '#c49a3a', led: '#a7f3d0' },
+      { id: 'royal-burgundy', name: 'زمرد و یاقوتِ حرم', desc: 'عقیق و عنابی قالین اور سنہری محراب', lightBg: '#f7f0f2', darkBg: '#16090e', primary: '#5c162e', accent: '#d4af37', led: '#fde68a' },
+      { id: 'andalus-cedar', name: 'اندلسی محراب و صنوبر', desc: 'مسجدِ قرطبہ کا صنوبری سبز اور کانسی رنگ', lightBg: '#edf3ee', darkBg: '#0a1612', primary: '#1b4d3e', accent: '#c6923a', led: '#5eead4' },
+      { id: 'azam-golden-emerald', name: 'سبزِ اعظم و روشن طلائی', desc: 'گہرا خوشنما سبز بیک گراؤنڈ اور چمکتا سونا', lightBg: '#e7f3ec', darkBg: '#041b10', primary: '#04562e', accent: '#e0b32c', led: '#00ff99' }
+    ];
+
+    const activeEl = document.getElementById('khanqah-active-theme');
+    let selectedId = (activeEl && activeEl.getAttribute('data-theme')) || 'emerald-sanctuary';
+
+    function selectTheme(id) {
+      selectedId = id;
+      const t = THEMES.find((x) => x.id === id) || THEMES[0];
+      if (activeEl) activeEl.setAttribute('data-theme', t.id);
+
+      document.documentElement.style.setProperty('--active-bg', t.lightBg);
+      document.documentElement.style.setProperty('--active-dark', t.darkBg);
+      document.documentElement.style.setProperty('--active-primary', t.primary);
+      document.documentElement.style.setProperty('--active-accent', t.accent);
+      document.documentElement.style.setProperty('--active-led', t.led);
+
+      document.getElementById('snippetBox').textContent =
+        '<div id="khanqah-active-theme" data-theme="' + t.id + '"></div>';
+
+      renderGrid();
+      document.getElementById('statusToast').textContent = 'منتخب تھیم: ' + t.name + ' (' + t.id + ')';
+    }
+
+    function renderGrid() {
+      const grid = document.getElementById('themeGrid');
+      grid.innerHTML = THEMES.map(
+        (t) => `
+          <div class="theme-card ${t.id === selectedId ? 'active' : ''}" onclick="selectTheme('${t.id}')">
+            <div class="swatches">
+              <div class="swatch" title="بیک گراؤنڈ (لائٹ)" style="background:${t.lightBg}"></div>
+              <div class="swatch" title="مرکزی رنگ" style="background:${t.primary}"></div>
+              <div class="swatch" title="ڈارک موڈ" style="background:${t.darkBg}"></div>
+              <div class="swatch" title="طلائی حاشیہ" style="background:${t.accent}"></div>
+            </div>
+            <p class="theme-title">${t.name}</p>
+            <p class="theme-sub">${t.desc}</p>
+            <span class="theme-id">${t.id}</span>
+          </div>
+        `
+      ).join('');
+    }
+
+    function copyThemeSnippet() {
+      const code = '<div id="khanqah-active-theme" data-theme="' + selectedId + '"></div>';
+      if (navigator.clipboard) {
+        navigator.clipboard.writeText(code).then(() => {
+          document.getElementById('statusToast').textContent = '✅ کوڈ کاپی ہو گیا! اب GitHub پر پیسٹ کر دیں۔';
+        });
+      }
+    }
+
+    function downloadUpdatedHtml() {
+      let fullHtml = '<!DOCTYPE html>\n' + document.documentElement.outerHTML;
+      fullHtml = fullHtml.replace(
+        /<div id="khanqah-active-theme"[^>]*><\/div>/,
+        '<div id="khanqah-active-theme" data-theme="' + selectedId + '"></div>'
+      );
+      const blob = new Blob([fullHtml], { type: 'text/html;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'khanqah-theme.html';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      document.getElementById('statusToast').textContent =
+        '✅ khanqah-theme.html (' + selectedId + ') ڈاؤنلوڈ ہو گئی — اب اسے GitHub پر اپلوڈ کر دیں!';
+    }
+
+    selectTheme(selectedId);
+  </script>
+</body>
+</html>

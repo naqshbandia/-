@@ -74,8 +74,8 @@ export const Header: React.FC<Props> = ({
     <header
       className={`sticky top-0 z-30 shadow-xs border-b select-none transition-colors duration-200 ${
         isDark
-          ? 'bg-[#062214] text-amber-100 border-[#d4af37]/40'
-          : 'bg-white text-[#064326] border-emerald-900/10'
+          ? 'bg-[var(--kdf-dark-surface,#062214)] text-amber-100 border-[var(--kdf-accent,#d4af37)]/40'
+          : 'bg-white/95 backdrop-blur-xs text-[var(--kdf-primary,#064326)] border-emerald-900/10'
       }`}
     >
       {/* Sleek single compact line matching Islamic Smart Dashboard */}

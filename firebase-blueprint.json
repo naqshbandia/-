@@ -136,6 +136,109 @@
         }
       },
       "required": ["role"]
+    },
+    "AppInstallSummary": {
+      "title": "App Install Summary",
+      "description": "Public aggregated install and APK download counters synced atomically with device registrations.",
+      "type": "object",
+      "properties": {
+        "totalInstalledDevices": {
+          "type": "integer",
+          "description": "Total unique devices that installed or ran the installed app (PWA or APK)."
+        },
+        "totalPwaInstalls": {
+          "type": "integer",
+          "description": "Total unique devices installed as PWA standalone app."
+        },
+        "totalApkClicks": {
+          "type": "integer",
+          "description": "Total unique devices that initiated official Archive.org APK download."
+        },
+        "totalWebUsers": {
+          "type": "integer",
+          "description": "Total unique web app visitor devices."
+        },
+        "lastDeviceId": {
+          "type": "string",
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "minLength": 16,
+          "maxLength": 64,
+          "description": "Device ID of the paired atomic batch update."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp of the latest counter update."
+        }
+      },
+      "required": [
+        "totalInstalledDevices",
+        "totalPwaInstalls",
+        "totalApkClicks",
+        "totalWebUsers",
+        "lastDeviceId",
+        "updatedAt"
+      ]
+    },
+    "AppDeviceRecord": {
+      "title": "App Device Record",
+      "description": "Non-PII anonymized device install marker to deduplicate installs and APK downloads per device.",
+      "type": "object",
+      "properties": {
+        "deviceId": {
+          "type": "string",
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "minLength": 16,
+          "maxLength": 64,
+          "description": "Anonymous client-generated device identifier."
+        },
+        "platform": {
+          "type": "string",
+          "enum": ["android", "ios", "desktop"],
+          "maxLength": 16,
+          "description": "Coarse device category with zero PII."
+        },
+        "installMode": {
+          "type": "string",
+          "enum": ["pwa_standalone", "apk_webview", "web_browser"],
+          "maxLength": 24,
+          "description": "Detected installation or runtime mode."
+        },
+        "installed": {
+          "type": "boolean",
+          "description": "Whether this device has installed/launched in standalone or APK mode."
+        },
+        "apkDownloaded": {
+          "type": "boolean",
+          "description": "Whether this device triggered the official APK download."
+        },
+        "appVersion": {
+          "type": "string",
+          "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$",
+          "maxLength": 20,
+          "description": "App semantic version string."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when device first registered."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp of latest install state transition."
+        }
+      },
+      "required": [
+        "deviceId",
+        "platform",
+        "installMode",
+        "installed",
+        "apkDownloaded",
+        "appVersion",
+        "createdAt",
+        "updatedAt"
+      ]
     }
   },
   "firestore": {
@@ -146,6 +249,14 @@
     "/admins/{adminUid}": {
       "schema": { "$ref": "#/entities/AdminUser" },
       "description": "Stores verified administrator UIDs for RBAC authorization."
+    },
+    "/appStats/{statId}": {
+      "schema": { "$ref": "#/entities/AppInstallSummary" },
+      "description": "Stores aggregated public download and install counts at document ID 'summary'."
+    },
+    "/appDevices/{deviceId}": {
+      "schema": { "$ref": "#/entities/AppDeviceRecord" },
+      "description": "Stores deduplicated non-PII per-device installation state to guarantee one install count per device."
     }
   }
 }

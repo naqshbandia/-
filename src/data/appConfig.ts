@@ -43,6 +43,14 @@ export const TELAWAT_HAMD_NAAT_URL = "https://naqshbandia.github.io/index.html/t
 export const KHANQAH_CLOCK_HTML_URL = "https://naqshbandia.github.io/index.html/khanqah-darul-falah-clock.html";
 export const KHANQAH_MESSAGE_HTML_URL = "https://naqshbandia.github.io/index.html/khanqah-message.html";
 export const KHANQAH_LATEST_UPDATE_TXT_URL = "https://naqshbandia.github.io/index.html/latest_update.txt";
+export const KHANQAH_THEME_HTML_URL = "https://naqshbandia.github.io/index.html/khanqah-theme.html";
+
+// Archive.org APK Analytics & Item Page (ID: khanqah-darul-falah)
+export const ARCHIVE_APK_IDENTIFIER = "khanqah-darul-falah";
+export const ARCHIVE_APK_DETAILS_URL = "https://archive.org/details/khanqah-darul-falah";
+export const ARCHIVE_APK_VIEWS_API = "https://be-api.us.archive.org/views/v1/short/khanqah-darul-falah";
+export const ARCHIVE_APK_SEARCH_API =
+  "https://archive.org/advancedsearch.php?q=identifier:khanqah-darul-falah&fl[]=identifier,downloads,week,month&output=json";
 
 // Blogger Official Website
 export const BLOGGER_HOME_URL = "https://khanqahdarulfalah.blogspot.com/";

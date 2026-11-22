@@ -38,6 +38,16 @@ import {
   getDir,
   isValidAppLanguage,
 } from './data/translations';
+import {
+  IslamicThemePalette,
+  applyIslamicThemeToDocument,
+  fetchKhanqahRemoteTheme,
+  getThemePaletteById,
+  loadCachedRemoteTheme,
+  loadLocalThemeOverride,
+  saveLocalThemeOverride,
+} from './utils/themeService';
+import { useAppInstallStats } from './utils/installStatsService';
 
 export default function App() {
   // Home Screen defaults to the clean Islamic Smart Dashboard
@@ -74,10 +84,48 @@ export default function App() {
     }
   });
 
-  // Sync Tailwind dark class on document root
+  // Remote & Local Islamic Background Color Palette (synced with GitHub khanqah-theme.html)
+  const [remoteTheme, setRemoteTheme] = useState<IslamicThemePalette>(() =>
+    loadCachedRemoteTheme()
+  );
+  const [themeOverride, setThemeOverride] = useState<string>(() =>
+    loadLocalThemeOverride()
+  );
+
+  const activeTheme =
+    themeOverride === 'auto' ? remoteTheme : getThemePaletteById(themeOverride);
+
+  // Sync Tailwind dark class + active Islamic CSS theme variables on document root
   useEffect(() => {
     document.documentElement.classList.toggle('dark', isDark);
-  }, [isDark]);
+    applyIslamicThemeToDocument(activeTheme, isDark);
+  }, [isDark, activeTheme]);
+
+  // Fetch active Islamic background theme from GitHub khanqah-theme.html on boot & focus
+  useEffect(() => {
+    let active = true;
+    const syncRemoteTheme = () => {
+      fetchKhanqahRemoteTheme().then((parsed) => {
+        if (active && parsed) {
+          setRemoteTheme(parsed);
+        }
+      });
+    };
+    syncRemoteTheme();
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        syncRemoteTheme();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
+    return () => {
+      active = false;
+      document.removeEventListener('visibilitychange', handleVisibility);
+    };
+  }, []);
+
+  // Persistent Archive.org + Firestore App Install & Download Stats
+  const installStats = useAppInstallStats();
 
   // Enforce Mobile Mode only (clean responsive viewport, never zoomed desktop mode)
   useEffect(() => {
@@ -178,11 +226,16 @@ export default function App() {
     setActiveView('library');
   };
 
+  const handleChangeThemeOverride = (nextId: string) => {
+    setThemeOverride(nextId);
+    saveLocalThemeOverride(nextId);
+    const chosen = nextId === 'auto' ? remoteTheme : getThemePaletteById(nextId);
+    showNotification(`اسلامک بیک گراؤنڈ تھیم تبدیل ہو گئی: ${chosen.nameUrdu}`);
+  };
+
   return (
     <div
-      className={`h-screen w-screen flex flex-col select-none overflow-hidden transition-colors duration-200 ${
-        isDark ? 'bg-[#09150f] text-emerald-50' : 'bg-[#f4f7f6] text-[#11261b]'
-      }`}
+      className={`kdf-app-canvas h-screen w-screen flex flex-col select-none overflow-hidden transition-colors duration-200`}
     >
       {/* Sleek single line header */}
       <Header
@@ -237,6 +290,7 @@ export default function App() {
             onPlayAudio={handlePlayAudio}
             onNotify={showNotification}
             currentPlayingBayanId={currentBayan?.id || null}
+            installStats={installStats}
           />
         ) : activeView === 'library' ? (
           <AudioLibraryView
@@ -285,6 +339,9 @@ export default function App() {
         onRefreshBlogger={handleManualRefresh}
         isRefreshingBlogger={isRefreshing || isSyncingArchive}
         lang={lang}
+        themeOverride={themeOverride}
+        remoteTheme={remoteTheme}
+        onChangeThemeOverride={handleChangeThemeOverride}
       />
 
       {/* Floating Audio Player with 1-Click Memory Download */}
@@ -342,6 +399,7 @@ export default function App() {
         onClose={() => setIsAboutOpen(false)}
         isDark={isDark}
         lang={lang}
+        installStats={installStats}
       />
 
       <TermsModal

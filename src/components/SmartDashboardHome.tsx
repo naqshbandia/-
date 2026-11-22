@@ -29,6 +29,7 @@ import {
   RotateCw,
   Folder,
   Megaphone,
+  Users,
 } from 'lucide-react';
 import {
   SHEIKH_GLASS_BANNER_URL,
@@ -37,6 +38,7 @@ import {
   getAppGiftWhatsAppShareUrl,
   BloggerPostTab,
 } from '../data/appConfig';
+import { CombinedInstallStats } from '../utils/installStatsService';
 import { BAYANAT_DATABASE, BayanItem } from '../data/bayanatData';
 import { downloadSingleBayan, subscribeToDownloads } from '../utils/downloadHelper';
 import {
@@ -94,6 +96,7 @@ interface Props {
   onPlayAudio: (bayan: BayanItem) => void;
   onNotify: (msg: string) => void;
   currentPlayingBayanId?: string | null;
+  installStats?: CombinedInstallStats & { refreshStats: () => void };
 }
 
 const NOTIFY_EMAIL_KEY = 'khanqah_live_notify_email_v1';
@@ -174,6 +177,7 @@ export const SmartDashboardHome: React.FC<Props> = ({
   onPlayAudio,
   onNotify,
   currentPlayingBayanId,
+  installStats,
 }) => {
   const t = UI_STRINGS[lang];
   const donationLabels = getDonationLabels(lang);
@@ -472,9 +476,7 @@ export const SmartDashboardHome: React.FC<Props> = ({
 
   return (
     <div
-      className={`flex-1 w-full h-full overflow-y-auto transition-colors duration-200 ${
-        isDark ? 'bg-[#09150f] text-emerald-50' : 'bg-[#f4f7f6] text-[#11261b]'
-      }`}
+      className="kdf-app-canvas flex-1 w-full h-full overflow-y-auto transition-colors duration-200"
       dir={dir}
     >
       <div className="max-w-5xl mx-auto px-3 sm:px-5 py-3 space-y-3">
@@ -512,8 +514,8 @@ export const SmartDashboardHome: React.FC<Props> = ({
             isDark ? 'bg-[#0c2317] text-emerald-50' : 'bg-white text-[#064326]'
           }`}
         >
-          <div className="bg-[#064326] text-[#d4af37] px-3 py-2.5 flex items-center gap-1.5 text-xs font-bold shrink-0 border-e border-[#d4af37]/40">
-            <Megaphone className="w-3.5 h-3.5 text-[#00ff99] shrink-0" />
+          <div className="bg-[var(--kdf-primary,#064326)] text-[var(--kdf-accent,#d4af37)] px-3 py-2.5 flex items-center gap-1.5 text-xs font-bold shrink-0 border-e border-[var(--kdf-accent,#d4af37)]/40">
+            <Megaphone className="w-3.5 h-3.5 text-[var(--kdf-led,#00ff99)] shrink-0" />
             <span>{t.tickerBadge}</span>
           </div>
 
@@ -1212,7 +1214,7 @@ export const SmartDashboardHome: React.FC<Props> = ({
             <button
               type="button"
               onClick={onOpenIntroKhanqah}
-              className="khanqah-folder-card rounded-2xl bg-[#064326] hover:bg-[#095c34] text-white border border-[#d4af37]/70 p-2.5 flex flex-col items-center justify-center text-center gap-1 shadow-sm cursor-pointer min-h-[78px]"
+              className="khanqah-folder-card rounded-2xl bg-[var(--kdf-primary,#064326)] hover:opacity-95 text-white border border-[var(--kdf-accent,#d4af37)]/70 p-2.5 flex flex-col items-center justify-center text-center gap-1 shadow-sm cursor-pointer min-h-[78px]"
             >
               <div className="khanqah-folder-icon w-8 h-8 rounded-xl bg-white/10 border border-[#d4af37]/45 text-[#d4af37] flex items-center justify-center shrink-0">
                 <Landmark className="w-4 h-4" />
@@ -1228,7 +1230,7 @@ export const SmartDashboardHome: React.FC<Props> = ({
             <button
               type="button"
               onClick={onOpenIntroSheikh}
-              className="khanqah-folder-card rounded-2xl bg-[#064326] hover:bg-[#095c34] text-white border border-[#d4af37]/70 p-2.5 flex flex-col items-center justify-center text-center gap-1 shadow-sm cursor-pointer min-h-[78px]"
+              className="khanqah-folder-card rounded-2xl bg-[var(--kdf-primary,#064326)] hover:opacity-95 text-white border border-[var(--kdf-accent,#d4af37)]/70 p-2.5 flex flex-col items-center justify-center text-center gap-1 shadow-sm cursor-pointer min-h-[78px]"
             >
               <div className="khanqah-folder-icon w-8 h-8 rounded-xl bg-white/10 border border-[#d4af37]/45 text-[#d4af37] flex items-center justify-center shrink-0">
                 <BookOpen className="w-4 h-4" />
@@ -1244,7 +1246,7 @@ export const SmartDashboardHome: React.FC<Props> = ({
             <button
               type="button"
               onClick={onOpenTerms}
-              className="khanqah-folder-card rounded-2xl bg-[#064326] hover:bg-[#095c34] text-white border border-[#d4af37]/70 p-2.5 flex flex-col items-center justify-center text-center gap-1 shadow-sm cursor-pointer min-h-[78px]"
+              className="khanqah-folder-card rounded-2xl bg-[var(--kdf-primary,#064326)] hover:opacity-95 text-white border border-[var(--kdf-accent,#d4af37)]/70 p-2.5 flex flex-col items-center justify-center text-center gap-1 shadow-sm cursor-pointer min-h-[78px]"
             >
               <div className="khanqah-folder-icon w-8 h-8 rounded-xl bg-white/10 border border-[#d4af37]/45 text-[#d4af37] flex items-center justify-center shrink-0">
                 <FileText className="w-4 h-4" />
@@ -1260,7 +1262,7 @@ export const SmartDashboardHome: React.FC<Props> = ({
             <button
               type="button"
               onClick={onOpenPrivacy}
-              className="khanqah-folder-card rounded-2xl bg-[#064326] hover:bg-[#095c34] text-white border border-[#d4af37]/70 p-2.5 flex flex-col items-center justify-center text-center gap-1 shadow-sm cursor-pointer min-h-[78px]"
+              className="khanqah-folder-card rounded-2xl bg-[var(--kdf-primary,#064326)] hover:opacity-95 text-white border border-[var(--kdf-accent,#d4af37)]/70 p-2.5 flex flex-col items-center justify-center text-center gap-1 shadow-sm cursor-pointer min-h-[78px]"
             >
               <div className="khanqah-folder-icon w-8 h-8 rounded-xl bg-white/10 border border-[#d4af37]/45 text-[#d4af37] flex items-center justify-center shrink-0">
                 <ShieldCheck className="w-4 h-4" />
@@ -1276,7 +1278,7 @@ export const SmartDashboardHome: React.FC<Props> = ({
             <button
               type="button"
               onClick={onOpenContact}
-              className="khanqah-folder-card col-span-2 sm:col-span-1 rounded-2xl bg-[#064326] hover:bg-[#095c34] text-white border border-[#d4af37]/70 p-2.5 flex flex-col items-center justify-center text-center gap-1 shadow-sm cursor-pointer min-h-[78px]"
+              className="khanqah-folder-card col-span-2 sm:col-span-1 rounded-2xl bg-[var(--kdf-primary,#064326)] hover:opacity-95 text-white border border-[var(--kdf-accent,#d4af37)]/70 p-2.5 flex flex-col items-center justify-center text-center gap-1 shadow-sm cursor-pointer min-h-[78px]"
             >
               <div className="khanqah-folder-icon w-8 h-8 rounded-xl bg-white/10 border border-[#d4af37]/45 text-[#d4af37] flex items-center justify-center shrink-0">
                 <PhoneCall className="w-4 h-4" />
@@ -1289,6 +1291,97 @@ export const SmartDashboardHome: React.FC<Props> = ({
               </span>
             </button>
           </div>
+
+          {/* Public Live Install & Archive.org Download Counter (No Play Store needed) */}
+          {installStats && (
+            <div
+              className={`rounded-2xl border p-3 space-y-2 ${
+                isDark
+                  ? 'bg-[#08150e] border-[#d4af37]/30 text-emerald-50'
+                  : 'bg-[#f6faf7] border-emerald-900/15 text-[#11261b]'
+              }`}
+            >
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-1.5">
+                  <Smartphone className="w-3.5 h-3.5 text-[#064326] dark:text-[#00ff99] shrink-0" />
+                  <span className="text-[11.5px] font-bold text-[#064326] dark:text-[#d4af37]">
+                    ایپ ڈاؤنلوڈز اور انسٹال شماریات
+                  </span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={installStats.refreshStats}
+                    className="p-1 rounded-lg hover:bg-black/10 dark:hover:bg-white/10 cursor-pointer"
+                    title="تازہ کریں"
+                  >
+                    <RotateCw
+                      className={`w-3.5 h-3.5 ${installStats.isLoading ? 'animate-spin' : ''}`}
+                    />
+                  </button>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 text-center">
+                <div
+                  className={`rounded-xl p-2 border ${
+                    isDark ? 'bg-[#0e2318] border-[#d4af37]/20' : 'bg-white border-emerald-900/10'
+                  }`}
+                >
+                  <div className="text-base sm:text-lg font-extrabold tabular-nums text-[#064326] dark:text-[#00ff99]">
+                    {installStats.totalInstalledDevices}
+                  </div>
+                  <div className="text-[10px] font-bold opacity-80">انسٹال شدہ موبائلز</div>
+                </div>
+
+                <div
+                  className={`rounded-xl p-2 border ${
+                    isDark ? 'bg-[#0e2318] border-[#d4af37]/20' : 'bg-white border-emerald-900/10'
+                  }`}
+                >
+                  <div className="text-base sm:text-lg font-extrabold tabular-nums text-[#8c6514] dark:text-[#d4af37]">
+                    {installStats.allTimeDownloads ?? '—'}
+                  </div>
+                  <div className="text-[10px] font-bold opacity-80">کل APK ڈاؤنلوڈز</div>
+                </div>
+
+                <div
+                  className={`rounded-xl p-2 border ${
+                    isDark ? 'bg-[#0e2318] border-[#d4af37]/20' : 'bg-white border-emerald-900/10'
+                  }`}
+                >
+                  <div className="text-base sm:text-lg font-extrabold tabular-nums text-[#064326] dark:text-emerald-300">
+                    {installStats.totalApkClicks}
+                  </div>
+                  <div className="text-[10px] font-bold opacity-80">ایپ APK کلکس</div>
+                </div>
+
+                <div
+                  className={`rounded-xl p-2 border ${
+                    isDark ? 'bg-[#0e2318] border-[#d4af37]/20' : 'bg-white border-emerald-900/10'
+                  }`}
+                >
+                  <div className="text-base sm:text-lg font-extrabold tabular-nums text-[#064326] dark:text-emerald-200 flex items-center justify-center gap-1">
+                    <Users className="w-3.5 h-3.5 opacity-75" />
+                    <span>{installStats.totalWebUsers}</span>
+                  </div>
+                  <div className="text-[10px] font-bold opacity-80">مجموعی ڈیوائسز</div>
+                </div>
+              </div>
+
+              {(installStats.last7DaysDownloads !== null ||
+                installStats.last30DaysDownloads !== null) && (
+                <div className="flex flex-wrap items-center justify-center gap-3 text-[10px] opacity-75">
+                  {installStats.last7DaysDownloads !== null && (
+                    <span>گزشتہ 7 دن: {installStats.last7DaysDownloads}</span>
+                  )}
+                  {installStats.last30DaysDownloads !== null && (
+                    <span>گزشتہ 30 دن: {installStats.last30DaysDownloads}</span>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Compact Centered Social Icons + Gift App Share + Developer Bar */}
           <div className="pt-2.5 border-t border-emerald-900/10 dark:border-white/10 text-center text-xs space-y-2.5">

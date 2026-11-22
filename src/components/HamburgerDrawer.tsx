@@ -26,6 +26,8 @@ import {
   FileText,
   ShieldCheck,
   Landmark,
+  Palette,
+  Check,
 } from 'lucide-react';
 import {
   OFFICIAL_APK_URL,
@@ -40,6 +42,8 @@ import {
   getDir,
   getDonationLabels,
 } from '../data/translations';
+import { ISLAMIC_THEMES, IslamicThemePalette } from '../utils/themeService';
+import { recordApkDownloadClick } from '../utils/installStatsService';
 
 interface Props {
   isOpen: boolean;
@@ -62,6 +66,9 @@ interface Props {
   onRefreshBlogger?: () => void;
   isRefreshingBlogger?: boolean;
   lang?: AppLanguage;
+  themeOverride?: string;
+  remoteTheme?: IslamicThemePalette;
+  onChangeThemeOverride?: (id: string) => void;
 }
 
 export const HamburgerDrawer: React.FC<Props> = ({
@@ -85,6 +92,9 @@ export const HamburgerDrawer: React.FC<Props> = ({
   onRefreshBlogger,
   isRefreshingBlogger = false,
   lang = DEFAULT_LANGUAGE,
+  themeOverride = 'auto',
+  remoteTheme = ISLAMIC_THEMES[0],
+  onChangeThemeOverride,
 }) => {
   if (!isOpen) return null;
   const t = UI_STRINGS[lang];
@@ -191,7 +201,8 @@ export const HamburgerDrawer: React.FC<Props> = ({
               <a
                 href={OFFICIAL_APK_URL}
                 download="khanqah-Darul-falah.apk"
-                className="w-full flex items-center justify-between p-2.5 rounded-xl bg-[#064326] hover:bg-[#095c34] text-white font-lalezar text-xs border border-[#d4af37]/60 shadow-sm active:scale-95 transition-all"
+                onClick={() => recordApkDownloadClick()}
+                className="w-full flex items-center justify-between p-2.5 rounded-xl bg-[var(--kdf-primary,#064326)] hover:opacity-95 text-white font-lalezar text-xs border border-[var(--kdf-accent,#d4af37)]/60 shadow-sm active:scale-95 transition-all"
               >
                 <div className="flex items-center gap-2">
                   <Download className="w-4 h-4 text-[#d4af37]" />
@@ -201,6 +212,62 @@ export const HamburgerDrawer: React.FC<Props> = ({
                   APK
                 </span>
               </a>
+
+              {/* Islamic Background Color Style Selector */}
+              {onChangeThemeOverride && (
+                <div
+                  className={`p-2 rounded-xl border space-y-1.5 ${
+                    isDark
+                      ? 'bg-[#0b2316] border-[#d4af37]/30'
+                      : 'bg-[#f4f7f6] border-emerald-900/15'
+                  }`}
+                >
+                  <div className="flex items-center justify-between gap-1 text-[11px] font-bold">
+                    <span className="flex items-center gap-1.5 text-[#064326] dark:text-[#d4af37]">
+                      <Palette className="w-3.5 h-3.5" />
+                      <span>اسلامک بیک گراؤنڈ رنگ</span>
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => onChangeThemeOverride('auto')}
+                      className={`px-2 py-0.5 rounded-md text-[10px] border transition-colors cursor-pointer ${
+                        themeOverride === 'auto'
+                          ? 'bg-[#064326] text-white border-[#d4af37]'
+                          : 'border-emerald-700/25 opacity-75 hover:opacity-100'
+                      }`}
+                    >
+                      آٹو (آفیشل)
+                    </button>
+                  </div>
+                  <div className="grid grid-cols-5 gap-1.5">
+                    {ISLAMIC_THEMES.map((themeItem) => {
+                      const isSelected =
+                        themeOverride === themeItem.id ||
+                        (themeOverride === 'auto' && remoteTheme.id === themeItem.id);
+                      return (
+                        <button
+                          key={themeItem.id}
+                          type="button"
+                          onClick={() => onChangeThemeOverride(themeItem.id)}
+                          title={themeItem.nameUrdu}
+                          className={`h-7 rounded-lg border-2 flex items-center justify-center transition-all cursor-pointer ${
+                            isSelected
+                              ? 'border-[#d4af37] scale-105 shadow-xs'
+                              : 'border-white/40 dark:border-black/40 opacity-85 hover:opacity-100'
+                          }`}
+                          style={{
+                            background: `linear-gradient(135deg, ${themeItem.primary} 55%, ${themeItem.lightBg} 55%)`,
+                          }}
+                        >
+                          {isSelected && (
+                            <Check className="w-3.5 h-3.5 text-white drop-shadow" />
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Section 1 */}

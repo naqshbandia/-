@@ -1,6 +1,7 @@
 import React from 'react';
-import { X, MessageCircle, Youtube, Facebook, ExternalLink, User, Sparkles, ShieldCheck, FileText, HeartHandshake, Copy, Check, Globe, Upload, Send, ArrowRight, CheckCircle2, AlertCircle, FileImage, FileDown } from 'lucide-react';
-import { ANDROID_PACKAGE_NAME, OFFICIAL_WEBSITE_URL, OFFICIAL_WHATSAPP_LINKS, WHATSAPP_DIRECT_CHAT_URL, BLOGGER_HOME_URL } from '../data/appConfig';
+import { X, MessageCircle, Youtube, Facebook, ExternalLink, User, Sparkles, ShieldCheck, FileText, HeartHandshake, Copy, Check, Globe, Upload, Send, ArrowRight, CheckCircle2, AlertCircle, FileImage, FileDown, Share2 } from 'lucide-react';
+import { OFFICIAL_WHATSAPP_LINKS, WHATSAPP_DIRECT_CHAT_URL, BLOGGER_HOME_URL, getAppGiftWhatsAppShareUrl } from '../data/appConfig';
+import { CombinedInstallStats } from '../utils/installStatsService';
 import { exportReceiptFile, shareOrDownloadReceiptFile } from '../utils/donationReceipt';
 import {
   AppLanguage,
@@ -1155,50 +1156,88 @@ export const WhatsAppGroupsModal: React.FC<{
 
 
 // 8. ایپلیکیشن کے بارے میں
-export const AboutAppModal: React.FC<{ isOpen: boolean; onClose: () => void; isDark?: boolean; lang?: AppLanguage }> = ({
+export const AboutAppModal: React.FC<{
+  isOpen: boolean;
+  onClose: () => void;
+  isDark?: boolean;
+  lang?: AppLanguage;
+  installStats?: CombinedInstallStats & { refreshStats: () => void };
+}> = ({
   isOpen,
   onClose,
   isDark = true,
   lang = DEFAULT_LANGUAGE,
+  installStats,
 }) => {
   const t = UI_STRINGS[lang];
+  const totalDownloads =
+    installStats && installStats.allTimeDownloads !== null
+      ? installStats.allTimeDownloads
+      : installStats?.totalApkClicks ?? 0;
+
   return (
     <BaseModal isOpen={isOpen} onClose={onClose} title={t.modalAboutTitle} isDark={isDark} lang={lang}>
-      <div className="space-y-4 font-lalezar text-sm">
-        <div className={`text-center p-4 border border-[#b08d43]/50 rounded-2xl ${isDark ? 'bg-[#382618]' : 'bg-amber-100/70'}`}>
+      <div className="space-y-3.5 font-lalezar text-sm">
+        {/* Khanqah Icon, App Info & Direct WhatsApp Share Button */}
+        <div className={`text-center p-4 border border-[#d4af37]/60 rounded-2xl space-y-2.5 ${isDark ? 'bg-[#081b11]' : 'bg-[#f4f9f6]'}`}>
           <img
             src={`${import.meta.env.BASE_URL}kdf-logo-v4.webp`}
             alt={t.appName}
-            className="w-24 h-24 mx-auto mb-2 rounded-2xl shadow-xl object-cover"
+            className="w-24 h-24 mx-auto rounded-2xl shadow-xl object-cover"
           />
-          <h3 className="text-2xl font-bold">{t.appName}</h3>
-          <p className="text-xs text-[#b08d43] font-sans">Khanqah Darul Falah Mobile Application</p>
-          <div className="inline-block px-3 py-1 bg-[#b08d43]/20 border border-[#b08d43]/50 rounded-full text-xs text-[#b08d43] mt-2 font-sans font-bold">
-            Version 1.0.0 (Release)
+          <div>
+            <h3 className="text-2xl font-bold text-[#064326] dark:text-[#d4af37]">{t.appName}</h3>
+            <p className="text-xs opacity-80 font-sans">Khanqah Darul Falah Mobile Application</p>
+            <div className="inline-block px-3 py-0.5 bg-[#d4af37]/20 border border-[#d4af37]/50 rounded-full text-xs text-[#8c6514] dark:text-[#d4af37] mt-1.5 font-sans font-bold">
+              Version 1.0.0
+            </div>
           </div>
+
+          <a
+            href={getAppGiftWhatsAppShareUrl()}
+            target="_blank"
+            rel="noreferrer"
+            className="w-full py-2.5 px-4 rounded-xl bg-[#25D366] hover:bg-[#1faa4e] text-white text-xs sm:text-sm font-bold flex items-center justify-center gap-2 shadow-md transition-all active:scale-95"
+          >
+            <MessageCircle className="w-4 h-4 fill-white shrink-0" />
+            <span>{t.giftShareAppBtn}</span>
+            <Share2 className="w-3.5 h-3.5 shrink-0" />
+          </a>
         </div>
 
-        <div className={`p-3 rounded-xl border border-[#b08d43]/30 space-y-2 text-xs font-sans ${isDark ? 'bg-[#18110b]' : 'bg-amber-50'}`} dir="ltr">
-          <div className="flex justify-between py-1 border-b border-[#b08d43]/20">
-            <span className="text-[#b08d43] font-bold">Package Name:</span>
-            <span className="select-all font-mono">{ANDROID_PACKAGE_NAME}</span>
+        {/* Clean Download & Install Counts Only */}
+        {installStats && (
+          <div
+            className={`p-3 rounded-xl border border-[#d4af37]/40 space-y-2 ${
+              isDark ? 'bg-[#0a1d13] text-emerald-50' : 'bg-emerald-50/70 text-[#11261b]'
+            }`}
+          >
+            <div className="text-center text-xs font-bold text-[#064326] dark:text-[#d4af37]">
+              ڈاؤنلوڈز اور انسٹال شماریات
+            </div>
+            <div className="grid grid-cols-2 gap-2 text-center text-xs">
+              <div className="p-2.5 rounded-xl bg-white/80 dark:bg-white/5 border border-[#d4af37]/30">
+                <div className="text-xl font-extrabold text-[#8c6514] dark:text-[#d4af37] tabular-nums">
+                  {totalDownloads}
+                </div>
+                <div className="text-[11px] font-bold opacity-85">کل ڈاؤنلوڈز</div>
+              </div>
+              <div className="p-2.5 rounded-xl bg-white/80 dark:bg-white/5 border border-[#d4af37]/30">
+                <div className="text-xl font-extrabold text-[#064326] dark:text-[#00ff99] tabular-nums">
+                  {installStats.totalInstalledDevices}
+                </div>
+                <div className="text-[11px] font-bold opacity-85">انسٹال شدہ ایپس</div>
+              </div>
+            </div>
           </div>
-          <div className="flex justify-between py-1 border-b border-[#b08d43]/20">
-            <span className="text-[#b08d43] font-bold">Target Website:</span>
-            <span>{OFFICIAL_WEBSITE_URL}</span>
-          </div>
-          <div className="flex justify-between py-1">
-            <span className="text-[#b08d43] font-bold">Features:</span>
-            <span>14 Languages (Urdu, Pashto, English, Arabic &amp; more), Offline Retry, 1-Click Bayan &amp; Folder Downloads, Light/Dark Theme</span>
-          </div>
-        </div>
+        )}
 
-        <div className="space-y-2">
+        <div className="space-y-2 px-1">
           <p className="text-xs leading-relaxed opacity-85 font-sans">
             {lang === 'ps'
               ? 'دا رسمي اپلیکېشن د خانقاه دارالفلاح آډیو بیانات، اسلامي کتابونه، د لمونځونو مهالوېش، ژوندۍ خبرتیاوې او د یو کلیک MP3 ډاونلوډ آسانتیا په ۱۴ ژبو کې وړاندې کوي.'
               : lang === 'ur' || lang === 'fa'
-              ? 'یہ ایپلیکیشن اصل ویب سائٹ کے تمام صفحات، آڈیو فولڈرز، مجالس، کتب اور بیانات کو بغیر کسی ردوبدل کے اصلی حالت میں پیش کرتی ہے، نیز اس میں اسمارٹ سرچ بار، فولڈر ڈاؤنلوڈ اور نارمل/ڈارک تھیم کی سہولت شامل ہے۔'
+              ? 'یہ ایپلیکیشن خانقاہ دارالفلاح کے تمام اصلاحی بیانات، دروسِ قرآن، مجالسِ ذکر، کتب اور اوقاتِ نماز کو بغیر کسی ردوبدل کے پیش کرتی ہے، نیز اس میں اسمارٹ سرچ، آف لائن ڈاؤنلوڈ اور خوبصورت اسلامک تھیمز کی سہولت شامل ہے۔'
               : lang === 'ar'
               ? 'يقدّم هذا التطبيق الرسمي مجلدات خانقاه دار الفلاح الصوتية والكتب الإسلامية ومواقيت الصلاة وإشعارات البث المباشر والتحميل بضغطة واحدة.'
               : 'This official app presents Khanqah Darul Falah audio folders, Islamic books, prayer schedules, live notifications, and 1-click MP3 downloads across 14 global and regional languages.'}

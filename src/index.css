@@ -3,20 +3,31 @@
 
 @layer base {
   :root {
-    --primary-green: #064326;
-    --accent-gold: #d4af37;
-    --led-green: #00ff99;
-    --bg-light: #f4f7f6;
+    --kdf-light-bg: #f4f7f6;
+    --kdf-light-surface: #e8f1ec;
+    --kdf-light-text: #11261b;
+    --kdf-dark-bg: #09150f;
+    --kdf-dark-surface: #0c2317;
+    --kdf-primary: #064326;
+    --kdf-primary-hover: #095c34;
+    --kdf-accent: #d4af37;
+    --kdf-led: #00ff99;
+    --kdf-panel-bg: #03150c;
+    --primary-green: var(--kdf-primary);
+    --accent-gold: var(--kdf-accent);
+    --led-green: var(--kdf-led);
+    --bg-light: var(--kdf-light-bg);
     --gold: #b08d43;
-    --gold-light: #d4af37;
-    --dark-brown: #064326;
-    --deep-brown: #0c2c1b;
-    --bg-cream: #f4f7f6;
-    --islamic-green: #064326;
+    --gold-light: var(--kdf-accent);
+    --dark-brown: var(--kdf-primary);
+    --deep-brown: var(--kdf-dark-surface);
+    --bg-cream: var(--kdf-light-bg);
+    --islamic-green: var(--kdf-primary);
   }
 
   body {
     font-family: 'Tajawal', 'Noto Sans Arabic', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background-color: var(--kdf-light-bg);
   }
 }
 
@@ -37,9 +48,22 @@
   font-family: 'Noto Sans Arabic', 'Tajawal', serif;
 }
 
+/* Dynamic Full-App Islamic Background Canvas (synced with khanqah-theme.html) */
+.kdf-app-canvas {
+  background-color: var(--kdf-light-bg, #f4f7f6);
+  color: var(--kdf-light-text, #11261b);
+  background-image: url("data:image/svg+xml,%3Csvg width='72' height='72' viewBox='0 0 72 72' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' stroke='%23064326' stroke-opacity='0.045' stroke-width='1'%3E%3Cpath d='M36 0L72 36L36 72L0 36Z'/%3E%3Ccircle cx='36' cy='36' r='14'/%3E%3C/g%3E%3C/svg%3E");
+}
+
+html.dark .kdf-app-canvas {
+  background-color: var(--kdf-dark-bg, #09150f);
+  color: #ecfdf5;
+  background-image: url("data:image/svg+xml,%3Csvg width='72' height='72' viewBox='0 0 72 72' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' stroke='%23d4af37' stroke-opacity='0.06' stroke-width='1'%3E%3Cpath d='M36 0L72 36L36 72L0 36Z'/%3E%3Ccircle cx='36' cy='36' r='14'/%3E%3C/g%3E%3C/svg%3E");
+}
+
 /* Offline-safe subtle Islamic geometric lattice background */
 .islamic-panel-pattern {
-  background-color: #03150c;
+  background-color: var(--kdf-panel-bg, #03150c);
   background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' stroke='%23d4af37' stroke-opacity='0.09' stroke-width='1'%3E%3Cpath d='M30 0L60 30L30 60L0 30Z'/%3E%3Ccircle cx='30' cy='30' r='12'/%3E%3C/g%3E%3C/svg%3E");
 }
 

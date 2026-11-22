@@ -10,6 +10,10 @@ service cloud.firestore {
       return id is string && id.size() > 0 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
     }
 
+    function isValidDeviceId(id) {
+      return id is string && id.size() >= 16 && id.size() <= 64 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
     function incoming() {
       return request.resource.data;
     }
@@ -73,6 +77,66 @@ service cloud.firestore {
         && data.updatedAt == request.time;
     }
 
+    function isValidAppStats(data) {
+      return data.keys().hasAll([
+          'totalInstalledDevices', 'totalPwaInstalls', 'totalApkClicks', 'totalWebUsers', 'lastDeviceId', 'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'totalInstalledDevices', 'totalPwaInstalls', 'totalApkClicks', 'totalWebUsers', 'lastDeviceId', 'updatedAt'
+        ])
+        && data.totalInstalledDevices is int && data.totalInstalledDevices >= 0 && data.totalInstalledDevices <= 100000000
+        && data.totalPwaInstalls is int && data.totalPwaInstalls >= 0 && data.totalPwaInstalls <= 100000000
+        && data.totalApkClicks is int && data.totalApkClicks >= 0 && data.totalApkClicks <= 100000000
+        && data.totalWebUsers is int && data.totalWebUsers >= 0 && data.totalWebUsers <= 100000000
+        && isValidDeviceId(data.lastDeviceId)
+        && data.updatedAt == request.time;
+    }
+
+    function isValidAppStatsCreate(data) {
+      return isValidAppStats(data)
+        && data.totalInstalledDevices >= 0 && data.totalInstalledDevices <= 1
+        && data.totalPwaInstalls >= 0 && data.totalPwaInstalls <= 1
+        && data.totalApkClicks >= 0 && data.totalApkClicks <= 1
+        && data.totalWebUsers >= 0 && data.totalWebUsers <= 1
+        && getAfter(/databases/$(database)/documents/appDevices/$(data.lastDeviceId)).data.updatedAt == request.time;
+    }
+
+    function isValidStep(newVal, oldVal) {
+      return newVal >= oldVal && newVal <= oldVal + 1;
+    }
+
+    function isValidAppStatsIncrement(data, prev) {
+      return isValidStep(data.totalInstalledDevices, prev.totalInstalledDevices)
+        && isValidStep(data.totalPwaInstalls, prev.totalPwaInstalls)
+        && isValidStep(data.totalApkClicks, prev.totalApkClicks)
+        && isValidStep(data.totalWebUsers, prev.totalWebUsers)
+        && (
+          data.totalInstalledDevices == prev.totalInstalledDevices + 1 ||
+          data.totalPwaInstalls == prev.totalPwaInstalls + 1 ||
+          data.totalApkClicks == prev.totalApkClicks + 1 ||
+          data.totalWebUsers == prev.totalWebUsers + 1
+        )
+        && getAfter(/databases/$(database)/documents/appDevices/$(data.lastDeviceId)).data.updatedAt == request.time;
+    }
+
+    function isValidAppDevice(data) {
+      return data.keys().hasAll([
+          'deviceId', 'platform', 'installMode', 'installed', 'apkDownloaded', 'appVersion', 'createdAt', 'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'deviceId', 'platform', 'installMode', 'installed', 'apkDownloaded', 'appVersion', 'createdAt', 'updatedAt'
+        ])
+        && isValidDeviceId(data.deviceId)
+        && data.platform is string && data.platform.size() > 0 && data.platform.size() <= 16
+        && data.platform in ['android', 'ios', 'desktop']
+        && data.installMode is string && data.installMode.size() > 0 && data.installMode.size() <= 24
+        && data.installMode in ['pwa_standalone', 'apk_webview', 'web_browser']
+        && data.installed is bool
+        && data.apkDownloaded is bool
+        && data.appVersion is string && data.appVersion.size() > 0 && data.appVersion.size() <= 20
+        && data.appVersion.matches('^[0-9]+\\.[0-9]+\\.[0-9]+$');
+    }
+
     match /khanqahSchedule/{scheduleId} {
       // Single public official schedule document can be viewed by devotees; list scraping disabled
       allow get: if isValidId(scheduleId) && scheduleId == 'official';
@@ -104,6 +168,61 @@ service cloud.firestore {
       // A signed-in user may check only their own admin status; no client writes allowed
       allow get: if isValidId(adminUid) && isVerifiedUser() && request.auth.uid == adminUid;
       allow list, create, update, delete: if false;
+    }
+
+    match /appStats/{statId} {
+      // Public install & download summary requested by Khanqah Admin; list scraping disabled
+      allow get: if isValidId(statId) && statId == 'summary';
+      allow list: if false;
+
+      allow create: if isValidId(statId)
+        && statId == 'summary'
+        && isValidAppStatsCreate(incoming());
+
+      allow update: if isValidId(statId)
+        && statId == 'summary'
+        && isValidAppStats(incoming())
+        && incoming().diff(existing()).affectedKeys().hasOnly([
+          'totalInstalledDevices', 'totalPwaInstalls', 'totalApkClicks', 'totalWebUsers', 'lastDeviceId', 'updatedAt'
+        ])
+        && (isAdmin() || isValidAppStatsIncrement(incoming(), existing()));
+
+      allow delete: if false;
+    }
+
+    match /appDevices/{deviceId} {
+      // Individual device record contains zero PII and checks its own deduplicated registration state
+      allow get: if isValidDeviceId(deviceId);
+      allow list: if false;
+
+      allow create: if isValidDeviceId(deviceId)
+        && isValidAppDevice(incoming())
+        && incoming().deviceId == deviceId
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time
+        && existsAfter(/databases/$(database)/documents/appStats/summary);
+
+      allow update: if isValidDeviceId(deviceId)
+        && isValidAppDevice(incoming())
+        && incoming().deviceId == existing().deviceId
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && incoming().diff(existing()).affectedKeys().hasOnly([
+          'installMode', 'installed', 'apkDownloaded', 'appVersion', 'updatedAt'
+        ])
+        && (
+          isAdmin() || (
+            (existing().installed == false || incoming().installed == true)
+            && (existing().apkDownloaded == false || incoming().apkDownloaded == true)
+            && (
+              (existing().installed == false && incoming().installed == true) ||
+              (existing().apkDownloaded == false && incoming().apkDownloaded == true)
+            )
+            && existsAfter(/databases/$(database)/documents/appStats/summary)
+          )
+        );
+
+      allow delete: if false;
     }
   }
 }

@@ -215,9 +215,7 @@ export const AudioLibraryView: React.FC<Props> = ({
 
   return (
     <div
-      className={`flex-1 w-full h-full flex flex-col overflow-y-auto select-none transition-colors duration-200 font-modern ${
-        isDark ? 'bg-[#18110b] text-amber-50' : 'bg-[#faf6ee] text-[#2c1f15]'
-      }`}
+      className="kdf-app-canvas flex-1 w-full h-full flex flex-col overflow-y-auto select-none transition-colors duration-200 font-modern"
       dir={dir}
     >
       {/* 
