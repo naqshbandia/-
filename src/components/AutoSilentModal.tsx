@@ -3,18 +3,13 @@ import {
   BellOff,
   ChevronLeft,
   ChevronRight,
-  Clock,
   Check,
-  Save,
-  RotateCcw,
   MessageCircle,
   Share2,
-  Smartphone,
   FileDown,
   Image as ImageIcon,
   Play,
   Pause,
-  Info,
 } from 'lucide-react';
 import { BaseModal } from './Modals';
 import { downloadAutoSilentGuideJpg } from '../utils/autoSilentJpg';
@@ -38,8 +33,6 @@ export interface AutoSilentSlot {
   end: string;
   enabled: boolean;
 }
-
-const AUTO_SILENT_STORAGE_KEY = 'khanqah_auto_silent_schedule_v1';
 
 function shiftMinutes24(time24: string, deltaMinutes: number): string {
   const [hStr, mStr] = (time24 || '12:00').split(':');
@@ -116,75 +109,10 @@ export const AutoSilentModal: React.FC<Props> = ({
     return () => window.clearInterval(timer);
   }, [isOpen, isAutoPlaying]);
 
-  const defaultSlots = useMemo(
+  const slots = useMemo(
     () => buildDefaultAutoSilentSlots(officialSchedule, prayerData),
     [officialSchedule, prayerData]
   );
-
-  const [slots, setSlots] = useState<AutoSilentSlot[]>(() => {
-    try {
-      const raw = localStorage.getItem(AUTO_SILENT_STORAGE_KEY);
-      if (raw) {
-        const parsed = JSON.parse(raw) as Array<Partial<AutoSilentSlot> & { name?: string }>;
-        if (Array.isArray(parsed) && parsed.length === 6) {
-          return defaultSlots.map((def, i) => {
-            const item = parsed[i] || {};
-            return {
-              key: (item.key as JamaatKey) || def.key,
-              labelUrdu: item.labelUrdu || item.name || def.labelUrdu,
-              start: item.start || def.start,
-              end: item.end || def.end,
-              enabled: typeof item.enabled === 'boolean' ? item.enabled : true,
-            };
-          });
-        }
-      }
-    } catch {}
-    return defaultSlots;
-  });
-
-  const [savedNotice, setSavedNotice] = useState(false);
-
-  const updateSlot = (idx: number, patch: Partial<AutoSilentSlot>) => {
-    setSlots((prev) => prev.map((item, i) => (i === idx ? { ...item, ...patch } : item)));
-    setSavedNotice(false);
-  };
-
-  const handleSaveSchedule = () => {
-    try {
-      localStorage.setItem(AUTO_SILENT_STORAGE_KEY, JSON.stringify(slots));
-    } catch {}
-    setSavedNotice(true);
-    if (onNotify) {
-      onNotify('نمازوں کا آٹو سائلنٹ شیڈول محفوظ ہو گیا!');
-    }
-  };
-
-  const handleResetToKhanqah = () => {
-    const fresh = buildDefaultAutoSilentSlots(officialSchedule, prayerData);
-    setSlots(fresh);
-    try {
-      localStorage.setItem(AUTO_SILENT_STORAGE_KEY, JSON.stringify(fresh));
-    } catch {}
-    setSavedNotice(true);
-    if (onNotify) {
-      onNotify('شیڈول خانقاہ کے اوقات کے مطابق تازہ کر دیا گیا!');
-    }
-  };
-
-  const handleOpenDeviceSoundSettings = () => {
-    // Best-effort Android Intent URI for DND / Sound Settings on Android WebView/Chrome
-    try {
-      window.location.href = 'intent:#Intent;action=android.settings.ZEN_MODE_SETTINGS;end';
-      if (onNotify) {
-        onNotify('موبائل کی Do Not Disturb سیٹنگ کھولی جا رہی ہے...');
-      }
-    } catch {
-      if (onNotify) {
-        onNotify('براہِ کرم موبائل Settings > Sound > Do Not Disturb خود کھول کر سیٹ کریں۔');
-      }
-    }
-  };
 
   const handleDownloadHtmlGuide = async () => {
     try {
@@ -562,99 +490,12 @@ export const AutoSilentModal: React.FC<Props> = ({
           </div>
         </div>
 
-        {/* Editable 6-Prayer Start & End Times Table */}
+        {/* Action Buttons: WhatsApp Share + JPG & HTML Download */}
         <div
           className={`p-3 rounded-2xl border border-[#d4af37]/45 space-y-2 ${
             isDark ? 'bg-[#08180f]' : 'bg-[#f8fbf9]'
           }`}
         >
-          <div className="flex items-center justify-between gap-2">
-            <span className="font-bold text-[#064326] dark:text-[#d4af37] flex items-center gap-1.5">
-              <Clock className="w-3.5 h-3.5" />
-              <span>اپنی مسجد کا Start &amp; End شیڈول سیٹ کریں</span>
-            </span>
-            <button
-              type="button"
-              onClick={handleResetToKhanqah}
-              className="inline-flex items-center gap-1 text-[10.5px] font-bold text-[#064326] dark:text-emerald-300 hover:underline cursor-pointer"
-              title="خانقاہ کے اوقات پر ری سیٹ کریں"
-            >
-              <RotateCcw className="w-3 h-3" />
-              <span>ری سیٹ</span>
-            </button>
-          </div>
-
-          <div className="space-y-1.5">
-            {slots.map((slot, idx) => (
-              <div
-                key={slot.key}
-                className={`grid grid-cols-[1.15fr_1fr_1fr_auto] items-center gap-1.5 p-1.5 rounded-xl border ${
-                  isDark
-                    ? 'bg-[#0d2217] border-[#d4af37]/20'
-                    : 'bg-white border-emerald-900/10'
-                }`}
-              >
-                <span className="font-bold text-[11px] truncate">{slot.labelUrdu}</span>
-                <input
-                  type="time"
-                  value={slot.start}
-                  onChange={(e) => updateSlot(idx, { start: e.target.value })}
-                  className={`rounded-lg border px-1 py-1 text-[11px] text-center font-sans ${
-                    isDark
-                      ? 'bg-[#06130c] border-[#d4af37]/35 text-[#00ff99]'
-                      : 'bg-[#f4f7f6] border-emerald-800/20 text-[#064326]'
-                  }`}
-                  dir="ltr"
-                />
-                <input
-                  type="time"
-                  value={slot.end}
-                  onChange={(e) => updateSlot(idx, { end: e.target.value })}
-                  className={`rounded-lg border px-1 py-1 text-[11px] text-center font-sans ${
-                    isDark
-                      ? 'bg-[#06130c] border-[#d4af37]/35 text-[#00ff99]'
-                      : 'bg-[#f4f7f6] border-emerald-800/20 text-[#064326]'
-                  }`}
-                  dir="ltr"
-                />
-                <input
-                  type="checkbox"
-                  checked={slot.enabled}
-                  onChange={(e) => updateSlot(idx, { enabled: e.target.checked })}
-                  className="w-4 h-4 accent-[#064326] cursor-pointer"
-                  aria-label={slot.labelUrdu}
-                />
-              </div>
-            ))}
-          </div>
-
-          {savedNotice && (
-            <div className="text-center text-[11px] font-bold text-emerald-600 dark:text-[#00ff99]">
-              ✓ شیڈول محفوظ ہو گیا — تصویر نمبر 3 میں بھی اپڈیٹ ہو چکا ہے!
-            </div>
-          )}
-
-          {/* Action Buttons */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
-            <button
-              type="button"
-              onClick={handleSaveSchedule}
-              className="py-2 px-3 rounded-xl bg-[#064326] hover:bg-[#095c34] text-white font-bold text-xs flex items-center justify-center gap-1.5 border border-[#d4af37]/70 shadow-sm cursor-pointer active:scale-95 transition-all"
-            >
-              <Save className="w-3.5 h-3.5 text-[#d4af37]" />
-              <span>شیڈول محفوظ کریں</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={handleOpenDeviceSoundSettings}
-              className="py-2 px-3 rounded-xl bg-[#d4af37] hover:bg-[#c29b29] text-[#051a0f] font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm cursor-pointer active:scale-95 transition-all"
-            >
-              <Smartphone className="w-3.5 h-3.5" />
-              <span>موبائل DND سیٹنگ کھولیں</span>
-            </button>
-          </div>
-
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             <a
               href={whatsappShareUrl}
@@ -689,21 +530,6 @@ export const AutoSilentModal: React.FC<Props> = ({
               <FileDown className="w-3.5 h-3.5" />
               <span>HTML گائیڈ ڈاؤنلوڈ کریں</span>
             </button>
-          </div>
-
-          {/* Transparent Note on Why Phone OS Requires DND Setting */}
-          <div
-            className={`p-2 rounded-xl border text-[10.5px] leading-relaxed flex items-start gap-1.5 ${
-              isDark
-                ? 'bg-emerald-950/60 border-[#d4af37]/30 text-emerald-100'
-                : 'bg-amber-50 border-amber-300/60 text-[#11261b]'
-            }`}
-          >
-            <Info className="w-3.5 h-3.5 text-[#d4af37] shrink-0 mt-0.5" />
-            <span>
-              <strong>اہم وضاحت:</strong> اینڈرائیڈ سکیورٹی کی وجہ سے ویب ایپ خودکار طور پر موبائل کی گھنٹی بند نہیں کر سکتی؛ اس لیے اوپر{' '}
-              <strong>موبائل DND سیٹنگ کھولیں</strong> دبا کر یا Settings → Do Not Disturb میں جا کر یہ وقت صرف ایک بار محفوظ کر لیں۔
-            </span>
           </div>
         </div>
 

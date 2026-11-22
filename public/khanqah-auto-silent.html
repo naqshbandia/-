@@ -537,19 +537,9 @@
         </div>
       </div>
 
-      <!-- Editable 6-Prayer Start & End Schedule -->
+      <!-- Action Card: JPG Download & WhatsApp Share -->
       <div class="planner-card">
-        <div class="planner-head">
-          <h2>🕰️ نمازوں کا Start &amp; End ٹائم شیڈول</h2>
-          <span style="font-size:11px;color:#6ee7b7;">اپنی مسجد کے مطابق بدلیں</span>
-        </div>
-
-        <div id="scheduleRows"></div>
-
-        <div class="action-grid">
-          <button type="button" class="action-btn btn-save" onclick="saveSchedule()">
-            💾 اپنا شیڈول محفوظ کریں (Save Schedule)
-          </button>
+        <div class="action-grid" style="margin-top:0;">
           <button type="button" class="action-btn" style="background:#0b4f2e;color:#fff;border:1.5px solid #d4af37;" onclick="downloadJpgPoster()">
             🖼️ گائیڈ و شیڈول JPG تصویر ڈاؤنلوڈ کریں
           </button>
@@ -558,10 +548,6 @@
           </a>
         </div>
         <div class="toast-msg" id="toastMsg"></div>
-
-        <div class="btn-brands" style="margin-top:8px;color:#ecfdf5;">
-          <b>ℹ️ اہم وضاحت:</b> اینڈرائیڈ سکیورٹی کی وجہ سے ویب پیج خودکار طور پر فون کی گھنٹی بند نہیں کر سکتا؛ اس لیے اوپر دی گئی تصویر 1 تا 4 کے مطابق اپنے موبائل کی <b>Settings → Do Not Disturb</b> میں صرف ایک بار وقت محفوظ کر لیں۔
-        </div>
 
         <div class="btn-brands">
           <b>📱 مختلف موبائل کمپنیوں کے لیے:</b><br />
@@ -645,35 +631,9 @@
         .join('');
     }
 
-    function renderScheduleRows() {
-      const wrap = document.getElementById('scheduleRows');
-      wrap.innerHTML = schedule
-        .map(
-          (p, idx) => `
-          <div class="prayer-row">
-            <span class="prayer-name">${p.name}</span>
-            <input type="time" class="time-input" value="${p.start}" onchange="updateField(${idx}, 'start', this.value)" />
-            <input type="time" class="time-input" value="${p.end}" onchange="updateField(${idx}, 'end', this.value)" />
-            <input type="checkbox" class="check-toggle" ${p.enabled ? 'checked' : ''} onchange="updateField(${idx}, 'enabled', this.checked)" />
-          </div>
-        `
-        )
-        .join('');
+    function initGuide() {
       renderMockPreview();
       updateWhatsAppLink();
-    }
-
-    function updateField(index, field, val) {
-      schedule[index][field] = val;
-      renderMockPreview();
-      updateWhatsAppLink();
-    }
-
-    function saveSchedule() {
-      try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(schedule));
-      } catch {}
-      document.getElementById('toastMsg').textContent = '✅ آپ کا 6 نمازوں کا آٹو سائلنٹ شیڈول محفوظ ہو گیا!';
     }
 
     function updateWhatsAppLink() {
@@ -846,7 +806,7 @@
       }
     }
 
-    renderScheduleRows();
+    initGuide();
     goSlide(0, true);
     startAutoPlayTimer();
   </script>
