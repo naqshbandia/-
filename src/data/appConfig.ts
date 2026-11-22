@@ -5,23 +5,15 @@ export const ANDROID_APP_NAME_URDU = "خانقاہ دارالفلاح";
 // Official Verified Android APK Download Link on Archive.org
 export const OFFICIAL_APK_URL = "https://archive.org/download/khanqah-darul-falah/%20khanqah%20Darul%20falah.apk";
 
-// Official WhatsApp Gift Share Link (includes live Web App URL for latest icon + Mobile Mode, plus APK download link)
+// Official WhatsApp Gift Share Link (shares the official Archive.org Android APK file link only)
 export function getAppGiftWhatsAppShareUrl(): string {
-  const liveWebUrl =
-    typeof window !== 'undefined'
-      ? `${window.location.origin}${import.meta.env.BASE_URL}`
-      : 'https://naqshbandia.github.io/index.html/';
-
   return `https://wa.me/?text=${encodeURIComponent(
     [
       '🎁 *خانقاہ دارالفلاح — دینی تحفہ (آفیشل موبائل ایپ)*',
       '',
       'شیخ الحدیث حضرت مولانا پیر محمد جمشید نقشبندی مجددی (دامت برکاتہم) کے اصلاحی بیانات، دروسِ قرآن، کتب اور اوقاتِ نماز کی آفیشل ایپ بطورِ ہدیہ قبول فرمائیں۔',
       '',
-      '🌐 *فوری ویب ایپ کھولیں / موبائل اسکرین پر انسٹال کریں (نئے آئیکن کے ساتھ):*',
-      liveWebUrl,
-      '',
-      '📲 *یا پرانی اینڈرائڈ APK فائل:*',
+      '📲 *آفیشل اینڈرائڈ ایپ (APK) ڈاؤنلوڈ لنک:*',
       OFFICIAL_APK_URL,
     ].join('\n')
   )}`;

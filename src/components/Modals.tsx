@@ -502,8 +502,8 @@ export const DonationModal: React.FC<{
               </blockquote>
             </div>
 
-            {/* Open Form Sparkling Button + Standalone HTML Page Link */}
-            <div className="pt-0.5 flex flex-col items-center gap-1">
+            {/* Open Form Sparkling Button */}
+            <div className="pt-0.5 flex flex-col items-center">
               <button
                 type="button"
                 onClick={() => setShowForm(true)}
@@ -512,16 +512,6 @@ export const DonationModal: React.FC<{
                 <HeartHandshake className="w-4 h-4 text-[#d4af37]" />
                 <span>{labels.openFormBtn}</span>
               </button>
-
-              <a
-                href={`${import.meta.env.BASE_URL}khanqah-donation.html`}
-                target="_blank"
-                rel="noreferrer"
-                className="text-[10.5px] font-bold text-[#064326] dark:text-[#d4af37] hover:underline inline-flex items-center gap-1"
-              >
-                <span>{labels.openHtmlPageBtn}</span>
-                <ExternalLink className="w-3 h-3" />
-              </a>
             </div>
           </>
         ) : (
@@ -775,15 +765,6 @@ export const DonationModal: React.FC<{
                   <ArrowRight className="w-3.5 h-3.5" />
                   <span>{labels.backToGuideBtn}</span>
                 </button>
-                <a
-                  href={`${import.meta.env.BASE_URL}khanqah-donation-form.html`}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="text-[11px] font-bold text-[#064326] dark:text-[#d4af37] hover:underline inline-flex items-center gap-1"
-                >
-                  <span>علیحدہ فارم صفحہ</span>
-                  <ExternalLink className="w-3 h-3" />
-                </a>
                 <a
                   href={DONATION_FORM_URL}
                   target="_blank"
