@@ -1660,3 +1660,39 @@ export function getDonationLabels(lang: AppLanguage): DonationLabels {
   };
 }
 
+export interface AutoSilentLabels {
+  folderTitle: string;
+  folderSub: string;
+  drawerLabel: string;
+}
+
+export function getAutoSilentLabels(lang: AppLanguage): AutoSilentLabels {
+  if (lang === 'ps') {
+    return {
+      folderTitle: 'د لمانځه آټو سائلنټ',
+      folderSub: 'خپلکاره خاموشي سیټنګ',
+      drawerLabel: 'د لمانځه آټو سائلنټ موډ (لارښود)',
+    };
+  }
+  if (lang === 'ar') {
+    return {
+      folderTitle: 'صامت الصلاة التلقائي',
+      folderSub: 'جدول الصمت التلقائي',
+      drawerLabel: 'وضع الصامت التلقائي للصلاة',
+    };
+  }
+  if (lang === 'ur' || lang === 'fa') {
+    return {
+      folderTitle: 'نماز آٹو سائلنٹ',
+      folderSub: 'خودکار خاموشی سیٹنگ',
+      drawerLabel: 'نماز آٹو سائلنٹ موڈ (گائیڈ)',
+    };
+  }
+  return {
+    folderTitle: 'Prayer Auto Silent',
+    folderSub: 'Auto DND Schedule',
+    drawerLabel: 'Prayer Auto Silent Mode',
+  };
+}
+
+

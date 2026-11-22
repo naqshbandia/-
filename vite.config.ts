@@ -93,6 +93,8 @@ export default defineConfig(() => {
           'app-icon-maskable.png',
           'app-logo.webp',
           'sheikh-glass-banner.png',
+          'khanqah-theme.html',
+          'khanqah-auto-silent.html',
         ],
         manifest: pwaManifest,
         workbox: {

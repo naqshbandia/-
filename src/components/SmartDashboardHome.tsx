@@ -30,6 +30,7 @@ import {
   Folder,
   Megaphone,
   Users,
+  BellOff,
 } from 'lucide-react';
 import {
   SHEIKH_GLASS_BANNER_URL,
@@ -75,6 +76,7 @@ import {
   getJamaatLabel,
   getNawafilLabel,
   getDonationLabels,
+  getAutoSilentLabels,
 } from '../data/translations';
 
 interface Props {
@@ -88,6 +90,7 @@ interface Props {
   onOpenLibrary: () => void;
   onOpenWhatsAppGroups: () => void;
   onOpenDonations: () => void;
+  onOpenAutoSilent?: () => void;
   onOpenIntroKhanqah: () => void;
   onOpenIntroSheikh: () => void;
   onOpenContact: () => void;
@@ -169,6 +172,7 @@ export const SmartDashboardHome: React.FC<Props> = ({
   onOpenLibrary,
   onOpenWhatsAppGroups,
   onOpenDonations,
+  onOpenAutoSilent,
   onOpenIntroKhanqah,
   onOpenIntroSheikh,
   onOpenContact,
@@ -181,6 +185,7 @@ export const SmartDashboardHome: React.FC<Props> = ({
 }) => {
   const t = UI_STRINGS[lang];
   const donationLabels = getDonationLabels(lang);
+  const autoSilentLabels = getAutoSilentLabels(lang);
   const dir = getDir(lang);
   const [now, setNow] = useState<Date>(() => new Date());
   const [glassBannerError, setGlassBannerError] = useState(false);
@@ -426,18 +431,33 @@ export const SmartDashboardHome: React.FC<Props> = ({
         accent: 'text-rose-600 dark:text-[#d4af37]',
         onClick: onOpenDonations,
       },
+      ...(onOpenAutoSilent
+        ? [
+            {
+              id: 'auto-silent-mode',
+              label: autoSilentLabels.folderTitle,
+              subLabel: autoSilentLabels.folderSub,
+              icon: BellOff,
+              accent: 'text-[#064326] dark:text-[#00ff99]',
+              onClick: onOpenAutoSilent,
+            },
+          ]
+        : []),
     ],
     [
       bayanatList.length,
       onOpenLibrary,
       onOpenWhatsAppGroups,
       onOpenDonations,
+      onOpenAutoSilent,
       t.audioLibraryTitle,
       t.audioLibrarySubSuffix,
       t.whatsappGroupsTitle,
       t.whatsappGroupsSub,
       donationLabels.folderTitle,
       donationLabels.folderSub,
+      autoSilentLabels.folderTitle,
+      autoSilentLabels.folderSub,
     ]
   );
 

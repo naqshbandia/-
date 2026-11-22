@@ -28,6 +28,7 @@ import {
   Landmark,
   Palette,
   Check,
+  BellOff,
 } from 'lucide-react';
 import {
   OFFICIAL_APK_URL,
@@ -41,6 +42,7 @@ import {
   UI_STRINGS,
   getDir,
   getDonationLabels,
+  getAutoSilentLabels,
 } from '../data/translations';
 import { ISLAMIC_THEMES, IslamicThemePalette } from '../utils/themeService';
 import { recordApkDownloadClick } from '../utils/installStatsService';
@@ -56,6 +58,7 @@ interface Props {
   onOpenUrl?: (url: string) => void;
   onOpenWhatsAppGroups?: () => void;
   onOpenDonations?: () => void;
+  onOpenAutoSilent?: () => void;
   onOpenContact: () => void;
   onOpenWebsite: () => void;
   onOpenTerms?: () => void;
@@ -82,6 +85,7 @@ export const HamburgerDrawer: React.FC<Props> = ({
   onOpenUrl,
   onOpenWhatsAppGroups,
   onOpenDonations,
+  onOpenAutoSilent,
   onOpenContact,
   onOpenWebsite,
   onOpenTerms,
@@ -99,6 +103,7 @@ export const HamburgerDrawer: React.FC<Props> = ({
   if (!isOpen) return null;
   const t = UI_STRINGS[lang];
   const donationLabels = getDonationLabels(lang);
+  const autoSilentLabels = getAutoSilentLabels(lang);
   const dir = getDir(lang);
 
   const rowClass = `w-full flex items-center justify-between px-3 py-2.5 rounded-xl transition-all group cursor-pointer ${
@@ -375,6 +380,22 @@ export const HamburgerDrawer: React.FC<Props> = ({
                     <div className="flex items-center gap-2.5 min-w-0">
                       <span className={iconBoxClass}><HeartHandshake className="w-4 h-4 text-rose-500" /></span>
                       <span className="font-bold truncate">{donationLabels.drawerLabel}</span>
+                    </div>
+                    <ChevronLeft className={`w-4 h-4 opacity-40 group-hover:opacity-100 shrink-0 ${dir === 'ltr' ? 'rotate-180' : ''}`} />
+                  </button>
+                )}
+
+                {onOpenAutoSilent && (
+                  <button
+                    onClick={() => {
+                      onClose();
+                      onOpenAutoSilent();
+                    }}
+                    className={rowClass}
+                  >
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <span className={iconBoxClass}><BellOff className="w-4 h-4 text-[#00c975] dark:text-[#00ff99]" /></span>
+                      <span className="font-bold truncate">{autoSilentLabels.drawerLabel}</span>
                     </div>
                     <ChevronLeft className={`w-4 h-4 opacity-40 group-hover:opacity-100 shrink-0 ${dir === 'ltr' ? 'rotate-180' : ''}`} />
                   </button>

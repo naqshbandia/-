@@ -21,6 +21,9 @@ import {
   PrivacyPolicyModal,
   DonationModal,
 } from './components/Modals';
+import { AutoSilentModal } from './components/AutoSilentModal';
+import { loadCachedKhanqahSchedule } from './utils/khanqahScheduleService';
+import { PRAYER_CACHE_KEY, PrayerCache } from './utils/prayerEngine';
 import { BayanItem } from './data/bayanatData';
 import { 
   GOLD_LIBRARY_URL, 
@@ -140,6 +143,21 @@ export default function App() {
   const [isTermsOpen, setIsTermsOpen] = useState(false);
   const [isPrivacyOpen, setIsPrivacyOpen] = useState(false);
   const [isDonationOpen, setIsDonationOpen] = useState(false);
+  const [isAutoSilentOpen, setIsAutoSilentOpen] = useState(false);
+
+  const cachedPrayerData = React.useMemo<PrayerCache | null>(() => {
+    try {
+      const raw = localStorage.getItem(PRAYER_CACHE_KEY);
+      return raw ? (JSON.parse(raw) as PrayerCache) : null;
+    } catch {
+      return null;
+    }
+  }, [isAutoSilentOpen]);
+
+  const cachedKhanqahSchedule = React.useMemo(
+    () => loadCachedKhanqahSchedule(),
+    [isAutoSilentOpen]
+  );
 
   // Audio player state
   const [currentBayan, setCurrentBayan] = useState<BayanItem | null>(null);
@@ -256,6 +274,7 @@ export default function App() {
             onOpenLibrary={() => handleOpenLibraryFolder('all')}
             onOpenWhatsAppGroups={() => setIsWhatsAppGroupsOpen(true)}
             onOpenDonations={() => setIsDonationOpen(true)}
+            onOpenAutoSilent={() => setIsAutoSilentOpen(true)}
             onOpenIntroKhanqah={() => setIsIntroKhanqahOpen(true)}
             onOpenIntroSheikh={() => setIsIntroSheikhOpen(true)}
             onOpenContact={() => setIsContactOpen(true)}
@@ -301,6 +320,7 @@ export default function App() {
         onOpenUrl={handleNavigateUrl}
         onOpenWhatsAppGroups={() => setIsWhatsAppGroupsOpen(true)}
         onOpenDonations={() => setIsDonationOpen(true)}
+        onOpenAutoSilent={() => setIsAutoSilentOpen(true)}
         onOpenContact={() => setIsContactOpen(true)}
         onOpenWebsite={() => {
           handleNavigateUrl(BLOGGER_HOME_URL);
@@ -395,6 +415,16 @@ export default function App() {
         onClose={() => setIsDonationOpen(false)}
         isDark={isDark}
         lang={lang}
+        onNotify={showNotification}
+      />
+
+      <AutoSilentModal
+        isOpen={isAutoSilentOpen}
+        onClose={() => setIsAutoSilentOpen(false)}
+        isDark={isDark}
+        lang={lang}
+        officialSchedule={cachedKhanqahSchedule}
+        prayerData={cachedPrayerData}
         onNotify={showNotification}
       />
     </div>
