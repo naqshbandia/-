@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useRef } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import {
   BellOff,
   ChevronLeft,
@@ -11,8 +11,13 @@ import {
   Share2,
   Smartphone,
   FileDown,
+  Image as ImageIcon,
+  Play,
+  Pause,
+  Info,
 } from 'lucide-react';
 import { BaseModal } from './Modals';
+import { downloadAutoSilentGuideJpg } from '../utils/autoSilentJpg';
 import {
   AppLanguage,
   DEFAULT_LANGUAGE,
@@ -97,7 +102,19 @@ export const AutoSilentModal: React.FC<Props> = ({
 }) => {
   const dir = getDir(lang);
   const [currentSlide, setCurrentSlide] = useState(0);
+  const [isAutoPlaying, setIsAutoPlaying] = useState(true);
+  const [isExportingJpg, setIsExportingJpg] = useState(false);
   const touchStartX = useRef<number | null>(null);
+  const totalSlides = 4;
+
+  // Automatic smooth slide transition (pauses when modal closes or user pauses)
+  useEffect(() => {
+    if (!isOpen || !isAutoPlaying) return;
+    const timer = window.setInterval(() => {
+      setCurrentSlide((prev) => (prev + 1) % totalSlides);
+    }, 4000);
+    return () => window.clearInterval(timer);
+  }, [isOpen, isAutoPlaying]);
 
   const defaultSlots = useMemo(
     () => buildDefaultAutoSilentSlots(officialSchedule, prayerData),
@@ -192,6 +209,22 @@ export const AutoSilentModal: React.FC<Props> = ({
     }
   };
 
+  const handleDownloadJpgGuide = async () => {
+    setIsExportingJpg(true);
+    try {
+      await downloadAutoSilentGuideJpg(slots);
+      if (onNotify) {
+        onNotify('آٹو سائلنٹ گائیڈ JPG تصویر ڈاؤنلوڈ ہو گئی — اب گیلری یا واٹس ایپ پر دیکھ سکتے ہیں!');
+      }
+    } catch {
+      if (onNotify) {
+        onNotify('JPG تصویر بنانے میں دشواری پیش آئی۔');
+      }
+    } finally {
+      setIsExportingJpg(false);
+    }
+  };
+
   const whatsappShareUrl = useMemo(() => {
     const lines = [
       '🔕 *نماز آٹو سائلنٹ موڈ — صدقۂ جاریہ*',
@@ -207,9 +240,14 @@ export const AutoSilentModal: React.FC<Props> = ({
     return `https://wa.me/?text=${encodeURIComponent(lines)}`;
   }, [slots]);
 
-  const totalSlides = 4;
-  const goPrev = () => setCurrentSlide((s) => Math.max(0, s - 1));
-  const goNext = () => setCurrentSlide((s) => Math.min(totalSlides - 1, s + 1));
+  const goPrev = () => {
+    setIsAutoPlaying(false);
+    setCurrentSlide((s) => (s === 0 ? totalSlides - 1 : s - 1));
+  };
+  const goNext = () => {
+    setIsAutoPlaying(false);
+    setCurrentSlide((s) => (s + 1) % totalSlides);
+  };
 
   return (
     <BaseModal
@@ -246,7 +284,10 @@ export const AutoSilentModal: React.FC<Props> = ({
             <button
               key={step.idx}
               type="button"
-              onClick={() => setCurrentSlide(step.idx)}
+              onClick={() => {
+                setIsAutoPlaying(false);
+                setCurrentSlide(step.idx);
+              }}
               className={`py-1.5 px-1 rounded-xl text-[11px] font-bold border transition-all cursor-pointer ${
                 currentSlide === step.idx
                   ? 'bg-[#d4af37] text-[#051a0f] border-white shadow-sm'
@@ -470,29 +511,50 @@ export const AutoSilentModal: React.FC<Props> = ({
             </div>
           </div>
 
-          {/* Slider Controls */}
+          {/* Slider Controls with Auto-Play Toggle */}
           <div
-            className={`px-3 py-2 flex items-center justify-between border-t border-[#d4af37]/30 ${
+            className={`px-3 py-2 flex items-center justify-between gap-2 border-t border-[#d4af37]/30 ${
               isDark ? 'bg-[#08180f]' : 'bg-white'
             }`}
           >
             <button
               type="button"
               onClick={goPrev}
-              disabled={currentSlide === 0}
-              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[#064326] text-white text-[11px] font-bold border border-[#d4af37]/50 disabled:opacity-40 cursor-pointer"
+              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[#064326] text-white text-[11px] font-bold border border-[#d4af37]/50 cursor-pointer"
             >
               <ChevronRight className="w-3.5 h-3.5" />
               <span>پچھلا</span>
             </button>
-            <span className="text-[11px] font-bold text-[#8c6514] dark:text-[#d4af37] tabular-nums">
-              {currentSlide + 1} / {totalSlides}
-            </span>
+
+            <button
+              type="button"
+              onClick={() => setIsAutoPlaying((p) => !p)}
+              className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg border text-[10.5px] font-bold cursor-pointer transition-colors ${
+                isAutoPlaying
+                  ? 'bg-[#d4af37] text-[#051a0f] border-[#d4af37]'
+                  : isDark
+                  ? 'bg-white/10 text-emerald-100 border-[#d4af37]/40'
+                  : 'bg-emerald-50 text-[#064326] border-emerald-800/25'
+              }`}
+              title={isAutoPlaying ? 'خودکار سلائیڈ روکیں' : 'خودکار سلائیڈ چلائیں'}
+            >
+              {isAutoPlaying ? (
+                <>
+                  <Pause className="w-3 h-3" />
+                  <span>خودکار ({currentSlide + 1}/{totalSlides})</span>
+                </>
+              ) : (
+                <>
+                  <Play className="w-3 h-3" />
+                  <span>چلائیں ({currentSlide + 1}/{totalSlides})</span>
+                </>
+              )}
+            </button>
+
             <button
               type="button"
               onClick={goNext}
-              disabled={currentSlide === totalSlides - 1}
-              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[#064326] text-white text-[11px] font-bold border border-[#d4af37]/50 disabled:opacity-40 cursor-pointer"
+              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[#064326] text-white text-[11px] font-bold border border-[#d4af37]/50 cursor-pointer"
             >
               <span>اگلا</span>
               <ChevronLeft className="w-3.5 h-3.5" />
@@ -598,7 +660,7 @@ export const AutoSilentModal: React.FC<Props> = ({
               href={whatsappShareUrl}
               target="_blank"
               rel="noreferrer"
-              className="py-2 px-3 rounded-xl bg-[#25D366] hover:bg-[#1faa4e] text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm active:scale-95 transition-all"
+              className="sm:col-span-2 py-2 px-3 rounded-xl bg-[#25D366] hover:bg-[#1faa4e] text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm active:scale-95 transition-all"
             >
               <MessageCircle className="w-3.5 h-3.5 fill-white" />
               <span>واٹس ایپ صدقۂ جاریہ شیئر</span>
@@ -607,16 +669,41 @@ export const AutoSilentModal: React.FC<Props> = ({
 
             <button
               type="button"
+              onClick={handleDownloadJpgGuide}
+              disabled={isExportingJpg}
+              className="py-2 px-3 rounded-xl bg-[#0b4f2e] hover:bg-[#0e663b] text-white border border-[#d4af37]/60 font-bold text-xs flex items-center justify-center gap-1.5 cursor-pointer active:scale-95 transition-all disabled:opacity-60"
+            >
+              <ImageIcon className="w-3.5 h-3.5 text-[#d4af37]" />
+              <span>{isExportingJpg ? 'JPG بن رہی ہے...' : 'JPG تصویر ڈاؤنلوڈ کریں'}</span>
+            </button>
+
+            <button
+              type="button"
               onClick={handleDownloadHtmlGuide}
               className={`py-2 px-3 rounded-xl border font-bold text-xs flex items-center justify-center gap-1.5 cursor-pointer active:scale-95 transition-all ${
                 isDark
-                  ? 'bg-white/5 hover:bg-white/10 border-[#d4af37]/40 text-[#d4af37]'
+                  ? 'bg-white/10 hover:bg-white/15 border-[#d4af37]/40 text-[#d4af37]'
                   : 'bg-white hover:bg-emerald-50 border-[#064326]/25 text-[#064326]'
               }`}
             >
               <FileDown className="w-3.5 h-3.5" />
               <span>HTML گائیڈ ڈاؤنلوڈ کریں</span>
             </button>
+          </div>
+
+          {/* Transparent Note on Why Phone OS Requires DND Setting */}
+          <div
+            className={`p-2 rounded-xl border text-[10.5px] leading-relaxed flex items-start gap-1.5 ${
+              isDark
+                ? 'bg-emerald-950/60 border-[#d4af37]/30 text-emerald-100'
+                : 'bg-amber-50 border-amber-300/60 text-[#11261b]'
+            }`}
+          >
+            <Info className="w-3.5 h-3.5 text-[#d4af37] shrink-0 mt-0.5" />
+            <span>
+              <strong>اہم وضاحت:</strong> اینڈرائیڈ سکیورٹی کی وجہ سے ویب ایپ خودکار طور پر موبائل کی گھنٹی بند نہیں کر سکتی؛ اس لیے اوپر{' '}
+              <strong>موبائل DND سیٹنگ کھولیں</strong> دبا کر یا Settings → Do Not Disturb میں جا کر یہ وقت صرف ایک بار محفوظ کر لیں۔
+            </span>
           </div>
         </div>
 

@@ -29,6 +29,7 @@ import {
   Palette,
   Check,
   BellOff,
+  SunMoon,
 } from 'lucide-react';
 import {
   OFFICIAL_APK_URL,
@@ -45,6 +46,7 @@ import {
   getAutoSilentLabels,
 } from '../data/translations';
 import { ISLAMIC_THEMES, IslamicThemePalette } from '../utils/themeService';
+import { DisplayModePreference } from '../utils/displayModeService';
 import { recordApkDownloadClick } from '../utils/installStatsService';
 
 interface Props {
@@ -65,6 +67,8 @@ interface Props {
   onOpenPrivacy?: () => void;
   onOpenAbout: () => void;
   isDark: boolean;
+  displayMode?: DisplayModePreference;
+  onSelectDisplayMode?: (mode: DisplayModePreference) => void;
   onToggleTheme: () => void;
   onRefreshBlogger?: () => void;
   isRefreshingBlogger?: boolean;
@@ -92,6 +96,8 @@ export const HamburgerDrawer: React.FC<Props> = ({
   onOpenPrivacy,
   onOpenAbout,
   isDark,
+  displayMode = 'auto',
+  onSelectDisplayMode,
   onToggleTheme,
   onRefreshBlogger,
   isRefreshingBlogger = false,
@@ -146,7 +152,7 @@ export const HamburgerDrawer: React.FC<Props> = ({
           <div className="bg-[#064326] text-white p-4 border-b border-[#d4af37]/50 flex items-center justify-between shrink-0">
             <div className="flex items-center gap-2.5">
               <img
-                src={`${import.meta.env.BASE_URL}kdf-logo-v4.webp`}
+                src={`${import.meta.env.BASE_URL}kdf-logo-v4.webp?v=6`}
                 alt={t.appName}
                 className="w-10 h-10 rounded-xl shadow-md object-cover shrink-0"
               />
@@ -173,34 +179,68 @@ export const HamburgerDrawer: React.FC<Props> = ({
           <div className="flex-1 overflow-y-auto px-2 pb-4 divide-y divide-emerald-950/10 dark:divide-white/10">
             {/* Quick Controls Bar */}
             <div className="py-2.5 px-1 space-y-2">
-              <div className="grid grid-cols-2 gap-2">
+              {/* 3-Way Smart Display Mode Selector (Auto / Light Normal / Dark) */}
+              <div
+                className={`p-1.5 rounded-xl border space-y-1.5 ${
+                  isDark ? 'bg-[#0b2316] border-[#d4af37]/30' : 'bg-[#f4f7f6] border-emerald-900/15'
+                }`}
+              >
+                <div className="flex items-center justify-between px-1 text-[10.5px] font-bold">
+                  <span className="text-[#064326] dark:text-[#d4af37] flex items-center gap-1">
+                    <SunMoon className="w-3.5 h-3.5" />
+                    <span>اسکرین موڈ (روشنی / کمرہ)</span>
+                  </span>
+                  <span className="text-[9.5px] opacity-75">
+                    {isDark ? 'ڈارک فعال' : 'نارمل فعال'}
+                  </span>
+                </div>
+                <div className="grid grid-cols-3 gap-1">
+                  {[
+                    { id: 'auto' as const, label: 'آٹو', icon: SunMoon },
+                    { id: 'light' as const, label: 'نارمل', icon: Sun },
+                    { id: 'dark' as const, label: 'ڈارک', icon: Moon },
+                  ].map((opt) => {
+                    const IconComp = opt.icon;
+                    const active = displayMode === opt.id;
+                    return (
+                      <button
+                        key={opt.id}
+                        type="button"
+                        onClick={() =>
+                          onSelectDisplayMode
+                            ? onSelectDisplayMode(opt.id)
+                            : onToggleTheme()
+                        }
+                        className={`py-1.5 px-1 rounded-lg text-[11px] font-bold flex items-center justify-center gap-1 border transition-all cursor-pointer ${
+                          active
+                            ? 'bg-[#064326] text-white border-[#d4af37] shadow-2xs'
+                            : isDark
+                            ? 'bg-white/5 text-emerald-100 border-transparent hover:border-[#d4af37]/40'
+                            : 'bg-white text-[#064326] border-emerald-900/10 hover:bg-emerald-50'
+                        }`}
+                      >
+                        <IconComp className="w-3.5 h-3.5 shrink-0" />
+                        <span>{opt.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {onRefreshBlogger && (
                 <button
-                  onClick={onToggleTheme}
-                  className={`flex items-center justify-center gap-1.5 py-2 px-2.5 rounded-xl border text-xs font-bold transition-all cursor-pointer ${
+                  onClick={onRefreshBlogger}
+                  disabled={isRefreshingBlogger}
+                  className={`w-full flex items-center justify-center gap-1.5 py-2 px-2.5 rounded-xl border text-xs font-bold transition-all cursor-pointer ${
                     isDark
-                      ? 'bg-[#0e291b] border-[#d4af37]/30 text-amber-200 hover:bg-[#143a27]'
+                      ? 'bg-[#0e291b] border-[#d4af37]/30 text-emerald-200 hover:bg-[#143a27]'
                       : 'bg-[#f4f7f6] border-emerald-900/15 text-[#064326] hover:bg-emerald-50'
                   }`}
                 >
-                  {isDark ? <Sun className="w-4 h-4 text-amber-300" /> : <Moon className="w-4 h-4 text-[#064326]" />}
-                  <span>{isDark ? t.drawerLightTheme : t.drawerDarkTheme}</span>
+                  <RotateCw className={`w-3.5 h-3.5 ${isRefreshingBlogger ? 'animate-spin' : ''}`} />
+                  <span>{isRefreshingBlogger ? t.refreshingBtn : t.drawerUpdate}</span>
                 </button>
-
-                {onRefreshBlogger && (
-                  <button
-                    onClick={onRefreshBlogger}
-                    disabled={isRefreshingBlogger}
-                    className={`flex items-center justify-center gap-1.5 py-2 px-2.5 rounded-xl border text-xs font-bold transition-all cursor-pointer ${
-                      isDark
-                        ? 'bg-[#0e291b] border-[#d4af37]/30 text-emerald-200 hover:bg-[#143a27]'
-                        : 'bg-[#f4f7f6] border-emerald-900/15 text-[#064326] hover:bg-emerald-50'
-                    }`}
-                  >
-                    <RotateCw className={`w-3.5 h-3.5 ${isRefreshingBlogger ? 'animate-spin' : ''}`} />
-                    <span>{isRefreshingBlogger ? t.refreshingBtn : t.drawerUpdate}</span>
-                  </button>
-                )}
-              </div>
+              )}
 
               {/* Direct Official APK Download Button */}
               <a

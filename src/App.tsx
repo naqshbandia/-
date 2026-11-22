@@ -49,6 +49,13 @@ import {
   saveLocalThemeOverride,
 } from './utils/themeService';
 import { useAppInstallStats } from './utils/installStatsService';
+import {
+  DisplayModePreference,
+  loadDisplayModePreference,
+  resolveIsDarkForMode,
+  saveDisplayModePreference,
+  startAmbientLightWatcher,
+} from './utils/displayModeService';
 
 export default function App() {
   // Home Screen defaults to the clean Islamic Smart Dashboard
@@ -67,8 +74,29 @@ export default function App() {
   // Dynamic Archive.org Bayanat sync (auto-discovers latest bayanat across all collections)
   const { bayanat, isSyncingArchive, syncArchive } = useArchiveBayanat();
 
-  // Theme state: Always starts in Dark Mode; user can toggle to Light Mode anytime during use
-  const [isDark, setIsDark] = useState<boolean>(true);
+  // Display mode: 'auto' (Normal/Light outdoors & daytime, Dark indoors & night) | 'light' | 'dark'
+  const [displayMode, setDisplayMode] = useState<DisplayModePreference>(() =>
+    loadDisplayModePreference()
+  );
+  const [ambientLux, setAmbientLux] = useState<number | null>(null);
+  const [clockTick, setClockTick] = useState<number>(() => Date.now());
+
+  const isDark = resolveIsDarkForMode(displayMode, ambientLux, new Date(clockTick));
+
+  // Watch ambient light sensor (when available) + periodic clock check when in 'auto' mode
+  useEffect(() => {
+    if (displayMode !== 'auto') return;
+    const watcher = startAmbientLightWatcher((lux) => {
+      setAmbientLux(lux);
+    });
+    const timer = window.setInterval(() => {
+      setClockTick(Date.now());
+    }, 60 * 1000);
+    return () => {
+      watcher?.stop();
+      window.clearInterval(timer);
+    };
+  }, [displayMode]);
 
   // Remote & Local Islamic Background Color Palette (synced with GitHub khanqah-theme.html)
   const [remoteTheme, setRemoteTheme] = useState<IslamicThemePalette>(() =>
@@ -162,8 +190,23 @@ export default function App() {
   // Audio player state
   const [currentBayan, setCurrentBayan] = useState<BayanItem | null>(null);
 
+  const handleSelectDisplayMode = (nextMode: DisplayModePreference) => {
+    setDisplayMode(nextMode);
+    saveDisplayModePreference(nextMode);
+    if (nextMode === 'auto') {
+      showNotification('اسمارٹ آٹو موڈ آن: باہر روشنی/دن میں نارمل اور رات/کمرے میں ڈارک موڈ!');
+    } else if (nextMode === 'light') {
+      showNotification('نارمل (لائٹ) موڈ فعال ہو گیا — دھوپ اور باہر واضح پڑھائی کے لیے');
+    } else {
+      showNotification('ڈارک موڈ فعال ہو گیا — کمرے اور رات کے لیے');
+    }
+  };
+
   const toggleTheme = () => {
-    setIsDark((prev) => !prev);
+    const order: DisplayModePreference[] = ['auto', 'light', 'dark'];
+    const idx = order.indexOf(displayMode);
+    const next = order[(idx + 1) % order.length];
+    handleSelectDisplayMode(next);
   };
 
   const handleChangeLanguage = (nextLang: AppLanguage) => {
@@ -235,6 +278,7 @@ export default function App() {
         onToggleSearch={() => setIsSearchOpen((prev) => !prev)}
         isSearchOpen={isSearchOpen}
         isDark={isDark}
+        displayMode={displayMode}
         onToggleTheme={toggleTheme}
         isDashboard={activeView === 'dashboard'}
         onGoHome={() => setActiveView('dashboard')}
@@ -329,6 +373,8 @@ export default function App() {
         onOpenPrivacy={() => setIsPrivacyOpen(true)}
         onOpenAbout={() => setIsAboutOpen(true)}
         isDark={isDark}
+        displayMode={displayMode}
+        onSelectDisplayMode={handleSelectDisplayMode}
         onToggleTheme={toggleTheme}
         onRefreshBlogger={handleManualRefresh}
         isRefreshingBlogger={isRefreshing || isSyncingArchive}

@@ -64,7 +64,7 @@ export const PWAInstallBanner: React.FC<Props> = ({
         <div className="max-w-5xl mx-auto flex items-center justify-between gap-2">
           <div className="flex items-center gap-2 min-w-0">
             <img
-              src={`${import.meta.env.BASE_URL}kdf-logo-v4.webp`}
+              src={`${import.meta.env.BASE_URL}kdf-logo-v4.webp?v=6`}
               alt={t.appName}
               className="w-7 h-7 rounded-xl shadow-xs object-cover shrink-0"
             />
@@ -126,7 +126,7 @@ export const PWAInstallBanner: React.FC<Props> = ({
             <div className="flex items-center justify-between border-b border-[#d4af37]/30 pb-2">
               <div className="flex items-center gap-2">
                 <img
-                  src={`${import.meta.env.BASE_URL}kdf-logo-v4.webp`}
+                  src={`${import.meta.env.BASE_URL}kdf-logo-v4.webp?v=6`}
                   alt={t.appName}
                   className="w-8 h-8 rounded-xl shadow-xs object-cover"
                 />

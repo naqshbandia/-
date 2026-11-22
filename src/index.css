@@ -57,7 +57,7 @@
 
 html.dark .kdf-app-canvas {
   background-color: var(--kdf-dark-bg, #09150f);
-  color: #ecfdf5;
+  color: #f4fdf8;
   background-image: url("data:image/svg+xml,%3Csvg width='72' height='72' viewBox='0 0 72 72' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' stroke='%23d4af37' stroke-opacity='0.06' stroke-width='1'%3E%3Cpath d='M36 0L72 36L36 72L0 36Z'/%3E%3Ccircle cx='36' cy='36' r='14'/%3E%3C/g%3E%3C/svg%3E");
 }
 

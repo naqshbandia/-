@@ -9,6 +9,7 @@ import {
   Search,
   Sun,
   Moon,
+  SunMoon,
   Home,
   Globe,
   Check,
@@ -21,12 +22,14 @@ import {
   UI_STRINGS,
   getDir,
 } from '../data/translations';
+import { DisplayModePreference } from '../utils/displayModeService';
 
 interface Props {
   onToggleMenu: () => void;
   onToggleSearch: () => void;
   isSearchOpen: boolean;
   isDark: boolean;
+  displayMode?: DisplayModePreference;
   onToggleTheme: () => void;
   isDashboard?: boolean;
   onGoHome?: () => void;
@@ -39,6 +42,7 @@ export const Header: React.FC<Props> = ({
   onToggleSearch,
   isSearchOpen,
   isDark,
+  displayMode = 'auto',
   onToggleTheme,
   isDashboard = true,
   onGoHome,
@@ -121,7 +125,7 @@ export const Header: React.FC<Props> = ({
           title={t.headerHomeTitle}
         >
           <img
-            src={`${import.meta.env.BASE_URL}kdf-logo-v4.webp`}
+            src={`${import.meta.env.BASE_URL}kdf-logo-v4.webp?v=6`}
             alt={t.appName}
             className="w-6 h-6 sm:w-8 sm:h-8 rounded-lg sm:rounded-xl shadow-xs object-cover shrink-0"
           />
@@ -218,18 +222,29 @@ export const Header: React.FC<Props> = ({
 
           <button
             onClick={onToggleTheme}
-            className={`min-w-[32px] min-h-[34px] sm:min-w-[36px] sm:min-h-[38px] rounded-lg active:scale-95 transition-all flex items-center justify-center cursor-pointer ${
+            className={`h-8 sm:h-9 px-1.5 sm:px-2 rounded-lg active:scale-95 transition-all flex items-center justify-center gap-1 border text-[10px] font-bold cursor-pointer ${
               isDark
-                ? 'text-[#d4af37] hover:text-white hover:bg-[#d4af37]/15'
-                : 'text-[#064326] hover:bg-emerald-50'
+                ? 'bg-[#0b2e1b] border-[#d4af37]/40 text-[#d4af37] hover:text-white hover:bg-[#124127]'
+                : 'bg-[#f4f7f6] border-[#064326]/20 text-[#064326] hover:bg-emerald-50'
             }`}
-            title={isDark ? t.headerThemeLight : t.headerThemeDark}
-            aria-label={isDark ? t.headerThemeLight : t.headerThemeDark}
+            title={
+              displayMode === 'auto'
+                ? 'آٹو موڈ (دھوپ میں نارمل، رات/کمرے میں ڈارک)'
+                : isDark
+                ? t.headerThemeLight
+                : t.headerThemeDark
+            }
+            aria-label={t.headerThemeDark}
           >
-            {isDark ? (
-              <Sun className="w-4 h-4 sm:w-5 sm:h-5 text-amber-300" />
+            {displayMode === 'auto' ? (
+              <>
+                <SunMoon className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
+                <span className="hidden xs:inline whitespace-nowrap">آٹو</span>
+              </>
+            ) : isDark ? (
+              <Moon className="w-4 h-4 text-[#d4af37]" />
             ) : (
-              <Moon className="w-4 h-4 sm:w-5 sm:h-5 text-[#064326]" />
+              <Sun className="w-4 h-4 text-amber-500" />
             )}
           </button>
 

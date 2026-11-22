@@ -1162,7 +1162,7 @@ export const AboutAppModal: React.FC<{
         {/* Khanqah Icon, App Info & Direct WhatsApp Share Button */}
         <div className={`text-center p-4 border border-[#d4af37]/60 rounded-2xl space-y-2.5 ${isDark ? 'bg-[#081b11]' : 'bg-[#f4f9f6]'}`}>
           <img
-            src={`${import.meta.env.BASE_URL}kdf-logo-v4.webp`}
+            src={`${import.meta.env.BASE_URL}kdf-logo-v4.webp?v=6`}
             alt={t.appName}
             className="w-24 h-24 mx-auto rounded-2xl shadow-xl object-cover"
           />
