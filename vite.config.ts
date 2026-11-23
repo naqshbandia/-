@@ -95,6 +95,7 @@ export default defineConfig(() => {
           'sheikh-glass-banner.png',
           'khanqah-theme.html',
           'khanqah-auto-silent.html',
+          'khanqah-jamaat.html',
         ],
         manifest: pwaManifest,
         workbox: {

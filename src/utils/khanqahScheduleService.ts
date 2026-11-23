@@ -16,6 +16,7 @@ import {
   handleFirestoreError,
 } from '../firebase';
 import {
+  KHANQAH_JAMAAT_HTML_URL,
   KHANQAH_CLOCK_HTML_URL,
   KHANQAH_MESSAGE_HTML_URL,
   KHANQAH_LATEST_UPDATE_TXT_URL,
@@ -134,8 +135,14 @@ export function parseKhanqahScheduleHtml(
   try {
     const parser = new DOMParser();
     const parsedDoc = parser.parseFromString(html, 'text/html');
+    const jamaatTableRows = parsedDoc.querySelectorAll('#khanqah-jamaat-table tr');
     const page2Rows = parsedDoc.querySelectorAll('#page2 tr');
-    const rows = page2Rows.length > 0 ? page2Rows : parsedDoc.querySelectorAll('table tr');
+    const rows =
+      jamaatTableRows.length > 0
+        ? jamaatTableRows
+        : page2Rows.length > 0
+        ? page2Rows
+        : parsedDoc.querySelectorAll('table tr');
 
     if (!rows || rows.length === 0) return null;
 
@@ -188,21 +195,27 @@ export async function fetchKhanqahScheduleFromGitHubHtml(): Promise<Record<
   JamaatKey,
   JamaatScheduleItem
 > | null> {
-  try {
-    const res = await fetch(`${KHANQAH_CLOCK_HTML_URL}?_t=${Date.now()}`, {
-      cache: 'no-store',
-    });
-    if (!res.ok) return null;
-    const html = await res.text();
-    const parsed = parseKhanqahScheduleHtml(html);
-    if (parsed) {
-      saveCachedKhanqahSchedule(parsed);
-      return parsed;
+  const candidateUrls = [
+    `${KHANQAH_JAMAAT_HTML_URL}?_t=${Date.now()}`,
+    `${import.meta.env.BASE_URL}khanqah-jamaat.html?_t=${Date.now()}`,
+    `${KHANQAH_CLOCK_HTML_URL}?_t=${Date.now()}`,
+  ];
+
+  for (const url of candidateUrls) {
+    try {
+      const res = await fetch(url, { cache: 'no-store' });
+      if (!res.ok) continue;
+      const html = await res.text();
+      const parsed = parseKhanqahScheduleHtml(html);
+      if (parsed) {
+        saveCachedKhanqahSchedule(parsed);
+        return parsed;
+      }
+    } catch {
+      // Try next fallback source
     }
-    return null;
-  } catch {
-    return null;
   }
+  return null;
 }
 
 export function parseTickerMessageHtml(html: string): string | null {

@@ -23,9 +23,6 @@ import {
   Smartphone,
   Newspaper,
   Calendar,
-  Pencil,
-  Check,
-  RotateCcw,
   RotateCw,
   Folder,
   Megaphone,
@@ -52,8 +49,6 @@ import {
   JamaatKey,
   JamaatScheduleItem,
   PRAYER_CACHE_KEY,
-  JAMAAT_STORAGE_KEY,
-  DEFAULT_JAMAAT_SCHEDULE,
   parseAladhanPayload,
   computeNawafilTimings,
   resolveJamaatTime24,
@@ -193,7 +188,6 @@ export const SmartDashboardHome: React.FC<Props> = ({
 
   // Active Prayer Section Tab: Farz | Nawafil | Jama'at
   const [prayerTab, setPrayerTab] = useState<'farz' | 'nawafil' | 'jamaat'>('farz');
-  const [isEditingJamaat, setIsEditingJamaat] = useState(false);
 
   // Prayer Cache State
   const [prayerData, setPrayerData] = useState<PrayerCache | null>(() => {
@@ -205,25 +199,7 @@ export const SmartDashboardHome: React.FC<Props> = ({
     }
   });
 
-  // User's Own Mosque Jama'at Schedule State (stored locally on user's device)
-  const [myMosqueName, setMyMosqueName] = useState<string>(() => {
-    try {
-      return localStorage.getItem('khanqah_user_mosque_name_v1') || 'میری مسجد';
-    } catch {
-      return 'میری مسجد';
-    }
-  });
-  const [jamaatSchedule, setJamaatSchedule] = useState<Record<JamaatKey, JamaatScheduleItem>>(() => {
-    try {
-      const saved = localStorage.getItem(JAMAAT_STORAGE_KEY);
-      if (saved) {
-        return { ...DEFAULT_JAMAAT_SCHEDULE, ...JSON.parse(saved) };
-      }
-    } catch {}
-    return DEFAULT_JAMAAT_SCHEDULE;
-  });
-
-  // Khanqah Darul Falah Official Jama'at Schedule (Admin-only via GitHub khanqah-darul-falah-clock.html)
+  // Khanqah Darul Falah Official Jama'at Schedule (Admin-only via GitHub khanqah-jamaat.html)
   const [khanqahOfficialSchedule, setKhanqahOfficialSchedule] = useState<
     Record<JamaatKey, JamaatScheduleItem>
   >(() => loadCachedKhanqahSchedule());
@@ -285,19 +261,6 @@ export const SmartDashboardHome: React.FC<Props> = ({
     return () => document.removeEventListener('visibilitychange', handleVisible);
   }, []);
 
-  // Persist user's local mosque name and Jamaat schedule
-  useEffect(() => {
-    try {
-      localStorage.setItem('khanqah_user_mosque_name_v1', myMosqueName);
-    } catch {}
-  }, [myMosqueName]);
-
-  useEffect(() => {
-    try {
-      localStorage.setItem(JAMAAT_STORAGE_KEY, JSON.stringify(jamaatSchedule));
-    } catch {}
-  }, [jamaatSchedule]);
-
   // Live Clock (ticks every second)
   useEffect(() => {
     const timer = setInterval(() => {
@@ -306,6 +269,7 @@ export const SmartDashboardHome: React.FC<Props> = ({
     return () => clearInterval(timer);
   }, []);
 
+  // Fetch Bannu Prayer Timings (Aladhan Hanafi)
   const fetchPrayerTimes = async () => {
     try {
       const res = await fetch(
@@ -332,19 +296,6 @@ export const SmartDashboardHome: React.FC<Props> = ({
   // Derived Prayer Lists
   const nawafilList = useMemo(() => computeNawafilTimings(prayerData), [prayerData]);
 
-  const jamaatCards = useMemo(() => {
-    const order: JamaatKey[] = ['Fajr', 'Dhuhr', 'Asr', 'Maghrib', 'Isha', 'Jummah'];
-    return order.map((key) => {
-      const item = jamaatSchedule[key];
-      const time24 = resolveJamaatTime24(key, item, prayerData);
-      return {
-        ...item,
-        resolved24: time24,
-        resolved12: formatTo12Hour(time24),
-      };
-    });
-  }, [jamaatSchedule, prayerData]);
-
   const khanqahCards = useMemo(() => {
     const order: JamaatKey[] = ['Fajr', 'Dhuhr', 'Asr', 'Maghrib', 'Isha', 'Jummah'];
     return order.map((key) => {
@@ -370,10 +321,19 @@ export const SmartDashboardHome: React.FC<Props> = ({
     [prayerData, now]
   );
 
-  // Latest 4 uploaded bayanat across ALL Archive collections
+  const currentMinuteBucket = Math.floor(now.getTime() / 60000);
+
+  // Only show newly uploaded bayanat within the last 7 days (disappear automatically after 7 days)
   const latestUploadedBayanat = useMemo(() => {
-    return bayanatList.filter((b) => (b.urduTitle || b.title).trim().length > 0).slice(0, 4);
-  }, [bayanatList]);
+    const refNowMs = currentMinuteBucket * 60000;
+    return bayanatList
+      .filter(
+        (b) =>
+          (b.urduTitle || b.title).trim().length > 0 &&
+          isBayanNew(b, refNowMs)
+      )
+      .slice(0, 12);
+  }, [bayanatList, currentMinuteBucket]);
 
   const tickerDurationSeconds = useMemo(
     () => Math.max(20, Math.min(60, Math.round(tickerMessage.length * 0.28))),
@@ -552,29 +512,40 @@ export const SmartDashboardHome: React.FC<Props> = ({
 
         {/* 3. Standalone Smart Clock & Prayer Timings Display Box */}
         <section className="islamic-panel-pattern border-2 border-[#d4af37] rounded-3xl p-4 sm:p-5 text-white shadow-xl space-y-4">
-          {/* Live Clock & Hijri Date */}
-          <div className="text-center py-1">
+          {/* Elevated Floating Sky-Blue Crystal Box: Live Clock, Hijri Date & Weekday */}
+          <div className="relative max-w-md mx-auto w-full mt-1 mb-2 -translate-y-1.5 overflow-hidden rounded-2xl bg-gradient-to-br from-[#38bdf8] via-[#0284c7] to-[#0369a1] border-2 border-[#d4af37] ring-1 ring-[#fef08a]/50 ring-inset px-4 py-3.5 sm:px-6 sm:py-4 text-center shadow-[0_0_24px_rgba(255,255,255,0.68),0_0_48px_rgba(255,255,255,0.32),0_20px_32px_-8px_rgba(0,0,0,0.75)]">
+            {/* Subtle top glass shine & sparkle */}
             <div
-              className="text-3xl sm:text-4xl font-bold text-[#00ff99] tracking-wider tabular-nums font-sans"
-              dir="ltr"
-            >
-              {formattedClock}
-            </div>
-            <div className="text-base sm:text-lg font-bold text-[#d4af37] mt-1">
-              {prayerData?.hijriDate || t.hijriLoading}
-            </div>
-            <div className="text-xs text-emerald-100/75 mt-0.5 tabular-nums">
-              {now.toLocaleDateString(getDateLocale(lang), {
-                weekday: 'long',
-                year: 'numeric',
-                month: 'long',
-                day: 'numeric',
-              })}
+              aria-hidden="true"
+              className="pointer-events-none absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-white/35 via-white/10 to-transparent"
+            />
+            <div
+              aria-hidden="true"
+              className="pointer-events-none absolute -top-10 -right-10 w-32 h-32 rounded-full bg-white/25 blur-2xl"
+            />
+            <div className="relative z-10">
+              <div
+                className="text-3xl sm:text-4xl font-extrabold text-white tracking-wider tabular-nums font-sans leading-tight drop-shadow-[0_2px_8px_rgba(0,0,0,0.4)]"
+                dir="ltr"
+              >
+                {formattedClock}
+              </div>
+              <div className="text-sm sm:text-base font-bold text-[#fef08a] mt-1 drop-shadow-[0_1px_4px_rgba(0,0,0,0.45)]">
+                {prayerData?.hijriDate || t.hijriLoading}
+              </div>
+              <div className="text-[11.5px] sm:text-xs font-semibold text-sky-50 mt-0.5 tabular-nums drop-shadow-[0_1px_3px_rgba(0,0,0,0.35)]">
+                {now.toLocaleDateString(getDateLocale(lang), {
+                  weekday: 'long',
+                  year: 'numeric',
+                  month: 'long',
+                  day: 'numeric',
+                })}
+              </div>
             </div>
           </div>
 
           {/* 3 Tab Buttons Right Above Prayer Cards */}
-          <div className="pt-2 border-t border-[#d4af37]/20 space-y-3">
+          <div className="pt-2.5 border-t border-[#d4af37]/20 space-y-3">
             <div className="grid grid-cols-3 gap-1.5 sm:gap-2">
               <button
                 onClick={() => setPrayerTab('farz')}
@@ -700,189 +671,112 @@ export const SmartDashboardHome: React.FC<Props> = ({
               )
             )}
 
-            {/* TAB 3: User Mosque Jamaat Times */}
+            {/* TAB 3: Official Khanqah Darul Falah Jamaat Times */}
             {prayerTab === 'jamaat' && (
-              <div className="space-y-2.5">
-                <div className="flex flex-wrap items-center justify-between gap-2 px-1">
-                  <span className="text-xs text-amber-200 font-semibold">
-                    {myMosqueName === 'میری مسجد' ? t.myMosqueDefault : myMosqueName || t.myMosqueDefault} — {t.myMosqueScheduleLabel}
-                  </span>
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => setIsEditingJamaat((prev) => !prev)}
-                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[#d4af37]/20 hover:bg-[#d4af37]/30 border border-[#d4af37]/50 text-[#d4af37] text-[11px] font-bold cursor-pointer"
-                    >
-                      {isEditingJamaat ? <Check className="w-3.5 h-3.5" /> : <Pencil className="w-3.5 h-3.5" />}
-                      <span>{isEditingJamaat ? t.saveCloseBtn : t.editTimesBtn}</span>
-                    </button>
-                    {isEditingJamaat && (
-                      <button
-                        onClick={() => {
-                          setJamaatSchedule(DEFAULT_JAMAAT_SCHEDULE);
-                          setMyMosqueName(t.myMosqueDefault);
-                          onNotify(t.resetDefaultNotice);
-                        }}
-                        className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-[11px] text-emerald-100 cursor-pointer"
-                      >
-                        <RotateCcw className="w-3 h-3" />
-                        <span>{t.resetDefaultBtn}</span>
-                      </button>
+              <div className="space-y-2">
+                <div className="flex items-center justify-between gap-2 px-0.5">
+                  <div className="flex items-center gap-1.5 min-w-0">
+                    <Landmark className="w-3.5 h-3.5 text-[#d4af37] shrink-0" />
+                    <span className="text-xs font-bold text-[#d4af37] truncate">
+                      {t.khanqahScheduleTitle}
+                    </span>
+                    {isKhanqahSyncedHtml && (
+                      <span className="px-1.5 py-0.5 rounded bg-[#00ff99]/15 border border-[#00ff99]/35 text-[#00ff99] text-[9px] font-bold shrink-0">
+                        {t.officialBadge}
+                      </span>
                     )}
                   </div>
+
+                  <button
+                    onClick={() => syncKhanqahScheduleFromHtml(true)}
+                    disabled={isRefreshingKhanqah}
+                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-white/[0.07] hover:bg-white/[0.14] border border-[#d4af37]/30 text-[10px] text-amber-100 cursor-pointer disabled:opacity-50 shrink-0"
+                    title={t.refreshBtn}
+                  >
+                    <RotateCw className={`w-3 h-3 text-[#d4af37] ${isRefreshingKhanqah ? 'animate-spin' : ''}`} />
+                    <span>{t.refreshBtn}</span>
+                  </button>
                 </div>
 
-                {!isEditingJamaat ? (
-                  <div className="grid grid-cols-6 gap-0.5 sm:gap-1.5">
-                    {jamaatCards.map((item) => (
-                      <div
-                        key={item.key}
-                        className="rounded-lg sm:rounded-xl py-1.5 sm:py-2 px-0.5 sm:px-1 text-center border bg-[#d4af37]/[0.10] border-[#d4af37]/30 text-emerald-50 overflow-hidden"
-                      >
-                        <div className="text-[9.5px] sm:text-xs font-bold text-[#d4af37] whitespace-nowrap">
-                          {getJamaatLabel(lang, item.key)}
-                        </div>
-                        <div className="text-[8px] sm:text-xs font-bold text-[#00ff99] tabular-nums mt-0.5 sm:mt-1 whitespace-nowrap tracking-tighter sm:tracking-normal" dir="ltr">
-                          {item.resolved12}
-                        </div>
-                        <div className="text-[7.5px] sm:text-[9px] text-emerald-100/70 mt-0.5 whitespace-nowrap">
-                          {item.mode === 'custom' || item.key === 'Jummah'
-                            ? t.fixedBadge
-                            : `+${item.offsetMinutes} ${t.minuteUnit}`}
-                        </div>
+                <div className="grid grid-cols-6 gap-0.5 sm:gap-1.5">
+                  {khanqahCards.map((item) => (
+                    <div
+                      key={`jamaat-tab-${item.key}`}
+                      className="rounded-lg sm:rounded-xl py-2 px-0.5 sm:px-1 text-center border bg-[#d4af37]/[0.10] border-[#d4af37]/35 text-emerald-50 overflow-hidden"
+                    >
+                      <div className="text-[9.5px] sm:text-xs font-bold text-[#d4af37] whitespace-nowrap">
+                        {getJamaatLabel(lang, item.key)}
                       </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="space-y-2.5 bg-black/30 p-3 rounded-2xl border border-[#d4af37]/40">
-                    <div className="flex flex-wrap items-center gap-2 pb-1 border-b border-white/10">
-                      <label className="text-[11px] font-bold text-[#d4af37]">{t.mosqueNameLabel}</label>
-                      <input
-                        type="text"
-                        value={myMosqueName}
-                        onChange={(e) => setMyMosqueName(e.target.value)}
-                        maxLength={60}
-                        placeholder={t.mosqueNamePlaceholder}
-                        className="flex-1 min-w-[160px] bg-white text-[#11261b] rounded-lg px-2.5 py-1 text-xs font-bold outline-none"
-                      />
+                      <div
+                        className="text-[8px] sm:text-xs font-bold text-[#00ff99] tabular-nums mt-0.5 sm:mt-1 whitespace-nowrap tracking-tighter sm:tracking-normal"
+                        dir="ltr"
+                      >
+                        {item.resolved12}
+                      </div>
+                      <div className="text-[7.5px] sm:text-[9px] text-emerald-100/75 mt-0.5 whitespace-nowrap">
+                        {item.mode === 'custom' || item.key === 'Jummah'
+                          ? t.fixedBadge
+                          : `+${item.offsetMinutes} ${t.minuteUnit}`}
+                      </div>
                     </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                      {jamaatCards.map((item) => (
-                        <div
-                          key={item.key}
-                          className="flex flex-wrap items-center justify-between gap-2 p-2 rounded-xl bg-white/[0.06] border border-white/10 text-xs"
-                        >
-                          <span className="font-bold text-[#d4af37] min-w-[78px]">
-                            {getJamaatLabel(lang, item.key)} {t.jamaatSuffix}
-                          </span>
-
-                          {item.key !== 'Jummah' && (
-                            <select
-                              value={item.mode}
-                              onChange={(e) => {
-                                const mode = e.target.value as 'auto' | 'custom';
-                                setJamaatSchedule((prev) => ({
-                                  ...prev,
-                                  [item.key]: { ...prev[item.key], mode },
-                                }));
-                              }}
-                              className="bg-[#062214] text-white border border-[#d4af37]/40 rounded-lg px-2 py-1 text-[11px]"
-                            >
-                              <option value="auto">{t.modeAutoLabel}</option>
-                              <option value="custom">{t.modeCustomLabel}</option>
-                            </select>
-                          )}
-
-                          {item.mode === 'auto' && item.key !== 'Jummah' ? (
-                            <div className="flex items-center gap-1">
-                              <input
-                                type="number"
-                                min={1}
-                                max={120}
-                                value={item.offsetMinutes}
-                                onChange={(e) => {
-                                  const val = Math.max(1, Math.min(120, parseInt(e.target.value || '10', 10)));
-                                  setJamaatSchedule((prev) => ({
-                                    ...prev,
-                                    [item.key]: { ...prev[item.key], offsetMinutes: val },
-                                  }));
-                                }}
-                                className="w-14 bg-white text-[#11261b] rounded-lg px-2 py-1 text-xs font-bold text-center"
-                              />
-                              <span className="text-[11px] opacity-80">{t.minuteUnit}</span>
-                            </div>
-                          ) : (
-                            <input
-                              type="time"
-                              value={item.customTime24}
-                              onChange={(e) => {
-                                setJamaatSchedule((prev) => ({
-                                  ...prev,
-                                  [item.key]: { ...prev[item.key], customTime24: e.target.value },
-                                }));
-                              }}
-                              className="bg-white text-[#11261b] rounded-lg px-2 py-1 text-xs font-bold"
-                              dir="ltr"
-                            />
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
+                  ))}
+                </div>
               </div>
             )}
 
-            {/* Official Khanqah Darul Falah Jama'at Schedule — Single Row */}
-            <div className="pt-2.5 border-t border-[#d4af37]/25 space-y-1.5">
-              <div className="flex items-center justify-between gap-2 px-0.5">
-                <div className="flex items-center gap-1.5 min-w-0">
-                  <Landmark className="w-3.5 h-3.5 text-[#d4af37] shrink-0" />
-                  <span className="text-[11px] sm:text-xs font-bold text-[#d4af37] truncate">
-                    {t.khanqahScheduleTitle}
-                  </span>
-                  {isKhanqahSyncedHtml && (
-                    <span className="px-1.5 py-0.5 rounded bg-[#00ff99]/15 border border-[#00ff99]/35 text-[#00ff99] text-[9px] font-bold shrink-0">
-                      {t.officialBadge}
+            {/* Official Khanqah Darul Falah Jama'at Schedule — Single Row (shown below Farz & Nawafil tabs) */}
+            {prayerTab !== 'jamaat' && (
+              <div className="pt-2.5 border-t border-[#d4af37]/25 space-y-1.5">
+                <div className="flex items-center justify-between gap-2 px-0.5">
+                  <div className="flex items-center gap-1.5 min-w-0">
+                    <Landmark className="w-3.5 h-3.5 text-[#d4af37] shrink-0" />
+                    <span className="text-[11px] sm:text-xs font-bold text-[#d4af37] truncate">
+                      {t.khanqahScheduleTitle}
                     </span>
-                  )}
+                    {isKhanqahSyncedHtml && (
+                      <span className="px-1.5 py-0.5 rounded bg-[#00ff99]/15 border border-[#00ff99]/35 text-[#00ff99] text-[9px] font-bold shrink-0">
+                        {t.officialBadge}
+                      </span>
+                    )}
+                  </div>
+
+                  <button
+                    onClick={() => syncKhanqahScheduleFromHtml(true)}
+                    disabled={isRefreshingKhanqah}
+                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-white/[0.07] hover:bg-white/[0.14] border border-[#d4af37]/30 text-[10px] text-amber-100 cursor-pointer disabled:opacity-50 shrink-0"
+                    title={t.refreshBtn}
+                  >
+                    <RotateCw className={`w-3 h-3 text-[#d4af37] ${isRefreshingKhanqah ? 'animate-spin' : ''}`} />
+                    <span>{t.refreshBtn}</span>
+                  </button>
                 </div>
 
-                <button
-                  onClick={() => syncKhanqahScheduleFromHtml(true)}
-                  disabled={isRefreshingKhanqah}
-                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-white/[0.07] hover:bg-white/[0.14] border border-[#d4af37]/30 text-[10px] text-amber-100 cursor-pointer disabled:opacity-50 shrink-0"
-                  title={t.refreshBtn}
-                >
-                  <RotateCw className={`w-3 h-3 text-[#d4af37] ${isRefreshingKhanqah ? 'animate-spin' : ''}`} />
-                  <span>{t.refreshBtn}</span>
-                </button>
-              </div>
-
-              {/* Single-line 6-card horizontal strip */}
-              <div className="grid grid-cols-6 gap-0.5 sm:gap-1.5">
-                {khanqahCards.map((item) => (
-                  <div
-                    key={`khanqah-row-${item.key}`}
-                    className="rounded-lg py-1.5 px-0.5 sm:px-1 text-center border bg-[#042414]/90 border-[#d4af37]/35 text-emerald-50 overflow-hidden"
-                  >
-                    <div className="text-[9.5px] sm:text-xs font-bold text-[#d4af37] whitespace-nowrap">
-                      {getJamaatLabel(lang, item.key)}
-                    </div>
+                {/* Single-line 6-card horizontal strip */}
+                <div className="grid grid-cols-6 gap-0.5 sm:gap-1.5">
+                  {khanqahCards.map((item) => (
                     <div
-                      className="text-[8px] sm:text-xs font-bold text-[#00ff99] tabular-nums mt-0.5 whitespace-nowrap tracking-tighter sm:tracking-normal"
-                      dir="ltr"
+                      key={`khanqah-row-${item.key}`}
+                      className="rounded-lg py-1.5 px-0.5 sm:px-1 text-center border bg-[#042414]/90 border-[#d4af37]/35 text-emerald-50 overflow-hidden"
                     >
-                      {item.resolved12}
+                      <div className="text-[9.5px] sm:text-xs font-bold text-[#d4af37] whitespace-nowrap">
+                        {getJamaatLabel(lang, item.key)}
+                      </div>
+                      <div
+                        className="text-[8px] sm:text-xs font-bold text-[#00ff99] tabular-nums mt-0.5 whitespace-nowrap tracking-tighter sm:tracking-normal"
+                        dir="ltr"
+                      >
+                        {item.resolved12}
+                      </div>
+                      <div className="text-[7.5px] sm:text-[9px] text-emerald-100/70 whitespace-nowrap">
+                        {item.mode === 'custom' || item.key === 'Jummah'
+                          ? t.fixedBadge
+                          : `+${item.offsetMinutes} ${t.minuteUnit}`}
+                      </div>
                     </div>
-                    <div className="text-[7.5px] sm:text-[9px] text-emerald-100/70 whitespace-nowrap">
-                      {item.mode === 'custom' || item.key === 'Jummah'
-                        ? t.fixedBadge
-                        : `+${item.offsetMinutes} ${t.minuteUnit}`}
-                    </div>
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
-            </div>
+            )}
           </div>
         </section>
 
@@ -988,7 +882,8 @@ export const SmartDashboardHome: React.FC<Props> = ({
           </div>
         </section>
 
-        {/* 3B. Compact Box: Latest Uploaded Bayanat */}
+        {/* 3B. Compact Box: Latest Uploaded Bayanat (7-day window only; hides automatically after 7 days) */}
+        {latestUploadedBayanat.length > 0 && (
         <section
           className={`rounded-3xl border-2 border-[#d4af37]/60 p-3 sm:p-4 shadow-md space-y-2.5 transition-colors ${
             isDark
@@ -1025,10 +920,10 @@ export const SmartDashboardHome: React.FC<Props> = ({
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-            {latestUploadedBayanat.map((bayan, idx) => {
+            {latestUploadedBayanat.map((bayan) => {
               const isPlaying = currentPlayingBayanId === bayan.id;
               const isDownloading = activeDownloadIds.has(bayan.id);
-              const showNeonNew = isBayanNew(bayan) || idx < 2;
+              const showNeonNew = isBayanNew(bayan, currentMinuteBucket * 60000);
               const dateLabel = formatBayanDateUrdu(bayan);
               const fullTitle = bayan.urduTitle || bayan.title;
 
@@ -1129,6 +1024,7 @@ export const SmartDashboardHome: React.FC<Props> = ({
             })}
           </div>
         </section>
+        )}
 
         {/* 4. Dynamic Grid Folders */}
         <section className="space-y-2.5">
