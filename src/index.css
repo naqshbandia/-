@@ -248,10 +248,53 @@ html.dark .khanqah-folder-card:focus-visible {
   pointer-events: none;
 }
 
+/* Signature Emerald-Gold Playing Card Glow & Bouncing EQ Bars (matching folder HTML style) */
+@keyframes khanqah-playing-outer-glow {
+  0% {
+    box-shadow:
+      0 0 8px rgba(212, 175, 55, 0.55),
+      0 0 18px rgba(0, 150, 0, 0.35);
+  }
+  100% {
+    box-shadow:
+      0 0 16px rgba(255, 215, 0, 0.92),
+      0 0 28px rgba(0, 195, 75, 0.65);
+  }
+}
+
+@keyframes khanqah-eq-bounce {
+  0% {
+    height: 3px;
+  }
+  100% {
+    height: 12px;
+  }
+}
+
+.khanqah-audio-playing-card {
+  border-color: #ffd700 !important;
+  animation: khanqah-playing-outer-glow 1.5s ease-in-out infinite alternate;
+}
+
+.khanqah-eq-bar {
+  width: 2.5px;
+  border-radius: 2px;
+  background: #ffd700;
+  animation: khanqah-eq-bounce 0.6s ease-in-out infinite alternate;
+}
+.khanqah-eq-bar:nth-child(2) {
+  animation-delay: 0.2s;
+}
+.khanqah-eq-bar:nth-child(3) {
+  animation-delay: 0.4s;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .urdu-ticker-track,
   .khanqah-new-neon-badge,
-  .khanqah-shine-btn::after {
+  .khanqah-shine-btn::after,
+  .khanqah-audio-playing-card,
+  .khanqah-eq-bar {
     animation: none;
   }
   .khanqah-folder-card,

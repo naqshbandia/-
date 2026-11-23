@@ -3,8 +3,24 @@ import { BAYANAT_DATABASE, BayanItem } from '../data/bayanatData';
 
 const ARCHIVE_CACHE_KEY = 'khanqah_archive_live_bayanat_v2';
 const ARCHIVE_FOLDERS_CACHE_KEY = 'khanqah_archive_folders_v2';
+const ARCHIVE_BOOKS_CACHE_KEY = 'khanqah_archive_live_books_v1';
 const ARCHIVE_UPLOADER_EMAIL = 'khanqahdarulfalah@gmail.com';
+const ARCHIVE_COVERS_COLLECTION = 'screenshot-20260427-111530';
 const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
+
+export interface BookItem {
+  id: string;
+  collectionId: string;
+  collectionTitle: string;
+  collectionUrdu: string;
+  filename: string;
+  title: string;
+  urduTitle: string;
+  pdfUrl: string;
+  coverUrl?: string;
+  size?: string;
+  mtime?: string;
+}
 
 export interface ArchiveCollectionMeta {
   title: string;
@@ -24,9 +40,14 @@ export interface ArchiveFolderSummary {
 }
 
 export const ARCHIVE_COLLECTIONS: Record<string, ArchiveCollectionMeta> = {
+  '20251018_20251018_0949': {
+    title: 'Telawat, Hamd o Naat Sharif',
+    urdu: 'تلاوت، حمد و نعت شریف',
+    category: 'Hamd',
+  },
   'noor-e-nisbat': {
     title: 'Sulook ila Allah ke Aasaan Usool',
-    urdu: 'سلوک الی اللہ کے آسان اصول',
+    urdu: 'نورِ نسبت (سلوک کے آسان طریقے)',
     category: 'Sulook',
   },
   '20250918_20250918_0142': {
@@ -34,39 +55,34 @@ export const ARCHIVE_COLLECTIONS: Record<string, ArchiveCollectionMeta> = {
     urdu: 'سلوک الی اللہ',
     category: 'Sulook',
   },
-  '20251018_20251018_0949': {
-    title: 'Haftawar Zikr Majalis',
-    urdu: 'ہفتہ وار ذکر مجالس',
+  '13-2024_202510': {
+    title: 'Haftawar Majlis-e-Zikr Bayanat',
+    urdu: 'ہفتہ وار مجلسِ ذکر بیانات',
     category: 'Zikr',
   },
-  '143_20251113': {
-    title: 'Dars-e-Quran Masjid Islamuddin',
-    urdu: 'درسِ قرآن مسجد اسلام الدین',
-    category: 'Dars',
-  },
-  '001_20251018': {
-    title: 'Hamd o Naat',
-    urdu: 'حمد و نعت',
-    category: 'Hamd',
-  },
-  '20260205_20260205_1013': {
-    title: 'Dastar-e-Fazilat 2026',
-    urdu: 'دستارِ فضیلت 2026',
+  '22-2017_202509': {
+    title: 'Islahi Majalis',
+    urdu: 'اصلاحی مجالس',
     category: 'Islahi',
   },
   '2_20250901': {
-    title: 'Islahi Bayanat',
-    urdu: 'اصلاحی بیانات',
+    title: 'Mehman Ulama-e-Kiram Bayanat',
+    urdu: 'خانقاہ دارالفلاح میں مہمان علماء کرام کے بیانات',
     category: 'Islahi',
   },
-  '13-2024_202510': {
-    title: 'Masnoon Duain o Fazail',
-    urdu: 'مسنون دعائیں و فضائل',
-    category: 'Fazilat',
+  '001_20251018': {
+    title: 'Dars-e-Quran Jamia Arabia Darulhuda',
+    urdu: 'درسِ قرآن جامعہ عربیہ دارالہدیٰ میراخیل بنوں',
+    category: 'Dars',
   },
-  '22-2017_202509': {
-    title: 'Khasoosi Bayanat',
-    urdu: 'خصوصی بیانات و مواعظ',
+  '143_20251113': {
+    title: 'Dars-e-Quran Masjid Islamuddin',
+    urdu: 'درسِ قرآن مسجد اسلام دین نہرغوڑہ',
+    category: 'Dars',
+  },
+  '20260205_20260205_1013': {
+    title: 'Dastar-e-Fazilat 2026',
+    urdu: 'خانقاہ و مدرسہ دارالفلاح 2026 دوسرا جلسہ',
     category: 'Islahi',
   },
   '20260220_20260220_0620': {
@@ -96,26 +112,38 @@ function inferCategoryFromTitle(title: string): BayanItem['category'] {
   return 'Islahi';
 }
 
-export function getBayanTimestampMs(bayan: BayanItem): number {
-  const mtimeNum = parseInt(bayan.mtime || '0', 10);
+export function getTimestampMsFromMtime(mtime?: string): number {
+  const mtimeNum = parseInt(mtime || '0', 10);
   if (!isNaN(mtimeNum) && mtimeNum > 0) {
     return mtimeNum * 1000;
   }
   return 0;
 }
 
+export function getBayanTimestampMs(bayan: BayanItem): number {
+  return getTimestampMsFromMtime(bayan.mtime);
+}
+
 /**
- * Returns true if the Bayan was uploaded within the last 7 days.
+ * Returns true if the item was uploaded within the last 7 days.
  */
-export function isBayanNew(bayan: BayanItem, referenceNowMs = Date.now()): boolean {
-  const ts = getBayanTimestampMs(bayan);
+export function isTimestampNew(mtime?: string, referenceNowMs = Date.now()): boolean {
+  const ts = getTimestampMsFromMtime(mtime);
   if (!ts) return false;
   const diff = referenceNowMs - ts;
   return diff >= -86400000 && diff <= SEVEN_DAYS_MS;
 }
 
-export function formatBayanDateUrdu(bayan: BayanItem): string {
-  const ts = getBayanTimestampMs(bayan);
+export function isBayanNew(bayan: BayanItem, referenceNowMs = Date.now()): boolean {
+  return isTimestampNew(bayan.mtime, referenceNowMs);
+}
+
+export function isBookNew(book: BookItem, referenceNowMs = Date.now()): boolean {
+  return isTimestampNew(book.mtime, referenceNowMs);
+}
+
+export function formatMtimeUrdu(mtime?: string): string {
+  const ts = getTimestampMsFromMtime(mtime);
   if (!ts) return '';
   try {
     return new Date(ts).toLocaleDateString('ur-PK', {
@@ -126,6 +154,23 @@ export function formatBayanDateUrdu(bayan: BayanItem): string {
   } catch {
     return '';
   }
+}
+
+export function formatBayanDateUrdu(bayan: BayanItem): string {
+  return formatMtimeUrdu(bayan.mtime);
+}
+
+export function formatBookDateUrdu(book: BookItem): string {
+  return formatMtimeUrdu(book.mtime);
+}
+
+export function formatBookSize(sizeStr?: string): string {
+  const bytes = parseInt(sizeStr || '0', 10);
+  if (!bytes || isNaN(bytes)) return '';
+  if (bytes >= 1024 * 1024) {
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  }
+  return `${Math.max(1, Math.round(bytes / 1024))} KB`;
 }
 
 /**
@@ -142,6 +187,34 @@ export function shareBayanOnWhatsApp(bayan: BayanItem) {
     ``,
     `🎧 براہِ راست سننے یا ڈاؤنلوڈ کرنے کا لنک:`,
     bayan.audioUrl,
+  ].join('\n');
+
+  const waUrl = `https://wa.me/?text=${encodeURIComponent(text)}`;
+  const a = document.createElement('a');
+  a.href = waUrl;
+  a.target = '_blank';
+  a.rel = 'noopener noreferrer';
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(() => {
+    try {
+      document.body.removeChild(a);
+    } catch {}
+  }, 500);
+}
+
+/**
+ * Share a PDF Book directly on WhatsApp without disrupting the current page
+ */
+export function shareBookOnWhatsApp(book: BookItem) {
+  const title = book.urduTitle || book.title;
+  const text = [
+    `📚 *خانقاہ دارالفلاح — اسلامی کتاب / رسالہ*`,
+    `📖 *کتاب کا نام:* ${title}`,
+    `🕌 *زیرِ سرپرستی:* حضرت مولانا پیر محمد جمشید نقشبندی مجددی (دامت برکاتہم)`,
+    ``,
+    `📥 براہِ راست PDF کتاب پڑھنے یا ڈاؤنلوڈ کرنے کا لنک:`,
+    book.pdfUrl,
   ].join('\n');
 
   const waUrl = `https://wa.me/?text=${encodeURIComponent(text)}`;
@@ -177,13 +250,22 @@ export function normalizeSearchText(text: string): string {
 function mergeAndSortBayanat(liveItems: BayanItem[]): BayanItem[] {
   const map = new Map<string, BayanItem>();
   for (const item of BAYANAT_DATABASE) {
-    map.set(item.audioUrl, item);
+    const colMeta = ARCHIVE_COLLECTIONS[item.collectionId];
+    map.set(item.audioUrl, {
+      ...item,
+      collectionTitle: colMeta?.title || item.collectionTitle,
+      collectionUrdu: colMeta?.urdu || item.collectionUrdu,
+      category: colMeta?.category || item.category,
+    });
   }
   for (const item of liveItems) {
     const existing = map.get(item.audioUrl);
     if (existing) {
       map.set(item.audioUrl, {
         ...existing,
+        collectionTitle: item.collectionTitle || existing.collectionTitle,
+        collectionUrdu: item.collectionUrdu || existing.collectionUrdu,
+        category: item.category || existing.category,
         mtime: item.mtime || existing.mtime,
         size: item.size || existing.size,
         length: item.length || existing.length,
@@ -399,5 +481,350 @@ export function useArchiveBayanat() {
     archiveFolders,
     isSyncingArchive,
     syncArchive,
+  };
+}
+
+// ============================================================================
+// Automatic Archive.org Islamic Books Library (PDF Sync + Cover Matching)
+// ============================================================================
+
+export const ARCHIVE_BOOK_COLLECTIONS: Record<
+  string,
+  { title: string; urdu: string }
+> = {
+  '20250816': {
+    title: 'Islamic Urdu Books Collection',
+    urdu: 'اسلامی اردو کتب لائبریری',
+  },
+  'haftaar-zikr-majalis': {
+    title: 'Haftawar Zikr Majalis Books',
+    urdu: 'ہفتہ وار ذکر مجالس کتب',
+  },
+};
+
+const KNOWN_BOOK_OVERRIDES: Record<
+  string,
+  { urduTitle: string; coverUrl?: string }
+> = {
+  'دل کی صفائی اور نفس کی پاکیزگی': {
+    urduTitle: 'دل کی صفائی اور نفس کی پاکیزگی',
+    coverUrl:
+      'https://archive.org/download/screenshot-20260427-111530/file_000000003f9c720989d1e932137a1849%20%281%29.png',
+  },
+  shajara_tayyeba: {
+    urduTitle: 'شجرہ طیبہ (نقشبندیہ مجددیہ)',
+    coverUrl:
+      'https://archive.org/download/screenshot-20260427-111530/Screenshot_20260427-111530.jpg',
+  },
+  'مستند_احادیث_سے__صبح_و_شام_کی_مسنون_دعائیں_دارالافتاء_الاخلاص__کراچی': {
+    urduTitle: 'صبح و شام کی مسنون دعائیں (مستند احادیث سے)',
+    coverUrl:
+      'https://archive.org/download/screenshot-20260427-111530/Screenshot_20260427-164055.jpg',
+  },
+  'صبح وشام کی مسنون دعائیں': {
+    urduTitle: 'صبح و شام کی مسنون دعائیں',
+    coverUrl:
+      'https://archive.org/download/screenshot-20260427-111530/Screenshot_20260427-164055.jpg',
+  },
+  '2-گرمی کی شدت اور اسلامی تعلیمات-مفتی محمد شکیل': {
+    urduTitle: 'گرمی کی شدت اور اسلامی تعلیمات — مفتی محمد شکیل',
+    coverUrl:
+      'https://archive.org/download/screenshot-20260427-111530/2-%DA%AF%D8%B1%D9%85%DB%8C%20%DA%A9%DB%8C%20%D8%B4%D8%AF%D8%AA%20%D8%A7%D9%88%D8%B1%20%D8%A7%D8%B3%D9%84%D8%A7%D9%85%DB%8C%20%D8%AA%D8%B9%D9%84%DB%8C%D9%85%D8%A7%D8%AA-%D9%85%D9%81%D8%AA%DB%8C%20%D9%85%D8%AD%D9%85%D8%AF%20%D8%B4%DA%A9%DB%8C%D9%84.jpg',
+  },
+  نقشہ_اوقات: {
+    urduTitle: 'نقشہ اوقاتِ نماز',
+  },
+};
+
+export const DEFAULT_ARCHIVE_BOOKS: BookItem[] = [
+  {
+    id: 'book-20250816-dil-ki-safai',
+    collectionId: '20250816',
+    collectionTitle: 'Islamic Urdu Books Collection',
+    collectionUrdu: 'اسلامی اردو کتب لائبریری',
+    filename: 'دل کی صفائی اور نفس کی پاکیزگی.pdf',
+    title: 'دل کی صفائی اور نفس کی پاکیزگی',
+    urduTitle: 'دل کی صفائی اور نفس کی پاکیزگی',
+    pdfUrl:
+      'https://archive.org/download/20250816/%D8%AF%D9%84%20%DA%A9%DB%8C%20%D8%B5%D9%81%D8%A7%D8%A6%DB%8C%20%D8%A7%D9%88%D8%B1%20%D9%86%D9%81%D8%B3%20%DA%A9%DB%8C%20%D9%BE%D8%A7%DA%A9%DB%8C%D8%B2%DA%AF%DB%8C.pdf',
+    coverUrl:
+      'https://archive.org/download/screenshot-20260427-111530/file_000000003f9c720989d1e932137a1849%20%281%29.png',
+    size: '23558654',
+    mtime: '1781715274',
+  },
+  {
+    id: 'book-20250816-garmi-ki-shiddat',
+    collectionId: '20250816',
+    collectionTitle: 'Islamic Urdu Books Collection',
+    collectionUrdu: 'اسلامی اردو کتب لائبریری',
+    filename: '2-گرمی کی شدت اور اسلامی تعلیمات-مفتی محمد شکیل.pdf',
+    title: 'گرمی کی شدت اور اسلامی تعلیمات',
+    urduTitle: 'گرمی کی شدت اور اسلامی تعلیمات — مفتی محمد شکیل',
+    pdfUrl:
+      'https://archive.org/download/20250816/2-%DA%AF%D8%B1%D9%85%DB%8C%20%DA%A9%DB%8C%20%D8%B4%D8%AF%D8%AA%20%D8%A7%D9%88%D8%B1%20%D8%A7%D8%B3%D9%84%D8%A7%D9%85%DB%8C%20%D8%AA%D8%B9%D9%84%DB%8C%D9%85%D8%A7%D8%AA-%D9%85%D9%81%D8%AA%DB%8C%20%D9%85%D8%AD%D9%85%D8%AF%20%D8%B4%DA%A9%DB%8C%D9%84.pdf',
+    coverUrl:
+      'https://archive.org/download/screenshot-20260427-111530/2-%DA%AF%D8%B1%D9%85%DB%8C%20%DA%A9%DB%8C%20%D8%B4%D8%AF%D8%AA%20%D8%A7%D9%88%D8%B1%20%D8%A7%D8%B3%D9%84%D8%A7%D9%85%DB%8C%20%D8%AA%D8%B9%D9%84%DB%8C%D9%85%D8%A7%D8%AA-%D9%85%D9%81%D8%AA%DB%8C%20%D9%85%D8%AD%D9%85%D8%AF%20%D8%B4%DA%A9%DB%8C%D9%84.jpg',
+    size: '9464944',
+    mtime: '1777336613',
+  },
+  {
+    id: 'book-20250816-naqsha-awqaat',
+    collectionId: '20250816',
+    collectionTitle: 'Islamic Urdu Books Collection',
+    collectionUrdu: 'اسلامی اردو کتب لائبریری',
+    filename: 'نقشہ_اوقات.pdf',
+    title: 'نقشہ اوقاتِ نماز',
+    urduTitle: 'نقشہ اوقاتِ نماز',
+    pdfUrl:
+      'https://archive.org/download/20250816/%D9%86%D9%82%D8%B4%DB%81_%D8%A7%D9%88%D9%82%D8%A7%D8%AA.pdf',
+    size: '1765536',
+    mtime: '1777308952',
+  },
+  {
+    id: 'book-20250816-subah-shaam-duain',
+    collectionId: '20250816',
+    collectionTitle: 'Islamic Urdu Books Collection',
+    collectionUrdu: 'اسلامی اردو کتب لائبریری',
+    filename: 'مستند_احادیث_سے__صبح_و_شام_کی_مسنون_دعائیں_دارالافتاء_الاخلاص__کراچی.pdf',
+    title: 'صبح و شام کی مسنون دعائیں',
+    urduTitle: 'صبح و شام کی مسنون دعائیں (مستند احادیث سے)',
+    pdfUrl:
+      'https://archive.org/download/20250816/%D9%85%D8%B3%D8%AA%D9%86%D8%AF_%D8%A7%D8%AD%D8%A7%D8%AF%DB%8C%D8%AB_%D8%B3%DB%92__%D8%B5%D8%A8%D8%AD_%D9%88_%D8%B4%D8%A7%D9%85_%DA%A9%DB%8C_%D9%85%D8%B3%D9%86%D9%88%D9%86_%D8%AF%D8%B9%D8%A7%D8%A6%DB%8C%DA%BA_%D8%AF%D8%A7%D8%B1%D8%A7%D9%84%D8%A7%D9%81%D8%AA%D8%A7%D8%A1_%D8%A7%D9%84%D8%A7%D8%AE%D9%84%D8%A7%D8%B5__%DA%A9%D8%B1%D8%A7%DA%86%DB%8C.pdf',
+    coverUrl:
+      'https://archive.org/download/screenshot-20260427-111530/Screenshot_20260427-164055.jpg',
+    size: '454202',
+    mtime: '1772129165',
+  },
+  {
+    id: 'book-20250816-shajara-tayyeba',
+    collectionId: '20250816',
+    collectionTitle: 'Islamic Urdu Books Collection',
+    collectionUrdu: 'اسلامی اردو کتب لائبریری',
+    filename: 'SHAJARA_TAYYEBA.pdf',
+    title: 'Shajara Tayyeba',
+    urduTitle: 'شجرہ طیبہ (نقشبندیہ مجددیہ)',
+    pdfUrl: 'https://archive.org/download/20250816/SHAJARA_TAYYEBA.pdf',
+    coverUrl:
+      'https://archive.org/download/screenshot-20260427-111530/Screenshot_20260427-111530.jpg',
+    size: '23054831',
+    mtime: '1757898498',
+  },
+];
+
+function cleanBookBaseTitle(rawFilename: string): string {
+  return rawFilename
+    .replace(/\.pdf$/i, '')
+    .replace(/[_]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function isDerivativePdf(filename: string): boolean {
+  const lower = filename.trim().toLowerCase();
+  return (
+    !lower.endsWith('.pdf') ||
+    lower.endsWith('_text.pdf') ||
+    lower.endsWith('_bw.pdf') ||
+    lower.endsWith('_djvu.pdf') ||
+    lower.endsWith('_jp2.pdf') ||
+    lower.endsWith('_abbyy.pdf')
+  );
+}
+
+function isCoverImageFile(filename: string): boolean {
+  const lower = filename.trim().toLowerCase();
+  if (lower.startsWith('__ia_thumb') || lower.endsWith('_thumb.jpg')) return false;
+  return (
+    lower.endsWith('.jpg') ||
+    lower.endsWith('.jpeg') ||
+    lower.endsWith('.png') ||
+    lower.endsWith('.webp')
+  );
+}
+
+async function fetchExternalCoversMap(): Promise<Map<string, string>> {
+  const coverMap = new Map<string, string>();
+  try {
+    const res = await fetch(`https://archive.org/metadata/${ARCHIVE_COVERS_COLLECTION}`);
+    if (!res.ok) return coverMap;
+    const json = await res.json();
+    const files: any[] = Array.isArray(json?.files) ? json.files : [];
+    for (const f of files) {
+      const name = String(f?.name || '');
+      if (!isCoverImageFile(name)) continue;
+      const base = name.replace(/\.(jpg|jpeg|png|webp)$/i, '').trim().toLowerCase();
+      const encodedName = name
+        .split('/')
+        .map((seg) => encodeURIComponent(seg))
+        .join('/');
+      coverMap.set(
+        base,
+        `https://archive.org/download/${ARCHIVE_COVERS_COLLECTION}/${encodedName}`
+      );
+    }
+  } catch {}
+  return coverMap;
+}
+
+async function fetchBookCollectionMetadata(
+  collectionId: string,
+  meta: { title: string; urdu: string },
+  externalCovers: Map<string, string>
+): Promise<BookItem[]> {
+  const res = await fetch(`https://archive.org/metadata/${collectionId}`);
+  if (!res.ok) return [];
+  const json = await res.json();
+  const files: any[] = Array.isArray(json?.files) ? json.files : [];
+
+  // Index any cover images placed inside the same Archive folder
+  const localCovers = new Map<string, string>();
+  for (const f of files) {
+    const name = String(f?.name || '');
+    if (!isCoverImageFile(name)) continue;
+    const base = name.replace(/\.(jpg|jpeg|png|webp)$/i, '').trim().toLowerCase();
+    const encodedName = name
+      .split('/')
+      .map((seg) => encodeURIComponent(seg))
+      .join('/');
+    localCovers.set(base, `https://archive.org/download/${collectionId}/${encodedName}`);
+  }
+
+  // Deduplicate whitespace-variant files with identical trimmed names
+  const dedupedByTrimmedName = new Map<string, any>();
+  for (const f of files) {
+    const name = String(f?.name || '');
+    if (isDerivativePdf(name)) continue;
+    const key = name.trim().toLowerCase();
+    const existing = dedupedByTrimmedName.get(key);
+    if (!existing) {
+      dedupedByTrimmedName.set(key, f);
+    } else {
+      const existingStartsWithSpace = String(existing.name || '').startsWith(' ');
+      const currentStartsWithSpace = name.startsWith(' ');
+      if (existingStartsWithSpace && !currentStartsWithSpace) {
+        dedupedByTrimmedName.set(key, f);
+      } else if (parseInt(f?.mtime || '0', 10) > parseInt(existing?.mtime || '0', 10)) {
+        dedupedByTrimmedName.set(key, f);
+      }
+    }
+  }
+
+  const items: BookItem[] = [];
+  for (const f of dedupedByTrimmedName.values()) {
+    const name = String(f?.name || '');
+    const rawBase = name.replace(/\.pdf$/i, '').trim();
+    const lowerBase = rawBase.toLowerCase();
+    const override = KNOWN_BOOK_OVERRIDES[rawBase] || KNOWN_BOOK_OVERRIDES[lowerBase];
+    const cleanTitle = cleanBookBaseTitle(name);
+    const encodedName = name
+      .split('/')
+      .map((seg) => encodeURIComponent(seg))
+      .join('/');
+
+    const matchedCover =
+      override?.coverUrl ||
+      localCovers.get(lowerBase) ||
+      externalCovers.get(lowerBase);
+
+    items.push({
+      id: `book-${collectionId}-${rawBase}`,
+      collectionId,
+      collectionTitle: meta.title,
+      collectionUrdu: meta.urdu,
+      filename: name,
+      title: cleanTitle,
+      urduTitle: override?.urduTitle || cleanTitle,
+      pdfUrl: `https://archive.org/download/${collectionId}/${encodedName}`,
+      coverUrl: matchedCover,
+      size: f?.size ? String(f.size) : undefined,
+      mtime: f?.mtime ? String(f.mtime) : undefined,
+    });
+  }
+
+  return items;
+}
+
+export function useArchiveBooks() {
+  const [books, setBooks] = useState<BookItem[]>(() => {
+    try {
+      const cached = localStorage.getItem(ARCHIVE_BOOKS_CACHE_KEY);
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch {}
+    return DEFAULT_ARCHIVE_BOOKS;
+  });
+
+  const [isSyncingBooks, setIsSyncingBooks] = useState(false);
+
+  const syncBooks = useCallback(async (onNotify?: (msg: string) => void) => {
+    setIsSyncingBooks(true);
+    try {
+      let discoveredDocs: DiscoveredArchiveDoc[] = [];
+      try {
+        discoveredDocs = await discoverUploaderItems();
+      } catch {}
+
+      const bookCollections = new Map<string, { title: string; urdu: string }>();
+      for (const [id, meta] of Object.entries(ARCHIVE_BOOK_COLLECTIONS)) {
+        bookCollections.set(id, meta);
+      }
+      for (const doc of discoveredDocs) {
+        if (doc.mediatype === 'texts') {
+          const existing = ARCHIVE_BOOK_COLLECTIONS[doc.identifier];
+          bookCollections.set(doc.identifier, {
+            title: existing?.title || doc.title,
+            urdu:
+              doc.title && /[\u0600-\u06FF]/.test(doc.title)
+                ? doc.title
+                : existing?.urdu || doc.title || 'اسلامی اردو کتب لائبریری',
+          });
+        }
+      }
+
+      const externalCovers = await fetchExternalCoversMap();
+      const entries = Array.from(bookCollections.entries());
+      const settled = await Promise.allSettled(
+        entries.map(([id, meta]) =>
+          fetchBookCollectionMetadata(id, meta, externalCovers)
+        )
+      );
+
+      const liveBooks: BookItem[] = [];
+      settled.forEach((r) => {
+        if (r.status === 'fulfilled' && r.value.length > 0) {
+          liveBooks.push(...r.value);
+        }
+      });
+
+      if (liveBooks.length > 0) {
+        liveBooks.sort(
+          (a, b) =>
+            getTimestampMsFromMtime(b.mtime) - getTimestampMsFromMtime(a.mtime)
+        );
+        setBooks(liveBooks);
+        try {
+          localStorage.setItem(ARCHIVE_BOOKS_CACHE_KEY, JSON.stringify(liveBooks));
+        } catch {}
+        if (onNotify) {
+          onNotify(`کتب لائبریری تازہ ہو گئی — ${liveBooks.length} کتب دستیاب ہیں!`);
+        }
+      }
+    } catch {
+      // Retain cached/default books gracefully
+    } finally {
+      setIsSyncingBooks(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    syncBooks();
+  }, [syncBooks]);
+
+  return {
+    books,
+    isSyncingBooks,
+    syncBooks,
   };
 }

@@ -57,6 +57,7 @@ interface Props {
   onOpenIntroSheikh: () => void;
   onOpenAllBayanat: () => void;
   onOpenIslahiBayanat: () => void;
+  onOpenBooks?: () => void;
   onOpenUrl?: (url: string) => void;
   onOpenWhatsAppGroups?: () => void;
   onOpenDonations?: () => void;
@@ -86,6 +87,7 @@ export const HamburgerDrawer: React.FC<Props> = ({
   onOpenIntroSheikh,
   onOpenAllBayanat,
   onOpenIslahiBayanat,
+  onOpenBooks,
   onOpenUrl,
   onOpenWhatsAppGroups,
   onOpenDonations,
@@ -363,36 +365,40 @@ export const HamburgerDrawer: React.FC<Props> = ({
                   <ChevronLeft className={`w-4 h-4 opacity-40 group-hover:opacity-100 shrink-0 ${dir === 'ltr' ? 'rotate-180' : ''}`} />
                 </button>
 
-                {onOpenUrl && (
-                  <>
-                    <button
-                      onClick={() => {
-                        onClose();
+                {(onOpenBooks || onOpenUrl) && (
+                  <button
+                    onClick={() => {
+                      onClose();
+                      if (onOpenBooks) {
+                        onOpenBooks();
+                      } else if (onOpenUrl) {
                         onOpenUrl(URDU_BOOKS_URL);
-                      }}
-                      className={rowClass}
-                    >
-                      <div className="flex items-center gap-2.5 min-w-0">
-                        <span className={iconBoxClass}><BookOpen className="w-4 h-4" /></span>
-                        <span className="font-bold truncate">{t.drawerItemBooks}</span>
-                      </div>
-                      <ChevronLeft className={`w-4 h-4 opacity-40 group-hover:opacity-100 shrink-0 ${dir === 'ltr' ? 'rotate-180' : ''}`} />
-                    </button>
+                      }
+                    }}
+                    className={rowClass}
+                  >
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <span className={iconBoxClass}><BookOpen className="w-4 h-4" /></span>
+                      <span className="font-bold truncate">{t.drawerItemBooks}</span>
+                    </div>
+                    <ChevronLeft className={`w-4 h-4 opacity-40 group-hover:opacity-100 shrink-0 ${dir === 'ltr' ? 'rotate-180' : ''}`} />
+                  </button>
+                )}
 
-                    <button
-                      onClick={() => {
-                        onClose();
-                        onOpenUrl(NEWS_UPDATES_URL);
-                      }}
-                      className={rowClass}
-                    >
-                      <div className="flex items-center gap-2.5 min-w-0">
-                        <span className={iconBoxClass}><Bell className="w-4 h-4" /></span>
-                        <span className="font-bold truncate">{t.drawerItemNews}</span>
-                      </div>
-                      <ChevronLeft className={`w-4 h-4 opacity-40 group-hover:opacity-100 shrink-0 ${dir === 'ltr' ? 'rotate-180' : ''}`} />
-                    </button>
-                  </>
+                {onOpenUrl && (
+                  <button
+                    onClick={() => {
+                      onClose();
+                      onOpenUrl(NEWS_UPDATES_URL);
+                    }}
+                    className={rowClass}
+                  >
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <span className={iconBoxClass}><Bell className="w-4 h-4" /></span>
+                      <span className="font-bold truncate">{t.drawerItemNews}</span>
+                    </div>
+                    <ChevronLeft className={`w-4 h-4 opacity-40 group-hover:opacity-100 shrink-0 ${dir === 'ltr' ? 'rotate-180' : ''}`} />
+                  </button>
                 )}
 
                 <button

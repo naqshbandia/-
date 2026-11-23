@@ -9,6 +9,7 @@ import { SmartSearchBar } from './components/SmartSearchBar';
 import { HamburgerDrawer } from './components/HamburgerDrawer';
 import { WebViewContainer } from './components/WebViewContainer';
 import { AudioLibraryView } from './components/AudioLibraryView';
+import { BooksLibraryView } from './components/BooksLibraryView';
 import { SmartDashboardHome } from './components/SmartDashboardHome';
 import { AudioPlayerBar } from './components/AudioPlayerBar';
 import {
@@ -30,7 +31,7 @@ import {
   BLOGGER_HOME_URL 
 } from './data/appConfig';
 import { useBloggerTabs } from './utils/bloggerService';
-import { useArchiveBayanat } from './utils/archiveService';
+import { useArchiveBayanat, useArchiveBooks } from './utils/archiveService';
 import { PWAInstallBanner } from './components/PWAInstallBanner';
 import { DownloadCloud } from 'lucide-react';
 import {
@@ -59,11 +60,12 @@ import {
 
 export default function App() {
   // Home Screen defaults to the clean Islamic Smart Dashboard
-  const [activeView, setActiveView] = useState<'dashboard' | 'library' | 'webview'>('dashboard');
+  const [activeView, setActiveView] = useState<'dashboard' | 'library' | 'books' | 'webview'>('dashboard');
   const [currentUrl, setCurrentUrl] = useState(GOLD_LIBRARY_URL);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [selectedLibraryFolderId, setSelectedLibraryFolderId] = useState<string>('all');
+  const [initialReadingBookId, setInitialReadingBookId] = useState<string | null>(null);
 
   // App Language state: Always starts in Urdu ('ur'); user can switch anytime during use
   const [lang, setLang] = useState<AppLanguage>(DEFAULT_LANGUAGE);
@@ -71,8 +73,9 @@ export default function App() {
   // Dynamic Blogger Posts & Libraries (automatically updates when new posts are published on Blogger)
   const { tabs, isRefreshing, refreshPosts } = useBloggerTabs();
 
-  // Dynamic Archive.org Bayanat sync (auto-discovers latest bayanat across all collections)
-  const { bayanat, isSyncingArchive, syncArchive } = useArchiveBayanat();
+  // Dynamic Archive.org Bayanat & Books sync
+  const { bayanat, archiveFolders, isSyncingArchive, syncArchive } = useArchiveBayanat();
+  const { books, isSyncingBooks, syncBooks } = useArchiveBooks();
 
   // Display mode: 'auto' (Normal/Light outdoors & daytime, Dark indoors & night) | 'light' | 'dark'
   const [displayMode, setDisplayMode] = useState<DisplayModePreference>(() =>
@@ -247,13 +250,15 @@ export default function App() {
     const interval = setInterval(() => {
       refreshPosts();
       syncArchive();
+      syncBooks();
     }, 10 * 60 * 1000);
     return () => clearInterval(interval);
-  }, [refreshPosts, syncArchive]);
+  }, [refreshPosts, syncArchive, syncBooks]);
 
   const handleManualRefresh = () => {
     refreshPosts(showNotification);
     syncArchive();
+    syncBooks();
   };
 
   const handleOpenLibraryFolder = (folderId = 'all') => {
@@ -311,11 +316,23 @@ export default function App() {
             isDark={isDark}
             lang={lang}
             bayanatList={bayanat}
+            booksList={books}
+            booksCount={books.length}
+            archiveFolders={archiveFolders}
             bloggerTabs={tabs}
             onRefreshBlogger={handleManualRefresh}
             isRefreshingBlogger={isRefreshing}
             onOpenUrl={handleNavigateUrl}
             onOpenLibrary={() => handleOpenLibraryFolder('all')}
+            onOpenLibraryFolder={(folderId) => handleOpenLibraryFolder(folderId)}
+            onOpenBooks={() => {
+              setInitialReadingBookId(null);
+              setActiveView('books');
+            }}
+            onOpenBookReader={(book) => {
+              setInitialReadingBookId(book.id);
+              setActiveView('books');
+            }}
             onOpenWhatsAppGroups={() => setIsWhatsAppGroupsOpen(true)}
             onOpenDonations={() => setIsDonationOpen(true)}
             onOpenAutoSilent={() => setIsAutoSilentOpen(true)}
@@ -341,6 +358,18 @@ export default function App() {
             initialFolderId={selectedLibraryFolderId}
             lang={lang}
           />
+        ) : activeView === 'books' ? (
+          <BooksLibraryView
+            books={books}
+            isSyncing={isSyncingBooks}
+            onRefreshBooks={() => syncBooks(showNotification)}
+            onGoHome={() => setActiveView('dashboard')}
+            onNotify={showNotification}
+            isDark={isDark}
+            lang={lang}
+            initialBookId={initialReadingBookId}
+            onClearInitialBook={() => setInitialReadingBookId(null)}
+          />
         ) : (
           <WebViewContainer
             currentUrl={currentUrl}
@@ -360,6 +389,7 @@ export default function App() {
         onOpenIntroKhanqah={() => setIsIntroKhanqahOpen(true)}
         onOpenIntroSheikh={() => setIsIntroSheikhOpen(true)}
         onOpenAllBayanat={() => handleOpenLibraryFolder('all')}
+        onOpenBooks={() => setActiveView('books')}
         onOpenIslahiBayanat={() => handleNavigateUrl(GOLD_LIBRARY_URL)}
         onOpenUrl={handleNavigateUrl}
         onOpenWhatsAppGroups={() => setIsWhatsAppGroupsOpen(true)}
@@ -377,7 +407,7 @@ export default function App() {
         onSelectDisplayMode={handleSelectDisplayMode}
         onToggleTheme={toggleTheme}
         onRefreshBlogger={handleManualRefresh}
-        isRefreshingBlogger={isRefreshing || isSyncingArchive}
+        isRefreshingBlogger={isRefreshing || isSyncingArchive || isSyncingBooks}
         lang={lang}
         themeOverride={themeOverride}
         remoteTheme={remoteTheme}

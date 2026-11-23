@@ -1,4 +1,5 @@
 import { BayanItem } from '../data/bayanatData';
+import type { BookItem } from './archiveService';
 
 // Track currently active downloads by Bayan ID so buttons can show spinners
 const activeDownloads = new Set<string>();
@@ -170,5 +171,103 @@ export async function downloadFolderBayanat(
 
   if (onComplete) {
     onComplete();
+  }
+}
+
+/**
+ * Downloads a single PDF Book directly into device storage/memory without leaving the app.
+ */
+export async function downloadSingleBook(
+  book: BookItem,
+  onNotify?: (message: string) => void
+): Promise<boolean> {
+  const rawTitle = (book.urduTitle || book.title || 'book').trim();
+  let filename = sanitizeFilename(book.filename || rawTitle);
+  if (!filename.toLowerCase().endsWith('.pdf')) {
+    filename += '.pdf';
+  }
+
+  if (activeDownloads.has(book.id)) {
+    if (onNotify) {
+      onNotify(`یہ کتاب پہلے سے ڈاؤنلوڈ ہو رہی ہے: ${rawTitle}`);
+    }
+    return false;
+  }
+
+  activeDownloads.add(book.id);
+  notifyListeners();
+
+  if (onNotify) {
+    onNotify(`کتاب ڈاؤنلوڈ شروع ہو رہی ہے: ${rawTitle}...`);
+  }
+
+  try {
+    const response = await fetch(book.pdfUrl, {
+      method: 'GET',
+      mode: 'cors',
+      redirect: 'follow',
+      headers: {
+        Accept: 'application/pdf,*/*',
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP error ${response.status}`);
+    }
+
+    const blob = await response.blob();
+    const pdfBlob = new Blob([blob], { type: 'application/pdf' });
+    const blobUrl = URL.createObjectURL(pdfBlob);
+
+    const link = document.createElement('a');
+    link.href = blobUrl;
+    link.download = filename;
+    link.style.display = 'none';
+    link.setAttribute('download', filename);
+    document.body.appendChild(link);
+    link.click();
+
+    setTimeout(() => {
+      try {
+        document.body.removeChild(link);
+      } catch {}
+      URL.revokeObjectURL(blobUrl);
+    }, 15000);
+
+    if (onNotify) {
+      onNotify(`ڈاؤنلوڈ مکمل! کتاب موبائل میں محفوظ ہو گئی: ${rawTitle}`);
+    }
+    return true;
+  } catch (err) {
+    console.warn('Direct PDF blob fetch failed, using silent hidden iframe download:', err);
+    try {
+      let hiddenFrame = document.getElementById('kh_download_silent_frame') as HTMLIFrameElement;
+      if (!hiddenFrame) {
+        hiddenFrame = document.createElement('iframe');
+        hiddenFrame.id = 'kh_download_silent_frame';
+        hiddenFrame.style.display = 'none';
+        hiddenFrame.style.width = '0px';
+        hiddenFrame.style.height = '0px';
+        hiddenFrame.style.position = 'fixed';
+        hiddenFrame.style.top = '-9999px';
+        hiddenFrame.style.left = '-9999px';
+        hiddenFrame.style.opacity = '0';
+        hiddenFrame.style.pointerEvents = 'none';
+        document.body.appendChild(hiddenFrame);
+      }
+      hiddenFrame.src = book.pdfUrl;
+      if (onNotify) {
+        onNotify(`کتاب ڈاؤنلوڈ شروع کر دی گئی ہے: ${rawTitle}`);
+      }
+      return true;
+    } catch {
+      if (onNotify) {
+        onNotify('کتاب ڈاؤنلوڈ میں مسئلہ پیش آیا۔ براہِ کرم انٹرنیٹ کنکشن چیک کریں۔');
+      }
+      return false;
+    }
+  } finally {
+    activeDownloads.delete(book.id);
+    notifyListeners();
   }
 }

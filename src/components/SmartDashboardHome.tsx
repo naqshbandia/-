@@ -28,6 +28,7 @@ import {
   Megaphone,
   Users,
   BellOff,
+  Eye,
 } from 'lucide-react';
 import {
   SHEIKH_GLASS_BANNER_URL,
@@ -38,11 +39,23 @@ import {
 } from '../data/appConfig';
 import { CombinedInstallStats } from '../utils/installStatsService';
 import { BAYANAT_DATABASE, BayanItem } from '../data/bayanatData';
-import { downloadSingleBayan, subscribeToDownloads } from '../utils/downloadHelper';
 import {
+  downloadSingleBayan,
+  downloadSingleBook,
+  subscribeToDownloads,
+} from '../utils/downloadHelper';
+import {
+  BookItem,
+  ArchiveFolderSummary,
   isBayanNew,
+  isBookNew,
+  getBayanTimestampMs,
+  getTimestampMsFromMtime,
   formatBayanDateUrdu,
+  formatBookDateUrdu,
+  formatBookSize,
   shareBayanOnWhatsApp,
+  shareBookOnWhatsApp,
 } from '../utils/archiveService';
 import {
   PrayerCache,
@@ -78,11 +91,17 @@ interface Props {
   isDark: boolean;
   lang?: AppLanguage;
   bayanatList?: BayanItem[];
+  booksList?: BookItem[];
+  booksCount?: number;
+  archiveFolders?: ArchiveFolderSummary[];
   bloggerTabs?: BloggerPostTab[];
   onRefreshBlogger?: () => void;
   isRefreshingBlogger?: boolean;
   onOpenUrl: (url: string) => void;
   onOpenLibrary: () => void;
+  onOpenLibraryFolder?: (folderId: string) => void;
+  onOpenBooks?: () => void;
+  onOpenBookReader?: (book: BookItem) => void;
   onOpenWhatsAppGroups: () => void;
   onOpenDonations: () => void;
   onOpenAutoSilent?: () => void;
@@ -160,11 +179,17 @@ export const SmartDashboardHome: React.FC<Props> = ({
   isDark,
   lang = DEFAULT_LANGUAGE,
   bayanatList = BAYANAT_DATABASE,
+  booksList = [],
+  booksCount = 5,
+  archiveFolders = [],
   bloggerTabs = [],
   onRefreshBlogger,
   isRefreshingBlogger = false,
   onOpenUrl,
   onOpenLibrary,
+  onOpenLibraryFolder,
+  onOpenBooks,
+  onOpenBookReader,
   onOpenWhatsAppGroups,
   onOpenDonations,
   onOpenAutoSilent,
@@ -323,17 +348,31 @@ export const SmartDashboardHome: React.FC<Props> = ({
 
   const currentMinuteBucket = Math.floor(now.getTime() / 60000);
 
-  // Only show newly uploaded bayanat within the last 7 days (disappear automatically after 7 days)
-  const latestUploadedBayanat = useMemo(() => {
+  // Only show newly uploaded bayanat & books within the last 7 days (disappear automatically after 7 days)
+  const latestUploadedItems = useMemo(() => {
     const refNowMs = currentMinuteBucket * 60000;
-    return bayanatList
-      .filter(
-        (b) =>
-          (b.urduTitle || b.title).trim().length > 0 &&
-          isBayanNew(b, refNowMs)
-      )
-      .slice(0, 12);
-  }, [bayanatList, currentMinuteBucket]);
+    type LatestEntry =
+      | { kind: 'bayan'; item: BayanItem; ts: number }
+      | { kind: 'book'; item: BookItem; ts: number };
+
+    const entries: LatestEntry[] = [];
+    for (const b of bayanatList) {
+      if ((b.urduTitle || b.title).trim().length > 0 && isBayanNew(b, refNowMs)) {
+        entries.push({ kind: 'bayan', item: b, ts: getBayanTimestampMs(b) });
+      }
+    }
+    for (const book of booksList) {
+      if ((book.urduTitle || book.title).trim().length > 0 && isBookNew(book, refNowMs)) {
+        entries.push({
+          kind: 'book',
+          item: book,
+          ts: getTimestampMsFromMtime(book.mtime),
+        });
+      }
+    }
+    entries.sort((a, b) => b.ts - a.ts);
+    return entries.slice(0, 12);
+  }, [bayanatList, booksList, currentMinuteBucket]);
 
   const tickerDurationSeconds = useMemo(
     () => Math.max(20, Math.min(60, Math.round(tickerMessage.length * 0.28))),
@@ -364,7 +403,7 @@ export const SmartDashboardHome: React.FC<Props> = ({
     onNotify(t.clearedEmailToast);
   };
 
-  // Native App-Only Utility Cards (Archive.org MP3 Library + Official WhatsApp Groups)
+  // Native App-Only Utility Cards (Archive.org MP3 Library + Automatic Books Library + WhatsApp Groups)
   const coreFolders = useMemo(
     () => [
       {
@@ -375,6 +414,18 @@ export const SmartDashboardHome: React.FC<Props> = ({
         accent: 'text-[#064326] dark:text-[#00ff99]',
         onClick: onOpenLibrary,
       },
+      ...(onOpenBooks
+        ? [
+            {
+              id: 'books-library',
+              label: 'کتب لائبریری (PDF)',
+              subLabel: `${booksCount} کتب · پڑھیں و ڈاؤنلوڈ`,
+              icon: BookOpen,
+              accent: 'text-[#8c6514] dark:text-[#d4af37]',
+              onClick: onOpenBooks,
+            },
+          ]
+        : []),
       {
         id: 'whatsapp-groups',
         label: t.whatsappGroupsTitle,
@@ -406,7 +457,9 @@ export const SmartDashboardHome: React.FC<Props> = ({
     ],
     [
       bayanatList.length,
+      booksCount,
       onOpenLibrary,
+      onOpenBooks,
       onOpenWhatsAppGroups,
       onOpenDonations,
       onOpenAutoSilent,
@@ -421,7 +474,7 @@ export const SmartDashboardHome: React.FC<Props> = ({
     ]
   );
 
-  // Live Blogger Posts Grid (1 Blogger post = 1 folder card, synced automatically)
+  // Live Blogger Posts Grid (excludes home & Urdu Book Library duplicate post)
   const bloggerLiveFolders = useMemo(() => {
     const list: {
       id: string;
@@ -436,6 +489,19 @@ export const SmartDashboardHome: React.FC<Props> = ({
     const seenId = new Set<string>();
     for (const tab of bloggerTabs) {
       if (tab.id === 'blogger-home') continue;
+      const lowerUrl = (tab.url || '').toLowerCase();
+      const lowerTitle = (tab.title || '').toLowerCase();
+      // Hide Blogger's Urdu Book Library folder since the native Archive Books Library replaces it
+      if (
+        tab.id === 'islamic-urdu-book-library' ||
+        lowerUrl.includes('urdu-books-library') ||
+        lowerUrl.includes('islamic-urdu-book-library') ||
+        lowerTitle.includes('book library') ||
+        tab.title.includes('اردو کتب') ||
+        tab.title.includes('بک لائبریری')
+      ) {
+        continue;
+      }
       if (seenId.has(tab.id)) continue;
       seenId.add(tab.id);
 
@@ -453,6 +519,11 @@ export const SmartDashboardHome: React.FC<Props> = ({
     }
     return list;
   }, [bloggerTabs, onOpenUrl]);
+
+  const audioArchiveFolders = useMemo(
+    () => archiveFolders.filter((f) => f.mediatype === 'audio'),
+    [archiveFolders]
+  );
 
   return (
     <div
@@ -882,8 +953,8 @@ export const SmartDashboardHome: React.FC<Props> = ({
           </div>
         </section>
 
-        {/* 3B. Compact Box: Latest Uploaded Bayanat (7-day window only; hides automatically after 7 days) */}
-        {latestUploadedBayanat.length > 0 && (
+        {/* 3B. Compact Box: Latest Uploaded Bayanat & Books (7-day window only; hides automatically after 7 days) */}
+        {latestUploadedItems.length > 0 && (
         <section
           className={`rounded-3xl border-2 border-[#d4af37]/60 p-3 sm:p-4 shadow-md space-y-2.5 transition-colors ${
             isDark
@@ -902,10 +973,12 @@ export const SmartDashboardHome: React.FC<Props> = ({
               </div>
               <div>
                 <h2 className="text-[13px] sm:text-sm font-bold text-[#064326] dark:text-[#d4af37]">
-                  {t.latestBayanatTitle}
+                  {lang === 'ur' ? 'تازہ ترین اپلوڈ شدہ بیانات و کتب' : t.latestBayanatTitle}
                 </h2>
                 <p className="text-[10px] opacity-75">
-                  {t.latestBayanatSub}
+                  {lang === 'ur'
+                    ? 'نئے بیانات اور کتب (اپلوڈ ہونے کے 7 دن تک "نیا" نشان کے ساتھ)'
+                    : t.latestBayanatSub}
                 </p>
               </div>
             </div>
@@ -920,7 +993,111 @@ export const SmartDashboardHome: React.FC<Props> = ({
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-            {latestUploadedBayanat.map((bayan) => {
+            {latestUploadedItems.map((entry) => {
+              if (entry.kind === 'book') {
+                const book = entry.item;
+                const isDownloading = activeDownloadIds.has(book.id);
+                const dateLabel = formatBookDateUrdu(book);
+                const sizeLabel = formatBookSize(book.size);
+                const fullTitle = book.urduTitle || book.title;
+
+                return (
+                  <div
+                    key={`latest-book-${book.id}`}
+                    className={`p-2.5 rounded-2xl border flex flex-col gap-1.5 transition-all ${
+                      isDark
+                        ? 'bg-[#0e2418] border-[#d4af37]/45 hover:border-[#d4af37]'
+                        : 'bg-[#fffdf6] border-[#d4af37]/45 hover:border-[#d4af37]'
+                    }`}
+                  >
+                    <button
+                      type="button"
+                      onClick={() =>
+                        onOpenBookReader ? onOpenBookReader(book) : onOpenBooks?.()
+                      }
+                      className={`w-full cursor-pointer space-y-1 ${
+                        dir === 'ltr' ? 'text-left' : 'text-right'
+                      }`}
+                      title={fullTitle}
+                    >
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        <span className="khanqah-new-neon-badge px-1.5 py-0.5 rounded text-[9.5px] font-extrabold tracking-wide shrink-0 whitespace-nowrap leading-none">
+                          {t.newBadge}
+                        </span>
+                        <span className="px-1.5 py-0.5 rounded bg-[#064326] text-[#d4af37] text-[9px] font-bold shrink-0">
+                          کتاب PDF
+                        </span>
+                        <SlidingBayanTitle text={fullTitle} />
+                      </div>
+
+                      <div className="flex items-center gap-1.5 text-[10px] opacity-75 truncate">
+                        <span className="text-[#8c6514] dark:text-[#d4af37] font-semibold truncate">
+                          {book.collectionUrdu}
+                        </span>
+                        {dateLabel && (
+                          <>
+                            <span aria-hidden="true">·</span>
+                            <span className="tabular-nums shrink-0">{dateLabel}</span>
+                          </>
+                        )}
+                        {sizeLabel && (
+                          <>
+                            <span aria-hidden="true">·</span>
+                            <span className="tabular-nums shrink-0" dir="ltr">
+                              {sizeLabel}
+                            </span>
+                          </>
+                        )}
+                      </div>
+                    </button>
+
+                    <div className="grid grid-cols-3 gap-1.5 pt-1.5 border-t border-emerald-900/10 dark:border-[#d4af37]/20">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          onOpenBookReader ? onOpenBookReader(book) : onOpenBooks?.()
+                        }
+                        className="h-8 px-1.5 rounded-xl bg-[#064326] hover:bg-[#095c34] text-white dark:bg-[#d4af37] dark:text-[#051a0f] flex items-center justify-center gap-1 text-[10px] sm:text-[10.5px] font-bold whitespace-nowrap transition-all active:scale-95 cursor-pointer"
+                        title="کتاب پڑھیں"
+                      >
+                        <Eye className="w-3 h-3 shrink-0" />
+                        <span>پڑھیں</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => downloadSingleBook(book, onNotify)}
+                        disabled={isDownloading}
+                        className={`h-8 px-1.5 rounded-xl flex items-center justify-center gap-1 text-[10px] sm:text-[10.5px] font-bold whitespace-nowrap transition-all active:scale-95 cursor-pointer disabled:opacity-60 ${
+                          isDark
+                            ? 'bg-white/10 hover:bg-emerald-600 text-white'
+                            : 'bg-emerald-900/10 hover:bg-[#064326] text-[#064326] hover:text-white'
+                        }`}
+                        title={t.downloadLabel}
+                      >
+                        {isDownloading ? (
+                          <Loader2 className="w-3 h-3 animate-spin shrink-0" />
+                        ) : (
+                          <Download className="w-3 h-3 shrink-0" />
+                        )}
+                        <span>{isDownloading ? t.loadingLabel : t.downloadLabel}</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => shareBookOnWhatsApp(book)}
+                        className="h-8 px-1.5 rounded-xl bg-[#25D366] hover:bg-[#1faa4e] text-white flex items-center justify-center gap-1 text-[10px] sm:text-[10.5px] font-bold whitespace-nowrap transition-all active:scale-95 cursor-pointer"
+                        title={t.shareLabel}
+                      >
+                        <Share2 className="w-3 h-3 shrink-0" />
+                        <span>{t.shareLabel}</span>
+                      </button>
+                    </div>
+                  </div>
+                );
+              }
+
+              const bayan = entry.item;
               const isPlaying = currentPlayingBayanId === bayan.id;
               const isDownloading = activeDownloadIds.has(bayan.id);
               const showNeonNew = isBayanNew(bayan, currentMinuteBucket * 60000);
@@ -929,7 +1106,7 @@ export const SmartDashboardHome: React.FC<Props> = ({
 
               return (
                 <div
-                  key={bayan.id}
+                  key={`latest-bayan-${bayan.id}`}
                   className={`p-2.5 rounded-2xl border flex flex-col gap-1.5 transition-all ${
                     isPlaying
                       ? isDark
@@ -1115,6 +1292,51 @@ export const SmartDashboardHome: React.FC<Props> = ({
               );
             })}
           </div>
+
+          {/* All Archive.org Audio Library Folders (quick direct jump into Emerald-Gold Folder View) */}
+          {audioArchiveFolders.length > 0 && (
+            <div className="pt-2 space-y-2">
+              <div className="flex items-center justify-between gap-2 px-1">
+                <span className="text-[12px] sm:text-[13px] font-bold text-[#064326] dark:text-[#d4af37] flex items-center gap-1.5">
+                  <Folder className="w-4 h-4 text-[#d4af37]" />
+                  <span>آڈیو لائبریری کے تمام فولڈرز ({audioArchiveFolders.length})</span>
+                </span>
+                <button
+                  type="button"
+                  onClick={onOpenLibrary}
+                  className="text-[11px] font-bold text-[#064326] dark:text-[#00ff99] hover:underline cursor-pointer"
+                >
+                  سب ایک ساتھ کھولیں ←
+                </button>
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
+                {audioArchiveFolders.map((folder) => (
+                  <button
+                    key={`dash-arch-${folder.id}`}
+                    type="button"
+                    onClick={() =>
+                      onOpenLibraryFolder ? onOpenLibraryFolder(folder.id) : onOpenLibrary()
+                    }
+                    className={`khanqah-folder-card rounded-2xl border p-2.5 flex flex-col items-center justify-center text-center gap-1 cursor-pointer min-h-[86px] ${
+                      isDark
+                        ? 'bg-[#081c11] border-[#d4af37]/35 hover:border-[#d4af37] text-emerald-50'
+                        : 'bg-gradient-to-b from-[#fffdf8] to-[#f4f8f5] border-[#064326]/20 hover:border-[#d4af37] text-[#11261b] shadow-2xs'
+                    }`}
+                  >
+                    <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-[#004d00] to-[#007300] border border-[#d4af37] text-[#d4af37] flex items-center justify-center shadow-xs">
+                      <Folder className="w-4 h-4" />
+                    </div>
+                    <span className="text-[11.5px] font-bold leading-snug line-clamp-2 text-[#064326] dark:text-[#d4af37]">
+                      {folder.urdu}
+                    </span>
+                    <span className="text-[9.5px] opacity-75 tabular-nums">
+                      {folder.itemCount > 0 ? `${folder.itemCount} بیانات` : 'آرکائیو فولڈر'}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
         </section>
 
         {/* 5. Compact Emerald-Green Folder-Style Footer Boxes + Developer Bar */}
