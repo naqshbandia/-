@@ -1,6 +1,9 @@
 import type { AutoSilentSlot } from '../components/AutoSilentModal';
 import { formatTo12Hour } from './prayerEngine';
 
+const A4_WIDTH = 1240;
+const A4_HEIGHT = 1754;
+
 function drawRoundedRect(
   ctx: CanvasRenderingContext2D,
   x: number,
@@ -18,11 +21,17 @@ function drawRoundedRect(
   ctx.closePath();
 }
 
-export async function generateAutoSilentGuideJpgBlob(
+async function renderAutoSilentPosterCanvas(
   slots: AutoSilentSlot[]
-): Promise<Blob> {
-  const width = 1080;
-  const height = 1520;
+): Promise<HTMLCanvasElement> {
+  if (typeof document !== 'undefined' && document.fonts?.ready) {
+    try {
+      await document.fonts.ready;
+    } catch {}
+  }
+
+  const width = A4_WIDTH;
+  const height = A4_HEIGHT;
   const canvas = document.createElement('canvas');
   canvas.width = width;
   canvas.height = height;
@@ -32,28 +41,29 @@ export async function generateAutoSilentGuideJpgBlob(
     throw new Error('Canvas 2D context unavailable');
   }
 
-  // Deep Islamic Emerald Background
-  const bgGrad = ctx.createLinearGradient(0, 0, 0, height);
-  bgGrad.addColorStop(0, '#042616');
-  bgGrad.addColorStop(0.5, '#071b10');
-  bgGrad.addColorStop(1, '#03150b');
-  ctx.fillStyle = bgGrad;
+  // Crisp Paper-White / Soft Ivory Background (prints razor-sharp on A4 paper & PDF)
+  ctx.fillStyle = '#ffffff';
   ctx.fillRect(0, 0, width, height);
 
-  // Outer Gold Border
+  // Subtle decorative warm cream tint in corners/inner margin
+  ctx.fillStyle = '#fbfdfc';
+  drawRoundedRect(ctx, 28, 28, width - 56, height - 56, 30);
+  ctx.fill();
+
+  // Outer Royal Emerald Border + Inner Gold Accent Frame
+  ctx.strokeStyle = '#064326';
+  ctx.lineWidth = 7;
+  drawRoundedRect(ctx, 28, 28, width - 56, height - 56, 30);
+  ctx.stroke();
+
   ctx.strokeStyle = '#d4af37';
-  ctx.lineWidth = 8;
-  drawRoundedRect(ctx, 24, 24, width - 48, height - 48, 34);
+  ctx.lineWidth = 3;
+  drawRoundedRect(ctx, 42, 42, width - 84, height - 84, 22);
   ctx.stroke();
 
-  ctx.strokeStyle = 'rgba(212, 175, 55, 0.35)';
-  ctx.lineWidth = 2;
-  drawRoundedRect(ctx, 38, 38, width - 76, height - 76, 26);
-  ctx.stroke();
-
-  // Top Header Box
+  // Top Header Box (Royal Emerald with Gold Border)
   ctx.fillStyle = '#064326';
-  drawRoundedRect(ctx, 56, 58, width - 112, 170, 26);
+  drawRoundedRect(ctx, 64, 62, width - 128, 178, 22);
   ctx.fill();
   ctx.strokeStyle = '#d4af37';
   ctx.lineWidth = 3;
@@ -62,17 +72,17 @@ export async function generateAutoSilentGuideJpgBlob(
   ctx.textAlign = 'center';
   ctx.direction = 'rtl';
 
-  ctx.fillStyle = '#d4af37';
+  ctx.fillStyle = '#fde68a';
   ctx.font = 'bold 28px Tajawal, "Noto Sans Arabic", sans-serif';
-  ctx.fillText('🕌 خانقاہ دارالفلاح — صدقۂ جاریہ گائیڈ', width / 2, 110);
+  ctx.fillText('🕌 خانقاہ دارالفلاح — صدقۂ جاریہ مسجد اشتہار', width / 2, 112);
 
   ctx.fillStyle = '#ffffff';
-  ctx.font = 'bold 40px Tajawal, "Noto Sans Arabic", sans-serif';
-  ctx.fillText('نماز آٹو سائلنٹ موڈ سیٹنگ', width / 2, 165);
+  ctx.font = 'bold 44px Tajawal, "Noto Sans Arabic", sans-serif';
+  ctx.fillText('نماز آٹو سائلنٹ موڈ گائیڈ', width / 2, 168);
 
-  ctx.fillStyle = '#a7f3d0';
+  ctx.fillStyle = '#d1fae5';
   ctx.font = 'bold 23px Tajawal, "Noto Sans Arabic", sans-serif';
-  ctx.fillText('ایک بار موبائل میں سیٹ کریں — ہر نماز میں موبائل خود سائلنٹ ہوگا', width / 2, 206);
+  ctx.fillText('مسجد میں نماز کے دوران موبائل کی گھنٹی سے بچنے کے لیے صرف ایک بار یہ سیٹنگ کر لیں', width / 2, 214);
 
   // 4 Visual Steps Cards (2x2 Grid)
   const steps = [
@@ -102,117 +112,159 @@ export async function generateAutoSilentGuideJpgBlob(
     },
   ];
 
-  const cardW = 466;
-  const cardH = 178;
-  const startX = 62;
-  const gapX = 24;
-  const startY = 256;
-  const gapY = 22;
+  const cardW = 542;
+  const cardH = 186;
+  const startX = 64;
+  const gapX = 28;
+  const startY = 264;
+  const gapY = 20;
 
   steps.forEach((step, idx) => {
     const col = idx % 2;
     const row = Math.floor(idx / 2);
-    // Right column first for RTL aesthetic
+    // Right column first for RTL reading order
     const x = col === 0 ? startX + cardW + gapX : startX;
     const y = startY + row * (cardH + gapY);
 
-    ctx.fillStyle = '#0c2819';
-    drawRoundedRect(ctx, x, y, cardW, cardH, 22);
+    ctx.fillStyle = '#f4f9f6';
+    drawRoundedRect(ctx, x, y, cardW, cardH, 20);
     ctx.fill();
-    ctx.strokeStyle = 'rgba(212, 175, 55, 0.65)';
-    ctx.lineWidth = 2.5;
+    ctx.strokeStyle = '#064326';
+    ctx.lineWidth = 2;
     ctx.stroke();
 
-    // Step number badge
-    ctx.fillStyle = '#d4af37';
-    drawRoundedRect(ctx, x + cardW - 62, y + 18, 44, 44, 12);
+    // Gold step number badge
+    ctx.fillStyle = '#064326';
+    drawRoundedRect(ctx, x + cardW - 64, y + 18, 46, 46, 12);
     ctx.fill();
+    ctx.strokeStyle = '#d4af37';
+    ctx.lineWidth = 2;
+    ctx.stroke();
 
-    ctx.fillStyle = '#051a0f';
+    ctx.fillStyle = '#fde68a';
     ctx.font = 'bold 26px sans-serif';
     ctx.textAlign = 'center';
-    ctx.fillText(step.num, x + cardW - 40, y + 49);
+    ctx.fillText(step.num, x + cardW - 41, y + 50);
 
     ctx.textAlign = 'right';
-    ctx.fillStyle = '#d4af37';
-    ctx.font = 'bold 25px Tajawal, "Noto Sans Arabic", sans-serif';
-    ctx.fillText(step.title, x + cardW - 76, y + 48);
+    ctx.fillStyle = '#064326';
+    ctx.font = 'bold 27px Tajawal, "Noto Sans Arabic", sans-serif';
+    ctx.fillText(step.title, x + cardW - 78, y + 49);
 
-    ctx.fillStyle = '#ecfdf5';
-    ctx.font = '600 21px Tajawal, "Noto Sans Arabic", sans-serif';
-    ctx.fillText(step.line1, x + cardW - 22, y + 102);
-    ctx.fillText(step.line2, x + cardW - 22, y + 138);
+    ctx.fillStyle = '#11261b';
+    ctx.font = '600 22px Tajawal, "Noto Sans Arabic", sans-serif';
+    ctx.fillText(step.line1, x + cardW - 22, y + 106);
+    ctx.fillText(step.line2, x + cardW - 22, y + 144);
   });
 
   // 6-Prayer Start & End Table Box
-  const tableY = 665;
-  ctx.fillStyle = '#0a2115';
-  drawRoundedRect(ctx, 56, tableY, width - 112, 600, 26);
+  const tableY = 678;
+  const tableH = 618;
+  ctx.fillStyle = '#ffffff';
+  drawRoundedRect(ctx, 64, tableY, width - 128, tableH, 22);
+  ctx.fill();
+  ctx.strokeStyle = '#064326';
+  ctx.lineWidth = 2.5;
+  ctx.stroke();
+
+  // Table Title Header Strip
+  ctx.fillStyle = '#e8f3ec';
+  drawRoundedRect(ctx, 76, tableY + 12, width - 152, 86, 16);
+  ctx.fill();
+
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#064326';
+  ctx.font = 'bold 31px Tajawal, "Noto Sans Arabic", sans-serif';
+  ctx.fillText('🕰️ نمازوں کا Start اور End ٹائم شیڈول', width / 2, tableY + 52);
+
+  ctx.fillStyle = '#855808';
+  ctx.font = 'bold 21px Tajawal, "Noto Sans Arabic", sans-serif';
+  ctx.fillText('اپنے موبائل کی Do Not Disturb شیڈول سیٹنگ میں یہ اوقات درج کریں', width / 2, tableY + 84);
+
+  const rowStartY = tableY + 112;
+  const rowH = 74;
+  slots.forEach((slot, idx) => {
+    const ry = rowStartY + idx * (rowH + 8);
+    ctx.fillStyle = slot.enabled ? '#f5faf7' : '#f8fafc';
+    drawRoundedRect(ctx, 88, ry, width - 176, rowH, 14);
+    ctx.fill();
+    ctx.strokeStyle = slot.enabled ? 'rgba(6, 67, 38, 0.35)' : 'rgba(100, 116, 139, 0.25)';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+
+    // Right: Prayer label
+    ctx.textAlign = 'right';
+    ctx.fillStyle = '#064326';
+    ctx.font = 'bold 28px Tajawal, "Noto Sans Arabic", sans-serif';
+    ctx.fillText(slot.labelUrdu, width - 116, ry + 48);
+
+    // Left: Start -> End 12h time
+    ctx.textAlign = 'left';
+    ctx.direction = 'ltr';
+    ctx.fillStyle = slot.enabled ? '#043920' : '#64748b';
+    ctx.font = 'bold 27px sans-serif';
+    const timeText = slot.enabled
+      ? `${formatTo12Hour(slot.start)}  →  ${formatTo12Hour(slot.end)}`
+      : 'OFF';
+    ctx.fillText(timeText, 116, ry + 48);
+    ctx.direction = 'rtl';
+  });
+
+  // Important Imam Namaz Time Update Note Box (Highlighted Warm Amber/Gold)
+  const noteY = 1316;
+  const noteH = 162;
+  ctx.fillStyle = '#fffbeb';
+  drawRoundedRect(ctx, 64, noteY, width - 128, noteH, 20);
+  ctx.fill();
+  ctx.strokeStyle = '#d4af37';
+  ctx.lineWidth = 3;
+  ctx.stroke();
+
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#92400e';
+  ctx.font = 'bold 28px Tajawal, "Noto Sans Arabic", sans-serif';
+  ctx.fillText('📌 اہم نوٹ: مسجد کے اوقاتِ نماز کی تبدیلی کا خیال رکھیں', width / 2, noteY + 46);
+
+  ctx.fillStyle = '#11261b';
+  ctx.font = 'bold 23px Tajawal, "Noto Sans Arabic", sans-serif';
+  ctx.fillText(
+    'اگر آپ کی مسجد کے امام صاحب کسی نماز کی جماعت کا وقت تبدیل فرمائیں، تو آپ بھی',
+    width / 2,
+    noteY + 94
+  );
+  ctx.fillText(
+    'اپنے موبائل کے شیڈول میں اس نماز کا وقت ضرور تبدیل کر لیں تاکہ ہر نماز میں موبائل بروقت خاموش رہے۔',
+    width / 2,
+    noteY + 132
+  );
+
+  // Footer Brand Tips & Mosque Wall Attribution
+  const footerY = 1498;
+  const footerH = 194;
+  ctx.fillStyle = '#064326';
+  drawRoundedRect(ctx, 64, footerY, width - 128, footerH, 20);
   ctx.fill();
   ctx.strokeStyle = '#d4af37';
   ctx.lineWidth = 2.5;
   ctx.stroke();
 
   ctx.textAlign = 'center';
-  ctx.fillStyle = '#d4af37';
-  ctx.font = 'bold 31px Tajawal, "Noto Sans Arabic", sans-serif';
-  ctx.fillText('🕰️ نمازوں کا Start اور End ٹائم شیڈول', width / 2, tableY + 52);
-
-  ctx.fillStyle = '#a7f3d0';
-  ctx.font = '600 20px Tajawal, "Noto Sans Arabic", sans-serif';
-  ctx.fillText('اپنے موبائل کی Do Not Disturb شیڈول سیٹنگ میں یہ اوقات درج کریں', width / 2, tableY + 88);
-
-  const rowStartY = tableY + 116;
-  const rowH = 74;
-  slots.forEach((slot, idx) => {
-    const ry = rowStartY + idx * (rowH + 6);
-    ctx.fillStyle = slot.enabled ? '#0f3321' : '#0a1c12';
-    drawRoundedRect(ctx, 84, ry, width - 168, rowH, 16);
-    ctx.fill();
-    ctx.strokeStyle = slot.enabled ? 'rgba(0, 255, 153, 0.45)' : 'rgba(255,255,255,0.12)';
-    ctx.lineWidth = 1.5;
-    ctx.stroke();
-
-    // Right: Prayer label
-    ctx.textAlign = 'right';
-    ctx.fillStyle = '#ffffff';
-    ctx.font = 'bold 26px Tajawal, "Noto Sans Arabic", sans-serif';
-    ctx.fillText(slot.labelUrdu, width - 110, ry + 47);
-
-    // Left: Start -> End 12h time
-    ctx.textAlign = 'left';
-    ctx.direction = 'ltr';
-    ctx.fillStyle = slot.enabled ? '#00ff99' : '#94a3b8';
-    ctx.font = 'bold 25px sans-serif';
-    const timeText = slot.enabled
-      ? `${formatTo12Hour(slot.start)}  →  ${formatTo12Hour(slot.end)}`
-      : 'OFF';
-    ctx.fillText(timeText, 112, ry + 47);
-    ctx.direction = 'rtl';
-  });
-
-  // Footer Brands & Blessing
-  const footerY = 1290;
-  ctx.fillStyle = '#064326';
-  drawRoundedRect(ctx, 56, footerY, width - 112, 165, 22);
-  ctx.fill();
-  ctx.strokeStyle = 'rgba(212, 175, 55, 0.7)';
-  ctx.lineWidth = 2;
-  ctx.stroke();
-
-  ctx.textAlign = 'center';
-  ctx.fillStyle = '#d4af37';
-  ctx.font = 'bold 23px Tajawal, "Noto Sans Arabic", sans-serif';
-  ctx.fillText('📱 Samsung: Modes & Routines | Xiaomi / Oppo / Vivo: Sound → Do Not Disturb', width / 2, footerY + 46);
+  ctx.fillStyle = '#fde68a';
+  ctx.font = 'bold 22px Tajawal, "Noto Sans Arabic", sans-serif';
+  ctx.fillText('📱 Samsung: Modes & Routines  |  Xiaomi / Oppo / Vivo / Infinix: Sound → Do Not Disturb', width / 2, footerY + 48);
 
   ctx.fillStyle = '#ffffff';
-  ctx.font = 'bold 25px Tajawal, "Noto Sans Arabic", sans-serif';
-  ctx.fillText('🤲 اس پیغام کو آگے شیئر کریں تاکہ نمازیوں کی نمازیں سکون سے ادا ہوں', width / 2, footerY + 95);
+  ctx.font = 'bold 27px Tajawal, "Noto Sans Arabic", sans-serif';
+  ctx.fillText('🤲 اس اشتہار کو مسجد کے دروازے یا نوٹس بورڈ پر لگائیں اور ثوابِ جاریہ میں شریک ہوں', width / 2, footerY + 104);
 
   ctx.fillStyle = '#a7f3d0';
-  ctx.font = '600 20px Tajawal, "Noto Sans Arabic", sans-serif';
-  ctx.fillText('خانقاہ دارالفلاح — نزد ملک آڈہ میراخیل، بنوں', width / 2, footerY + 135);
+  ctx.font = 'bold 22px Tajawal, "Noto Sans Arabic", sans-serif';
+  ctx.fillText('خانقاہ دارالفلاح — نزد ملک آڈہ میراخیل، بنوں', width / 2, footerY + 154);
 
+  return canvas;
+}
+
+function canvasToJpegBlob(canvas: HTMLCanvasElement): Promise<Blob> {
   return new Promise((resolve, reject) => {
     canvas.toBlob(
       (blob) => {
@@ -223,19 +275,80 @@ export async function generateAutoSilentGuideJpgBlob(
         resolve(blob);
       },
       'image/jpeg',
-      0.94
+      0.95
     );
   });
 }
 
-export async function downloadAutoSilentGuideJpg(
-  slots: AutoSilentSlot[]
-): Promise<'shared' | 'downloaded'> {
-  const blob = await generateAutoSilentGuideJpgBlob(slots);
-  const fileName = 'khanqah-auto-silent-guide.jpg';
-  const file = new File([blob], fileName, { type: 'image/jpeg' });
+function buildA4PdfFromJpeg(
+  jpegBytes: Uint8Array,
+  imgW: number,
+  imgH: number
+): Blob {
+  const encoder = new TextEncoder();
+  const pageW = 595.28;
+  const pageH = 841.89;
+  const contentStream = `q\n${pageW} 0 0 ${pageH} 0 0 cm\n/Im0 Do\nQ\n`;
+  const contentBytes = encoder.encode(contentStream);
 
-  // Always save a clean download copy in browser/WebView
+  const chunks: BlobPart[] = [];
+  let offset = 0;
+  const offsets: number[] = [0];
+
+  const toArrayBuffer = (bytes: Uint8Array): ArrayBuffer => {
+    const copy = new Uint8Array(bytes.byteLength);
+    copy.set(bytes);
+    return copy.buffer;
+  };
+
+  const pushStr = (s: string) => {
+    const b = encoder.encode(s);
+    chunks.push(toArrayBuffer(b));
+    offset += b.length;
+  };
+
+  const pushBytes = (b: Uint8Array) => {
+    chunks.push(toArrayBuffer(b));
+    offset += b.length;
+  };
+
+  pushStr('%PDF-1.4\n');
+  pushBytes(new Uint8Array([0x25, 0xe2, 0xe3, 0xcf, 0xd3, 0x0a]));
+
+  offsets[1] = offset;
+  pushStr('1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n');
+
+  offsets[2] = offset;
+  pushStr('2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n');
+
+  offsets[3] = offset;
+  pushStr(
+    `3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${pageW} ${pageH}] /Resources << /XObject << /Im0 4 0 R >> >> /Contents 5 0 R >>\nendobj\n`
+  );
+
+  offsets[4] = offset;
+  pushStr(
+    `4 0 obj\n<< /Type /XObject /Subtype /Image /Width ${imgW} /Height ${imgH} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${jpegBytes.length} >>\nstream\n`
+  );
+  pushBytes(jpegBytes);
+  pushStr('\nendstream\nendobj\n');
+
+  offsets[5] = offset;
+  pushStr(`5 0 obj\n<< /Length ${contentBytes.length} >>\nstream\n`);
+  pushBytes(contentBytes);
+  pushStr('endstream\nendobj\n');
+
+  const xrefOffset = offset;
+  pushStr('xref\n0 6\n0000000000 65535 f \n');
+  for (let i = 1; i <= 5; i++) {
+    pushStr(`${String(offsets[i]).padStart(10, '0')} 00000 n \n`);
+  }
+  pushStr(`trailer\n<< /Size 6 /Root 1 0 R >>\nstartxref\n${xrefOffset}\n%%EOF\n`);
+
+  return new Blob(chunks, { type: 'application/pdf' });
+}
+
+function triggerDownload(blob: Blob, fileName: string) {
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
@@ -244,8 +357,34 @@ export async function downloadAutoSilentGuideJpg(
   a.click();
   document.body.removeChild(a);
   setTimeout(() => URL.revokeObjectURL(url), 1500);
+}
 
-  // Also offer Web Share if available and user prefers? Keeping direct download reliable like HTML!
-  void file;
+export async function generateAutoSilentGuideJpgBlob(
+  slots: AutoSilentSlot[]
+): Promise<Blob> {
+  const canvas = await renderAutoSilentPosterCanvas(slots);
+  return canvasToJpegBlob(canvas);
+}
+
+export async function downloadAutoSilentGuideJpg(
+  slots: AutoSilentSlot[]
+): Promise<'downloaded'> {
+  const blob = await generateAutoSilentGuideJpgBlob(slots);
+  triggerDownload(blob, 'khanqah-auto-silent-guide-A4.jpg');
+  return 'downloaded';
+}
+
+export async function downloadAutoSilentGuidePdf(
+  slots: AutoSilentSlot[]
+): Promise<'downloaded'> {
+  const canvas = await renderAutoSilentPosterCanvas(slots);
+  const jpgBlob = await canvasToJpegBlob(canvas);
+  const jpgBuffer = await jpgBlob.arrayBuffer();
+  const pdfBlob = buildA4PdfFromJpeg(
+    new Uint8Array(jpgBuffer),
+    canvas.width,
+    canvas.height
+  );
+  triggerDownload(pdfBlob, 'khanqah-auto-silent-poster-A4.pdf');
   return 'downloaded';
 }

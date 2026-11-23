@@ -10,9 +10,13 @@ import {
   Image as ImageIcon,
   Play,
   Pause,
+  Printer,
 } from 'lucide-react';
 import { BaseModal } from './Modals';
-import { downloadAutoSilentGuideJpg } from '../utils/autoSilentJpg';
+import {
+  downloadAutoSilentGuideJpg,
+  downloadAutoSilentGuidePdf,
+} from '../utils/autoSilentJpg';
 import {
   AppLanguage,
   DEFAULT_LANGUAGE,
@@ -97,6 +101,7 @@ export const AutoSilentModal: React.FC<Props> = ({
   const [currentSlide, setCurrentSlide] = useState(0);
   const [isAutoPlaying, setIsAutoPlaying] = useState(true);
   const [isExportingJpg, setIsExportingJpg] = useState(false);
+  const [isExportingPdf, setIsExportingPdf] = useState(false);
   const touchStartX = useRef<number | null>(null);
   const totalSlides = 4;
 
@@ -142,7 +147,7 @@ export const AutoSilentModal: React.FC<Props> = ({
     try {
       await downloadAutoSilentGuideJpg(slots);
       if (onNotify) {
-        onNotify('آٹو سائلنٹ گائیڈ JPG تصویر ڈاؤنلوڈ ہو گئی — اب گیلری یا واٹس ایپ پر دیکھ سکتے ہیں!');
+        onNotify('پرنٹ کے قابل A4 JPG اشتہار ڈاؤنلوڈ ہو گیا — گیلری یا پرنٹ کے لیے تیار ہے!');
       }
     } catch {
       if (onNotify) {
@@ -150,6 +155,22 @@ export const AutoSilentModal: React.FC<Props> = ({
       }
     } finally {
       setIsExportingJpg(false);
+    }
+  };
+
+  const handleDownloadPdfGuide = async () => {
+    setIsExportingPdf(true);
+    try {
+      await downloadAutoSilentGuidePdf(slots);
+      if (onNotify) {
+        onNotify('مسجد پرنٹ کے لیے A4 PDF اشتہار ڈاؤنلوڈ ہو گیا!');
+      }
+    } catch {
+      if (onNotify) {
+        onNotify('PDF اشتہار بنانے میں دشواری پیش آئی۔');
+      }
+    } finally {
+      setIsExportingPdf(false);
     }
   };
 
@@ -162,6 +183,8 @@ export const AutoSilentModal: React.FC<Props> = ({
       ...slots
         .filter((s) => s.enabled)
         .map((s) => `• ${s.labelUrdu}: ${formatTo12Hour(s.start)} تا ${formatTo12Hour(s.end)}`),
+      '',
+      '📌 *اہم نوٹ:* اگر آپ کی مسجد کے امام صاحب کسی نماز کی جماعت کا وقت تبدیل فرمائیں، تو آپ بھی اپنے موبائل کے شیڈول میں اس نماز کا وقت ضرور تبدیل کر لیں۔',
       '',
       '🤲 ایک بار سیٹنگ کر لیں تو روزانہ نماز کے وقت موبائل خودکار طور پر سائلنٹ ہو جایا کرے گا۔',
     ].join('\n');
@@ -490,7 +513,7 @@ export const AutoSilentModal: React.FC<Props> = ({
           </div>
         </div>
 
-        {/* Action Buttons: WhatsApp Share + JPG & HTML Download */}
+        {/* Action Buttons: WhatsApp Share + A4 JPG, A4 PDF & HTML Download */}
         <div
           className={`p-3 rounded-2xl border border-[#d4af37]/45 space-y-2 ${
             isDark ? 'bg-[#08180f]' : 'bg-[#f8fbf9]'
@@ -515,13 +538,23 @@ export const AutoSilentModal: React.FC<Props> = ({
               className="py-2 px-3 rounded-xl bg-[#0b4f2e] hover:bg-[#0e663b] text-white border border-[#d4af37]/60 font-bold text-xs flex items-center justify-center gap-1.5 cursor-pointer active:scale-95 transition-all disabled:opacity-60"
             >
               <ImageIcon className="w-3.5 h-3.5 text-[#d4af37]" />
-              <span>{isExportingJpg ? 'JPG بن رہی ہے...' : 'JPG تصویر ڈاؤنلوڈ کریں'}</span>
+              <span>{isExportingJpg ? 'JPG بن رہی ہے...' : 'A4 پرنٹ JPG ڈاؤنلوڈ'}</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={handleDownloadPdfGuide}
+              disabled={isExportingPdf}
+              className="py-2 px-3 rounded-xl bg-[#d4af37] hover:bg-[#c5a028] text-[#051a0f] border border-[#d4af37] font-bold text-xs flex items-center justify-center gap-1.5 cursor-pointer active:scale-95 transition-all disabled:opacity-60"
+            >
+              <Printer className="w-3.5 h-3.5" />
+              <span>{isExportingPdf ? 'PDF بن رہی ہے...' : 'مسجد پرنٹ A4 PDF'}</span>
             </button>
 
             <button
               type="button"
               onClick={handleDownloadHtmlGuide}
-              className={`py-2 px-3 rounded-xl border font-bold text-xs flex items-center justify-center gap-1.5 cursor-pointer active:scale-95 transition-all ${
+              className={`sm:col-span-2 py-2 px-3 rounded-xl border font-bold text-xs flex items-center justify-center gap-1.5 cursor-pointer active:scale-95 transition-all ${
                 isDark
                   ? 'bg-white/10 hover:bg-white/15 border-[#d4af37]/40 text-[#d4af37]'
                   : 'bg-white hover:bg-emerald-50 border-[#064326]/25 text-[#064326]'
@@ -548,6 +581,22 @@ export const AutoSilentModal: React.FC<Props> = ({
           <div>• <b>Samsung:</b> Settings → Modes &amp; Routines / Do Not Disturb</div>
           <div>• <b>Xiaomi / Redmi / Poco:</b> Settings → Sound → Do Not Disturb → Schedule</div>
           <div>• <b>Oppo / Vivo / Infinix / Tecno:</b> Settings → Sound → Do Not Disturb → Schedules</div>
+        </div>
+
+        {/* Important Imam Namaz Time Update Note */}
+        <div
+          className={`p-2.5 rounded-xl border-2 text-center space-y-1 ${
+            isDark
+              ? 'bg-[#1a1608] border-[#d4af37]/70 text-amber-100'
+              : 'bg-amber-50 border-[#d4af37] text-[#11261b]'
+          }`}
+        >
+          <div className="font-bold text-[#92400e] dark:text-[#fde68a] text-[11.5px]">
+            📌 اہم نوٹ: مسجد کے اوقاتِ نماز کی تبدیلی کا خیال رکھیں
+          </div>
+          <p className="text-[10.5px] leading-relaxed opacity-95">
+            اگر آپ کی مسجد کے امام صاحب کسی نماز کی جماعت کا وقت تبدیل فرمائیں، تو آپ بھی اپنے موبائل کے آٹو سائلنٹ شیڈول میں اس نماز کا وقت ضرور تبدیل کر لیں تاکہ ہر نماز میں موبائل بروقت خاموش رہے۔
+          </p>
         </div>
       </div>
     </BaseModal>

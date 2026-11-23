@@ -373,6 +373,24 @@
       border-radius: 12px;
       margin-top: 10px;
     }
+    .imam-note-box {
+      margin-top: 12px;
+      background: linear-gradient(135deg, rgba(254, 243, 199, 0.14), rgba(212, 175, 55, 0.12));
+      border: 1.5px solid var(--gold);
+      border-radius: 14px;
+      padding: 11px 12px;
+      text-align: center;
+      font-size: 12px;
+      line-height: 1.75;
+      color: #fef3c7;
+    }
+    .imam-note-title {
+      display: block;
+      font-size: 13px;
+      font-weight: bold;
+      color: var(--gold);
+      margin-bottom: 3px;
+    }
     .toast-msg {
       margin-top: 8px;
       text-align: center;
@@ -380,6 +398,38 @@
       color: var(--led);
       font-weight: bold;
       min-height: 18px;
+    }
+    @page {
+      size: A4 portrait;
+      margin: 10mm;
+    }
+    @media print {
+      body {
+        background: #ffffff !important;
+        color: #11261b !important;
+        padding: 0 !important;
+      }
+      .container {
+        max-width: 100% !important;
+        background: #ffffff !important;
+        color: #11261b !important;
+        border: 2px solid #064326 !important;
+        box-shadow: none !important;
+      }
+      .steps-nav,
+      .slider-controls,
+      .action-grid,
+      .toast-msg {
+        display: none !important;
+      }
+      .imam-note-box {
+        background: #fffbeb !important;
+        color: #11261b !important;
+        border: 2px solid #b45309 !important;
+      }
+      .imam-note-title {
+        color: #92400e !important;
+      }
     }
   </style>
 </head>
@@ -537,11 +587,14 @@
         </div>
       </div>
 
-      <!-- Action Card: JPG Download & WhatsApp Share -->
+      <!-- Action Card: JPG & A4 PDF Download + WhatsApp Share + Imam Note -->
       <div class="planner-card">
         <div class="action-grid" style="margin-top:0;">
           <button type="button" class="action-btn" style="background:#0b4f2e;color:#fff;border:1.5px solid #d4af37;" onclick="downloadJpgPoster()">
-            🖼️ گائیڈ و شیڈول JPG تصویر ڈاؤنلوڈ کریں
+            🖼️ پرنٹ کے قابل A4 JPG تصویر ڈاؤنلوڈ کریں
+          </button>
+          <button type="button" class="action-btn" style="background:#d4af37;color:#051a0f;border:1.5px solid #ffffff;" onclick="downloadPdfPoster()">
+            📄 پرنٹ کے لیے A4 PDF اشتہار ڈاؤنلوڈ کریں
           </button>
           <a id="waShareBtn" href="#" target="_blank" rel="noreferrer" class="action-btn btn-wa">
             💚 یہ آٹو سائلنٹ گائیڈ واٹس ایپ پر صدقۂ جاریہ شیئر کریں
@@ -554,6 +607,11 @@
           • <b>Samsung:</b> Settings → Modes &amp; Routines → Add Mode / Do Not Disturb<br />
           • <b>Xiaomi / Redmi / Poco:</b> Settings → Sound &amp; Vibration → Do Not Disturb → Schedule turn on time<br />
           • <b>Oppo / Realme / Vivo / Infinix / Tecno:</b> Settings → Sound → Do Not Disturb → Schedules
+        </div>
+
+        <div class="imam-note-box">
+          <span class="imam-note-title">📌 اہم نوٹ: مسجد کے اوقاتِ نماز کی تبدیلی کا خیال رکھیں</span>
+          اگر آپ کی مسجد کے امام صاحب کسی نماز کی جماعت کا وقت تبدیل فرمائیں، تو آپ بھی اپنے موبائل کے آٹو سائلنٹ شیڈول میں اس نماز کا وقت ضرور تبدیل کر لیں تاکہ ہر نماز میں موبائل بروقت خاموش رہے۔
         </div>
       </div>
     </div>
@@ -646,6 +704,8 @@
           .filter((p) => p.enabled)
           .map((p) => '• ' + p.name + ': ' + to12(p.start) + ' تا ' + to12(p.end)),
         '',
+        '📌 *اہم نوٹ:* اگر آپ کی مسجد کے امام صاحب کسی نماز کا وقت تبدیل فرمائیں تو آپ بھی اپنے موبائل کے شیڈول میں اس نماز کا وقت ضرور تبدیل کر لیں۔',
+        '',
         '🤲 اللہ تعالیٰ ہمیں خشوع و خضوع کے ساتھ نماز ادا کرنے کی توفیق عطا فرمائے۔'
       ].join('\n');
       document.getElementById('waShareBtn').href = 'https://wa.me/?text=' + encodeURIComponent(lines);
@@ -719,90 +779,261 @@
       ctx.closePath();
     }
 
-    function downloadJpgPoster() {
-      try {
-        const w = 1080, h = 1480;
-        const canvas = document.createElement('canvas');
-        canvas.width = w;
-        canvas.height = h;
-        const ctx = canvas.getContext('2d');
-        ctx.fillStyle = '#071b10';
-        ctx.fillRect(0, 0, w, h);
-        ctx.strokeStyle = '#d4af37';
-        ctx.lineWidth = 8;
-        roundRect(ctx, 24, 24, w - 48, h - 48, 30);
+    function renderA4PosterCanvas() {
+      const w = 1240, h = 1754;
+      const canvas = document.createElement('canvas');
+      canvas.width = w;
+      canvas.height = h;
+      const ctx = canvas.getContext('2d');
+
+      // Crisp Paper-White Background (A4 Print & Mosque Wall Ready)
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, w, h);
+
+      ctx.fillStyle = '#fbfdfc';
+      roundRect(ctx, 28, 28, w - 56, h - 56, 30);
+      ctx.fill();
+
+      ctx.strokeStyle = '#064326';
+      ctx.lineWidth = 7;
+      roundRect(ctx, 28, 28, w - 56, h - 56, 30);
+      ctx.stroke();
+
+      ctx.strokeStyle = '#d4af37';
+      ctx.lineWidth = 3;
+      roundRect(ctx, 42, 42, w - 84, h - 84, 22);
+      ctx.stroke();
+
+      // Header Banner
+      ctx.fillStyle = '#064326';
+      roundRect(ctx, 64, 62, w - 128, 178, 22);
+      ctx.fill();
+      ctx.strokeStyle = '#d4af37';
+      ctx.lineWidth = 3;
+      ctx.stroke();
+
+      ctx.textAlign = 'center';
+      ctx.direction = 'rtl';
+      ctx.fillStyle = '#fde68a';
+      ctx.font = 'bold 28px Tajawal, "Noto Sans Arabic", sans-serif';
+      ctx.fillText('🕌 خانقاہ دارالفلاح — صدقۂ جاریہ مسجد اشتہار', w / 2, 112);
+
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 44px Tajawal, "Noto Sans Arabic", sans-serif';
+      ctx.fillText('نماز آٹو سائلنٹ موڈ گائیڈ', w / 2, 168);
+
+      ctx.fillStyle = '#d1fae5';
+      ctx.font = 'bold 23px Tajawal, "Noto Sans Arabic", sans-serif';
+      ctx.fillText('مسجد میں نماز کے دوران موبائل کی گھنٹی سے بچنے کے لیے صرف ایک بار یہ سیٹنگ کر لیں', w / 2, 214);
+
+      // 4 Visual Steps Cards (2x2)
+      const steps = [
+        { num: '1', title: 'مرحلہ 1: Do Not Disturb کھولیں', line1: 'موبائل کی Settings → Sound & Vibration', line2: 'کھول کر Do Not Disturb پر کلک کریں' },
+        { num: '2', title: 'مرحلہ 2: Start و End ٹائم بنائیں', line1: 'Schedules میں + Add دبا کر نماز کا نام لکھیں،', line2: 'Start اور End وقت و روزانہ کے دن منتخب کریں' },
+        { num: '3', title: 'مرحلہ 3: 5 نمازیں + جمعہ شیڈول', line1: 'فجر، ظہر، عصر، مغرب، عشاء (روزانہ) اور', line2: 'جمعہ (صرف جمعہ) کے 6 شیڈول آن کر دیں' },
+        { num: '4', title: 'مرحلہ 4: کالز بند رکھ کر Save کریں', line1: 'DND میں Calls کو "Allow None / Mute" رکھیں', line2: 'تاکہ جماعت کے دوران کوئی گھنٹی نہ بجے' }
+      ];
+      const cardW = 542, cardH = 186, startX = 64, gapX = 28, startY = 264, gapY = 20;
+      steps.forEach((step, idx) => {
+        const col = idx % 2;
+        const row = Math.floor(idx / 2);
+        const x = col === 0 ? startX + cardW + gapX : startX;
+        const y = startY + row * (cardH + gapY);
+
+        ctx.fillStyle = '#f4f9f6';
+        roundRect(ctx, x, y, cardW, cardH, 20);
+        ctx.fill();
+        ctx.strokeStyle = '#064326';
+        ctx.lineWidth = 2;
         ctx.stroke();
 
         ctx.fillStyle = '#064326';
-        roundRect(ctx, 56, 56, w - 112, 160, 22);
+        roundRect(ctx, x + cardW - 64, y + 18, 46, 46, 12);
         ctx.fill();
+        ctx.strokeStyle = '#d4af37';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
+        ctx.fillStyle = '#fde68a';
+        ctx.font = 'bold 26px sans-serif';
         ctx.textAlign = 'center';
+        ctx.fillText(step.num, x + cardW - 41, y + 50);
+
+        ctx.textAlign = 'right';
+        ctx.fillStyle = '#064326';
+        ctx.font = 'bold 27px Tajawal, "Noto Sans Arabic", sans-serif';
+        ctx.fillText(step.title, x + cardW - 78, y + 49);
+
+        ctx.fillStyle = '#11261b';
+        ctx.font = '600 22px Tajawal, "Noto Sans Arabic", sans-serif';
+        ctx.fillText(step.line1, x + cardW - 22, y + 106);
+        ctx.fillText(step.line2, x + cardW - 22, y + 144);
+      });
+
+      // 6-Prayer Table Box
+      const tableY = 678, tableH = 618;
+      ctx.fillStyle = '#ffffff';
+      roundRect(ctx, 64, tableY, w - 128, tableH, 22);
+      ctx.fill();
+      ctx.strokeStyle = '#064326';
+      ctx.lineWidth = 2.5;
+      ctx.stroke();
+
+      ctx.fillStyle = '#e8f3ec';
+      roundRect(ctx, 76, tableY + 12, w - 152, 86, 16);
+      ctx.fill();
+
+      ctx.textAlign = 'center';
+      ctx.fillStyle = '#064326';
+      ctx.font = 'bold 31px Tajawal, "Noto Sans Arabic", sans-serif';
+      ctx.fillText('🕰️ نمازوں کا Start اور End ٹائم شیڈول', w / 2, tableY + 52);
+
+      ctx.fillStyle = '#855808';
+      ctx.font = 'bold 21px Tajawal, "Noto Sans Arabic", sans-serif';
+      ctx.fillText('اپنے موبائل کی Do Not Disturb شیڈول سیٹنگ میں یہ اوقات درج کریں', w / 2, tableY + 84);
+
+      const rowStartY = tableY + 112, rowH = 74;
+      schedule.forEach((p, idx) => {
+        const ry = rowStartY + idx * (rowH + 8);
+        ctx.fillStyle = p.enabled ? '#f5faf7' : '#f8fafc';
+        roundRect(ctx, 88, ry, w - 176, rowH, 14);
+        ctx.fill();
+        ctx.strokeStyle = p.enabled ? 'rgba(6, 67, 38, 0.35)' : 'rgba(100, 116, 139, 0.25)';
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+
+        ctx.textAlign = 'right';
+        ctx.fillStyle = '#064326';
+        ctx.font = 'bold 28px Tajawal, "Noto Sans Arabic", sans-serif';
+        ctx.fillText(p.name, w - 116, ry + 48);
+
+        ctx.textAlign = 'left';
+        ctx.direction = 'ltr';
+        ctx.fillStyle = p.enabled ? '#043920' : '#64748b';
+        ctx.font = 'bold 27px sans-serif';
+        ctx.fillText(p.enabled ? to12(p.start) + '  →  ' + to12(p.end) : 'OFF', 116, ry + 48);
         ctx.direction = 'rtl';
-        ctx.fillStyle = '#d4af37';
-        ctx.font = 'bold 28px Tajawal, sans-serif';
-        ctx.fillText('🕌 خانقاہ دارالفلاح — صدقۂ جاریہ', w / 2, 108);
-        ctx.fillStyle = '#ffffff';
-        ctx.font = 'bold 38px Tajawal, sans-serif';
-        ctx.fillText('نماز آٹو سائلنٹ موڈ گائیڈ و شیڈول', w / 2, 166);
+      });
 
-        const guideLines = [
-          '1️⃣ موبائل Settings → Sound → Do Not Disturb کھولیں',
-          '2️⃣ Schedules میں + Add دبا کر Start اور End ٹائم و روزانہ دن سیٹ کریں',
-          '3️⃣ فجر، ظہر، عصر، مغرب، عشاء (روزانہ) اور جمعہ (جمعہ کو) آن کریں',
-          '4️⃣ Calls کو Allow None / Mute رکھ کر محفوظ کر لیں'
-        ];
-        guideLines.forEach((txt, i) => {
-          const y = 248 + i * 74;
-          ctx.fillStyle = '#0c2819';
-          roundRect(ctx, 56, y, w - 112, 62, 14);
-          ctx.fill();
-          ctx.textAlign = 'right';
-          ctx.fillStyle = '#ecfdf5';
-          ctx.font = 'bold 24px Tajawal, sans-serif';
-          ctx.fillText(txt, w - 82, y + 40);
-        });
+      // Imam Namaz Time Update Note Box
+      const noteY = 1316, noteH = 162;
+      ctx.fillStyle = '#fffbeb';
+      roundRect(ctx, 64, noteY, w - 128, noteH, 20);
+      ctx.fill();
+      ctx.strokeStyle = '#d4af37';
+      ctx.lineWidth = 3;
+      ctx.stroke();
 
-        ctx.textAlign = 'center';
-        ctx.fillStyle = '#d4af37';
-        ctx.font = 'bold 30px Tajawal, sans-serif';
-        ctx.fillText('🕰️ نمازوں کا Start اور End ٹائم شیڈول', w / 2, 595);
+      ctx.textAlign = 'center';
+      ctx.fillStyle = '#92400e';
+      ctx.font = 'bold 28px Tajawal, "Noto Sans Arabic", sans-serif';
+      ctx.fillText('📌 اہم نوٹ: مسجد کے اوقاتِ نماز کی تبدیلی کا خیال رکھیں', w / 2, noteY + 46);
 
-        schedule.forEach((p, idx) => {
-          const ry = 626 + idx * 96;
-          ctx.fillStyle = p.enabled ? '#0f3321' : '#0a1c12';
-          roundRect(ctx, 64, ry, w - 128, 82, 16);
-          ctx.fill();
-          ctx.textAlign = 'right';
-          ctx.fillStyle = '#ffffff';
-          ctx.font = 'bold 26px Tajawal, sans-serif';
-          ctx.fillText(p.name, w - 92, ry + 50);
-          ctx.textAlign = 'left';
-          ctx.direction = 'ltr';
-          ctx.fillStyle = p.enabled ? '#00ff99' : '#94a3b8';
-          ctx.font = 'bold 25px sans-serif';
-          ctx.fillText(p.enabled ? to12(p.start) + ' → ' + to12(p.end) : 'OFF', 92, ry + 50);
-          ctx.direction = 'rtl';
-        });
+      ctx.fillStyle = '#11261b';
+      ctx.font = 'bold 23px Tajawal, "Noto Sans Arabic", sans-serif';
+      ctx.fillText('اگر آپ کی مسجد کے امام صاحب کسی نماز کی جماعت کا وقت تبدیل فرمائیں، تو آپ بھی', w / 2, noteY + 94);
+      ctx.fillText('اپنے موبائل کے شیڈول میں اس نماز کا وقت ضرور تبدیل کر لیں تاکہ ہر نماز میں موبائل بروقت خاموش رہے۔', w / 2, noteY + 132);
 
-        ctx.textAlign = 'center';
-        ctx.fillStyle = '#a7f3d0';
-        ctx.font = 'bold 23px Tajawal, sans-serif';
-        ctx.fillText('🤲 ایک بار سیٹنگ کر لیں تاکہ نمازیں سکون سے ادا ہوں — خانقاہ دارالفلاح', w / 2, 1340);
+      // Footer Banner
+      const footerY = 1498, footerH = 194;
+      ctx.fillStyle = '#064326';
+      roundRect(ctx, 64, footerY, w - 128, footerH, 20);
+      ctx.fill();
+      ctx.strokeStyle = '#d4af37';
+      ctx.lineWidth = 2.5;
+      ctx.stroke();
 
+      ctx.textAlign = 'center';
+      ctx.fillStyle = '#fde68a';
+      ctx.font = 'bold 22px Tajawal, "Noto Sans Arabic", sans-serif';
+      ctx.fillText('📱 Samsung: Modes & Routines  |  Xiaomi / Oppo / Vivo / Infinix: Sound → Do Not Disturb', w / 2, footerY + 48);
+
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 27px Tajawal, "Noto Sans Arabic", sans-serif';
+      ctx.fillText('🤲 اس اشتہار کو مسجد کے دروازے یا نوٹس بورڈ پر لگائیں اور ثوابِ جاریہ میں شریک ہوں', w / 2, footerY + 104);
+
+      ctx.fillStyle = '#a7f3d0';
+      ctx.font = 'bold 22px Tajawal, "Noto Sans Arabic", sans-serif';
+      ctx.fillText('خانقاہ دارالفلاح — نزد ملک آڈہ میراخیل، بنوں', w / 2, footerY + 154);
+
+      return canvas;
+    }
+
+    function buildA4PdfFromJpeg(jpegBytes, imgW, imgH) {
+      const encoder = new TextEncoder();
+      const pageW = 595.28, pageH = 841.89;
+      const contentBytes = encoder.encode('q\n' + pageW + ' 0 0 ' + pageH + ' 0 0 cm\n/Im0 Do\nQ\n');
+      const chunks = [];
+      let offset = 0;
+      const offsets = [0];
+      const pushStr = (s) => { const b = encoder.encode(s); chunks.push(b); offset += b.length; };
+      const pushBytes = (b) => { chunks.push(b); offset += b.length; };
+
+      pushStr('%PDF-1.4\n');
+      pushBytes(new Uint8Array([0x25, 0xe2, 0xe3, 0xcf, 0xd3, 0x0a]));
+      offsets[1] = offset;
+      pushStr('1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n');
+      offsets[2] = offset;
+      pushStr('2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n');
+      offsets[3] = offset;
+      pushStr('3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ' + pageW + ' ' + pageH + '] /Resources << /XObject << /Im0 4 0 R >> >> /Contents 5 0 R >>\nendobj\n');
+      offsets[4] = offset;
+      pushStr('4 0 obj\n<< /Type /XObject /Subtype /Image /Width ' + imgW + ' /Height ' + imgH + ' /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ' + jpegBytes.length + ' >>\nstream\n');
+      pushBytes(jpegBytes);
+      pushStr('\nendstream\nendobj\n');
+      offsets[5] = offset;
+      pushStr('5 0 obj\n<< /Length ' + contentBytes.length + ' >>\nstream\n');
+      pushBytes(contentBytes);
+      pushStr('endstream\nendobj\n');
+
+      const xrefOffset = offset;
+      pushStr('xref\n0 6\n0000000000 65535 f \n');
+      for (let i = 1; i <= 5; i++) {
+        pushStr(String(offsets[i]).padStart(10, '0') + ' 00000 n \n');
+      }
+      pushStr('trailer\n<< /Size 6 /Root 1 0 R >>\nstartxref\n' + xrefOffset + '\n%%EOF\n');
+      return new Blob(chunks, { type: 'application/pdf' });
+    }
+
+    function downloadJpgPoster() {
+      try {
+        const canvas = renderA4PosterCanvas();
         canvas.toBlob((blob) => {
           if (!blob) return;
           const url = URL.createObjectURL(blob);
           const a = document.createElement('a');
           a.href = url;
-          a.download = 'khanqah-auto-silent-guide.jpg';
+          a.download = 'khanqah-auto-silent-guide-A4.jpg';
           document.body.appendChild(a);
           a.click();
           document.body.removeChild(a);
           setTimeout(() => URL.revokeObjectURL(url), 1200);
-          document.getElementById('toastMsg').textContent = '🖼️ JPG تصویر ڈاؤنلوڈ ہو گئی!';
-        }, 'image/jpeg', 0.94);
+          document.getElementById('toastMsg').textContent = '🖼️ پرنٹ کے قابل A4 JPG تصویر ڈاؤنلوڈ ہو گئی!';
+        }, 'image/jpeg', 0.95);
       } catch (e) {
         document.getElementById('toastMsg').textContent = 'JPG تصویر بنانے میں دشواری پیش آئی۔';
+      }
+    }
+
+    function downloadPdfPoster() {
+      try {
+        const canvas = renderA4PosterCanvas();
+        canvas.toBlob(async (blob) => {
+          if (!blob) return;
+          const buf = await blob.arrayBuffer();
+          const pdfBlob = buildA4PdfFromJpeg(new Uint8Array(buf), canvas.width, canvas.height);
+          const url = URL.createObjectURL(pdfBlob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = 'khanqah-auto-silent-poster-A4.pdf';
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          setTimeout(() => URL.revokeObjectURL(url), 1200);
+          document.getElementById('toastMsg').textContent = '📄 A4 پرنٹ PDF اشتہار ڈاؤنلوڈ ہو گیا!';
+        }, 'image/jpeg', 0.95);
+      } catch (e) {
+        document.getElementById('toastMsg').textContent = 'PDF فائل بنانے میں دشواری پیش آئی۔';
       }
     }
 
