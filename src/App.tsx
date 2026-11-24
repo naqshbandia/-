@@ -10,6 +10,7 @@ import { HamburgerDrawer } from './components/HamburgerDrawer';
 import { WebViewContainer } from './components/WebViewContainer';
 import { AudioLibraryView } from './components/AudioLibraryView';
 import { BooksLibraryView } from './components/BooksLibraryView';
+import { NewsUpdatesView } from './components/NewsUpdatesView';
 import { SmartDashboardHome } from './components/SmartDashboardHome';
 import { AudioPlayerBar } from './components/AudioPlayerBar';
 import {
@@ -31,7 +32,7 @@ import {
   BLOGGER_HOME_URL 
 } from './data/appConfig';
 import { useBloggerTabs } from './utils/bloggerService';
-import { useArchiveBayanat, useArchiveBooks } from './utils/archiveService';
+import { useArchiveBayanat, useArchiveBooks, useArchiveNewsPosters } from './utils/archiveService';
 import { PWAInstallBanner } from './components/PWAInstallBanner';
 import { DownloadCloud } from 'lucide-react';
 import {
@@ -58,9 +59,57 @@ import {
   startAmbientLightWatcher,
 } from './utils/displayModeService';
 
+class AppErrorBoundary extends React.Component<
+  { children: React.ReactNode },
+  { hasError: boolean }
+> {
+  constructor(props: { children: React.ReactNode }) {
+    super(props);
+    this.state = { hasError: false };
+  }
+
+  static getDerivedStateFromError(): { hasError: boolean } {
+    return { hasError: true };
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div
+          dir="rtl"
+          className="h-screen w-screen flex flex-col items-center justify-center p-6 text-center bg-[#09150f] text-emerald-50 space-y-4"
+        >
+          <div className="rounded-2xl border-2 border-[#d4af37] bg-[#0c2317] p-6 max-w-sm w-full space-y-3 shadow-xl">
+            <h2 className="text-lg font-bold text-[#d4af37]">خانقاہ دارالفلاح</h2>
+            <p className="text-xs text-emerald-100/85">
+              صفحہ لوڈ کرنے میں عارضی مسئلہ پیش آیا۔ براہِ کرم دوبارہ لوڈ کریں۔
+            </p>
+            <button
+              type="button"
+              onClick={() => window.location.reload()}
+              className="w-full py-2.5 px-4 rounded-xl bg-[#064326] hover:bg-[#095c34] text-white border border-[#d4af37] text-xs font-bold cursor-pointer"
+            >
+              دوبارہ لوڈ کریں
+            </button>
+          </div>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
 export default function App() {
+  return (
+    <AppErrorBoundary>
+      <AppContent />
+    </AppErrorBoundary>
+  );
+}
+
+function AppContent() {
   // Home Screen defaults to the clean Islamic Smart Dashboard
-  const [activeView, setActiveView] = useState<'dashboard' | 'library' | 'books' | 'webview'>('dashboard');
+  const [activeView, setActiveView] = useState<'dashboard' | 'library' | 'books' | 'news' | 'webview'>('dashboard');
   const [currentUrl, setCurrentUrl] = useState(GOLD_LIBRARY_URL);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
@@ -70,12 +119,13 @@ export default function App() {
   // App Language state: Always starts in Urdu ('ur'); user can switch anytime during use
   const [lang, setLang] = useState<AppLanguage>(DEFAULT_LANGUAGE);
 
-  // Dynamic Blogger Posts & Libraries (automatically updates when new posts are published on Blogger)
+  // Dynamic Blogger Posts & Libraries (used cleanly in search)
   const { tabs, isRefreshing, refreshPosts } = useBloggerTabs();
 
-  // Dynamic Archive.org Bayanat & Books sync
+  // Dynamic Archive.org Bayanat, Books & News/Ishteharat sync
   const { bayanat, archiveFolders, isSyncingArchive, syncArchive } = useArchiveBayanat();
   const { books, isSyncingBooks, syncBooks } = useArchiveBooks();
+  const { posters, isSyncingPosters, syncPosters } = useArchiveNewsPosters();
 
   // Display mode: 'auto' (Normal/Light outdoors & daytime, Dark indoors & night) | 'light' | 'dark'
   const [displayMode, setDisplayMode] = useState<DisplayModePreference>(() =>
@@ -242,6 +292,7 @@ export default function App() {
   };
 
   const handlePlayAudio = (bayan: BayanItem) => {
+    window.dispatchEvent(new CustomEvent('kdf-pause-folder-iframes'));
     setCurrentBayan(bayan);
   };
 
@@ -251,14 +302,16 @@ export default function App() {
       refreshPosts();
       syncArchive();
       syncBooks();
+      syncPosters();
     }, 10 * 60 * 1000);
     return () => clearInterval(interval);
-  }, [refreshPosts, syncArchive, syncBooks]);
+  }, [refreshPosts, syncArchive, syncBooks, syncPosters]);
 
   const handleManualRefresh = () => {
     refreshPosts(showNotification);
     syncArchive();
     syncBooks();
+    syncPosters();
   };
 
   const handleOpenLibraryFolder = (folderId = 'all') => {
@@ -318,11 +371,11 @@ export default function App() {
             bayanatList={bayanat}
             booksList={books}
             booksCount={books.length}
+            postersList={posters}
+            postersCount={posters.length}
             archiveFolders={archiveFolders}
-            bloggerTabs={tabs}
             onRefreshBlogger={handleManualRefresh}
-            isRefreshingBlogger={isRefreshing}
-            onOpenUrl={handleNavigateUrl}
+            isRefreshingBlogger={isRefreshing || isSyncingArchive || isSyncingBooks || isSyncingPosters}
             onOpenLibrary={() => handleOpenLibraryFolder('all')}
             onOpenLibraryFolder={(folderId) => handleOpenLibraryFolder(folderId)}
             onOpenBooks={() => {
@@ -333,6 +386,7 @@ export default function App() {
               setInitialReadingBookId(book.id);
               setActiveView('books');
             }}
+            onOpenNews={() => setActiveView('news')}
             onOpenWhatsAppGroups={() => setIsWhatsAppGroupsOpen(true)}
             onOpenDonations={() => setIsDonationOpen(true)}
             onOpenAutoSilent={() => setIsAutoSilentOpen(true)}
@@ -349,12 +403,14 @@ export default function App() {
         ) : activeView === 'library' ? (
           <AudioLibraryView
             onPlayAudio={handlePlayAudio}
+            onPauseFloatingAudio={() => setCurrentBayan(null)}
             onNotify={showNotification}
             onNavigateUrl={handleNavigateUrl}
             onSwitchToWebView={() => handleNavigateUrl(GOLD_LIBRARY_URL)}
             isDark={isDark}
             currentPlayingBayanId={currentBayan?.id || null}
             bayanatList={bayanat}
+            archiveFolders={archiveFolders}
             initialFolderId={selectedLibraryFolderId}
             lang={lang}
           />
@@ -369,6 +425,16 @@ export default function App() {
             lang={lang}
             initialBookId={initialReadingBookId}
             onClearInitialBook={() => setInitialReadingBookId(null)}
+          />
+        ) : activeView === 'news' ? (
+          <NewsUpdatesView
+            posters={posters}
+            isSyncing={isSyncingPosters}
+            onRefreshPosters={() => syncPosters(showNotification)}
+            onGoHome={() => setActiveView('dashboard')}
+            onNotify={showNotification}
+            isDark={isDark}
+            lang={lang}
           />
         ) : (
           <WebViewContainer
@@ -390,6 +456,7 @@ export default function App() {
         onOpenIntroSheikh={() => setIsIntroSheikhOpen(true)}
         onOpenAllBayanat={() => handleOpenLibraryFolder('all')}
         onOpenBooks={() => setActiveView('books')}
+        onOpenNews={() => setActiveView('news')}
         onOpenIslahiBayanat={() => handleNavigateUrl(GOLD_LIBRARY_URL)}
         onOpenUrl={handleNavigateUrl}
         onOpenWhatsAppGroups={() => setIsWhatsAppGroupsOpen(true)}
@@ -407,7 +474,7 @@ export default function App() {
         onSelectDisplayMode={handleSelectDisplayMode}
         onToggleTheme={toggleTheme}
         onRefreshBlogger={handleManualRefresh}
-        isRefreshingBlogger={isRefreshing || isSyncingArchive || isSyncingBooks}
+        isRefreshingBlogger={isRefreshing || isSyncingArchive || isSyncingBooks || isSyncingPosters}
         lang={lang}
         themeOverride={themeOverride}
         remoteTheme={remoteTheme}

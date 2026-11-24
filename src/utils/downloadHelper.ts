@@ -1,5 +1,5 @@
 import { BayanItem } from '../data/bayanatData';
-import type { BookItem } from './archiveService';
+import type { BookItem, NewsPosterItem } from './archiveService';
 
 // Track currently active downloads by Bayan ID so buttons can show spinners
 const activeDownloads = new Set<string>();
@@ -268,6 +268,90 @@ export async function downloadSingleBook(
     }
   } finally {
     activeDownloads.delete(book.id);
+    notifyListeners();
+  }
+}
+
+/**
+ * Downloads a single Ishtehar / News Poster image directly into device storage.
+ */
+export async function downloadSinglePoster(
+  poster: NewsPosterItem,
+  onNotify?: (message: string) => void
+): Promise<boolean> {
+  const rawTitle = (poster.title || 'ishtehar').trim();
+  const filename = sanitizeFilename(poster.filename || `${rawTitle}.png`);
+
+  if (activeDownloads.has(poster.id)) {
+    if (onNotify) {
+      onNotify(`یہ اشتہار پہلے سے ڈاؤنلوڈ ہو رہا ہے: ${rawTitle}`);
+    }
+    return false;
+  }
+
+  activeDownloads.add(poster.id);
+  notifyListeners();
+
+  if (onNotify) {
+    onNotify(`اشتہار ڈاؤنلوڈ شروع ہو رہا ہے: ${rawTitle}...`);
+  }
+
+  try {
+    const response = await fetch(poster.imageUrl, {
+      method: 'GET',
+      mode: 'cors',
+      redirect: 'follow',
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP error ${response.status}`);
+    }
+
+    const blob = await response.blob();
+    const blobUrl = URL.createObjectURL(blob);
+
+    const link = document.createElement('a');
+    link.href = blobUrl;
+    link.download = filename;
+    link.style.display = 'none';
+    link.setAttribute('download', filename);
+    document.body.appendChild(link);
+    link.click();
+
+    setTimeout(() => {
+      try {
+        document.body.removeChild(link);
+      } catch {}
+      URL.revokeObjectURL(blobUrl);
+    }, 15000);
+
+    if (onNotify) {
+      onNotify(`اشتہار موبائل میں محفوظ ہو گیا: ${rawTitle}`);
+    }
+    return true;
+  } catch {
+    try {
+      const a = document.createElement('a');
+      a.href = poster.imageUrl;
+      a.download = filename;
+      a.target = '_blank';
+      a.rel = 'noopener noreferrer';
+      a.style.display = 'none';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      if (onNotify) {
+        onNotify(`اشتہار ڈاؤنلوڈ شروع ہو گیا: ${rawTitle}`);
+      }
+      return true;
+    } catch {
+      if (onNotify) {
+        onNotify('اشتہار ڈاؤنلوڈ میں مسئلہ پیش آیا۔ براہِ کرم انٹرنیٹ چیک کریں۔');
+      }
+      return false;
+    }
+  } finally {
+    activeDownloads.delete(poster.id);
     notifyListeners();
   }
 }

@@ -57,6 +57,7 @@ export const BooksLibraryView: React.FC<Props> = ({
   const t = UI_STRINGS[lang];
   const dir = getDir(lang);
   const [searchQuery, setSearchQuery] = useState('');
+  const [selectedCollectionId, setSelectedCollectionId] = useState<string>('all');
   const [activeDownloadIds, setActiveDownloadIds] = useState<Set<string>>(new Set());
   const [brokenCovers, setBrokenCovers] = useState<Set<string>>(new Set());
   const [readingBook, setReadingBook] = useState<BookItem | null>(null);
@@ -77,16 +78,36 @@ export const BooksLibraryView: React.FC<Props> = ({
     }
   }, [initialBookId, books, onClearInitialBook]);
 
+  const bookCollections = useMemo(() => {
+    const map = new Map<string, { id: string; title: string; count: number }>();
+    for (const b of books) {
+      const existing = map.get(b.collectionId);
+      if (existing) {
+        existing.count += 1;
+      } else {
+        map.set(b.collectionId, {
+          id: b.collectionId,
+          title: b.collectionUrdu || b.collectionTitle,
+          count: 1,
+        });
+      }
+    }
+    return Array.from(map.values());
+  }, [books]);
+
   const filteredBooks = useMemo(() => {
     const q = normalizeSearchText(searchQuery);
-    if (!q) return books;
     return books.filter((b) => {
+      if (selectedCollectionId !== 'all' && b.collectionId !== selectedCollectionId) {
+        return false;
+      }
+      if (!q) return true;
       const hay = normalizeSearchText(
         `${b.urduTitle} ${b.title} ${b.filename} ${b.collectionUrdu}`
       );
       return hay.includes(q);
     });
-  }, [books, searchQuery]);
+  }, [books, searchQuery, selectedCollectionId]);
 
   const handleOpenReader = (book: BookItem) => {
     setIsReaderLoading(true);
@@ -107,41 +128,37 @@ export const BooksLibraryView: React.FC<Props> = ({
       dir={dir}
     >
       <div className="max-w-5xl mx-auto px-3 sm:px-5 py-4 space-y-4">
-        {/* Header Card */}
+        {/* Emerald-Green & Gold Header Card */}
         <section
-          className={`rounded-3xl border-2 border-[#d4af37]/75 p-4 shadow-md space-y-3 ${
+          className={`rounded-3xl border-2 border-[#d4af37]/75 overflow-hidden shadow-md ${
             isDark ? 'bg-[#0b1f14] text-emerald-50' : 'bg-white text-[#11261b]'
           }`}
         >
-          <div className="flex flex-wrap items-center justify-between gap-2.5">
+          <div className="bg-gradient-to-l from-[#004d00] via-[#007300] to-[#004d00] text-white px-4 py-3 border-b-[3px] border-[#d4af37] flex flex-wrap items-center justify-between gap-2.5">
             <div className="flex items-center gap-2.5 min-w-0">
               <button
                 type="button"
                 onClick={onGoHome}
-                className={`w-9 h-9 rounded-xl border flex items-center justify-center cursor-pointer transition-colors shrink-0 ${
-                  isDark
-                    ? 'bg-white/10 border-[#d4af37]/40 text-[#d4af37] hover:bg-white/15'
-                    : 'bg-[#ebf2ee] border-[#064326]/20 text-[#064326] hover:bg-[#dce9e2]'
-                }`}
+                className="w-9 h-9 rounded-xl bg-white/15 hover:bg-white/25 border border-[#d4af37]/60 text-[#ffd700] flex items-center justify-center cursor-pointer transition-colors shrink-0"
                 title={t.drawerItemHome}
               >
                 <ArrowRight className={`w-4 h-4 ${dir === 'ltr' ? 'rotate-180' : ''}`} />
               </button>
 
-              <div className="w-10 h-10 rounded-xl bg-[#064326] border border-[#d4af37] text-[#d4af37] flex items-center justify-center shrink-0 shadow-xs">
+              <div className="w-10 h-10 rounded-xl bg-white/15 border border-[#d4af37] text-[#ffd700] flex items-center justify-center shrink-0">
                 <BookOpen className="w-5 h-5" />
               </div>
 
               <div className="min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <h1 className="text-base sm:text-lg font-bold text-[#064326] dark:text-[#d4af37] truncate">
+                  <h1 className="text-sm sm:text-lg font-bold text-white truncate">
                     اسلامی اردو کتب لائبریری
                   </h1>
-                  <span className="px-2 py-0.5 rounded-full bg-[#064326] text-[#00ff99] border border-[#d4af37]/60 text-[10.5px] font-bold tabular-nums">
+                  <span className="px-2 py-0.5 rounded-full bg-white/15 border border-[#d4af37] text-[#fff7b2] text-[10.5px] font-bold tabular-nums">
                     {books.length} کتب
                   </span>
                 </div>
-                <p className="text-[11px] opacity-75">
+                <p className="text-[11px] text-emerald-100/85">
                   آرکائیو سے خودکار اپڈیٹ — ہر کتاب براہِ راست پڑھیں، ڈاؤنلوڈ اور شیئر کریں
                 </p>
               </div>
@@ -151,35 +168,72 @@ export const BooksLibraryView: React.FC<Props> = ({
               type="button"
               onClick={onRefreshBooks}
               disabled={isSyncing}
-              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-[#064326] hover:bg-[#095c34] text-white border border-[#d4af37]/70 text-xs font-bold shadow-xs cursor-pointer disabled:opacity-60 transition-all active:scale-95"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gradient-to-r from-[#d4af37] to-[#a67c2e] hover:brightness-110 text-white border border-white/40 text-xs font-bold shadow-xs cursor-pointer disabled:opacity-60 transition-all active:scale-95"
             >
-              <RotateCw className={`w-3.5 h-3.5 text-[#d4af37] ${isSyncing ? 'animate-spin' : ''}`} />
+              <RotateCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin' : ''}`} />
               <span>{isSyncing ? 'تازہ ہو رہا ہے...' : t.refreshBtn}</span>
             </button>
           </div>
 
-          {/* Search Bar */}
-          <div className="relative">
-            <Search className="w-4 h-4 absolute top-1/2 -translate-y-1/2 start-3 opacity-55 pointer-events-none" />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="کتاب یا رسالے کا نام تلاش کریں..."
-              className={`w-full ps-9 pe-9 py-2.5 rounded-xl border text-xs sm:text-sm outline-none transition-colors ${
-                isDark
-                  ? 'bg-[#07150d] border-[#d4af37]/35 text-emerald-50 placeholder-emerald-200/45 focus:border-[#d4af37]'
-                  : 'bg-[#f6faf7] border-emerald-900/15 text-[#11261b] placeholder-gray-500 focus:border-[#064326]'
-              }`}
-            />
-            {searchQuery && (
-              <button
-                type="button"
-                onClick={() => setSearchQuery('')}
-                className="absolute top-1/2 -translate-y-1/2 end-2.5 p-1 rounded-full hover:bg-black/10 dark:hover:bg-white/10 cursor-pointer"
-              >
-                <X className="w-3.5 h-3.5" />
-              </button>
+          <div className="p-3 sm:p-4 space-y-2.5">
+            {/* Search Bar */}
+            <div className="relative">
+              <Search className="w-4 h-4 text-[#b08d43] absolute top-1/2 -translate-y-1/2 start-3 pointer-events-none" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="کتاب یا رسالے کا نام تلاش کریں..."
+                className={`w-full ps-9 pe-9 py-2 rounded-full border text-xs sm:text-sm outline-none transition-colors ${
+                  isDark
+                    ? 'bg-[#07150d] border-[#d4af37]/40 text-emerald-50 placeholder-emerald-200/45 focus:border-[#d4af37]'
+                    : 'bg-[#fffdf8] border-[#c9b382] text-[#004d00] placeholder-emerald-900/45 focus:border-[#006400]'
+                }`}
+              />
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery('')}
+                  className="absolute top-1/2 -translate-y-1/2 end-2.5 p-1 rounded-full hover:bg-black/10 dark:hover:bg-white/10 cursor-pointer"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
+
+            {/* Automatic Archive Collection Filter Pills (shown when >1 book folder exists) */}
+            {bookCollections.length > 1 && (
+              <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 no-scrollbar">
+                <button
+                  type="button"
+                  onClick={() => setSelectedCollectionId('all')}
+                  className={`px-3 py-1 rounded-full text-[11px] font-bold shrink-0 border transition-colors cursor-pointer ${
+                    selectedCollectionId === 'all'
+                      ? 'bg-[#004d00] text-white border-[#d4af37]'
+                      : isDark
+                      ? 'bg-white/5 text-emerald-100 border-[#d4af37]/30'
+                      : 'bg-[#fffdf8] text-[#004d00] border-[#c9b382]'
+                  }`}
+                >
+                  تمام کتب ({books.length})
+                </button>
+                {bookCollections.map((col) => (
+                  <button
+                    key={col.id}
+                    type="button"
+                    onClick={() => setSelectedCollectionId(col.id)}
+                    className={`px-3 py-1 rounded-full text-[11px] font-bold shrink-0 border transition-colors cursor-pointer ${
+                      selectedCollectionId === col.id
+                        ? 'bg-[#004d00] text-white border-[#d4af37]'
+                        : isDark
+                        ? 'bg-white/5 text-emerald-100 border-[#d4af37]/30'
+                        : 'bg-[#fffdf8] text-[#004d00] border-[#c9b382]'
+                    }`}
+                  >
+                    {col.title} ({col.count})
+                  </button>
+                ))}
+              </div>
             )}
           </div>
         </section>
@@ -200,7 +254,7 @@ export const BooksLibraryView: React.FC<Props> = ({
             </p>
           </div>
         ) : (
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2.5 sm:gap-3.5">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2.5 sm:gap-3.5 pb-6">
             {filteredBooks.map((book) => {
               const isDownloading = activeDownloadIds.has(book.id);
               const isNew = isBookNew(book);
@@ -214,7 +268,7 @@ export const BooksLibraryView: React.FC<Props> = ({
                   className={`rounded-2xl border-2 overflow-hidden flex flex-col justify-between transition-all shadow-sm hover:shadow-md ${
                     isDark
                       ? 'bg-[#0c2216] border-[#d4af37]/40 hover:border-[#d4af37] text-emerald-50'
-                      : 'bg-white border-[#d4af37]/35 hover:border-[#d4af37] text-[#11261b]'
+                      : 'bg-gradient-to-b from-[#fffdf8] to-[#f7efdc] border-[#d4c4a8] hover:border-[#d4af37] text-[#11261b]'
                   }`}
                 >
                   {/* Full-Size Portrait Book Cover + Title */}
@@ -224,23 +278,14 @@ export const BooksLibraryView: React.FC<Props> = ({
                       className="relative aspect-[3/4] w-full rounded-xl overflow-hidden border border-[#d4af37]/50 cursor-pointer group bg-gradient-to-br from-[#064326] via-[#042917] to-[#081b11] shadow-inner"
                     >
                       {showImage ? (
-                        <>
-                          {/* Subtle blurred ambient fill behind full-size cover */}
-                          <img
-                            src={book.coverUrl}
-                            alt=""
-                            aria-hidden="true"
-                            className="absolute inset-0 w-full h-full object-cover blur-md scale-110 opacity-35 pointer-events-none"
-                          />
-                          {/* Crisp uncropped full book cover image */}
-                          <img
-                            src={book.coverUrl}
-                            alt={book.urduTitle}
-                            onError={() => handleMarkCoverBroken(book.id)}
-                            className="relative z-10 w-full h-full object-contain p-1 group-hover:scale-[1.03] transition-transform duration-300"
-                            loading="lazy"
-                          />
-                        </>
+                        <img
+                          src={book.coverUrl}
+                          alt={book.urduTitle}
+                          onError={() => handleMarkCoverBroken(book.id)}
+                          className="relative z-10 w-full h-full object-contain p-1 group-hover:scale-[1.03] transition-transform duration-300"
+                          loading="lazy"
+                          decoding="async"
+                        />
                       ) : (
                         <div className="w-full h-full flex flex-col items-center justify-center p-3 text-center islamic-panel-pattern">
                           <div className="w-11 h-11 rounded-2xl bg-[#d4af37]/15 border border-[#d4af37] text-[#d4af37] flex items-center justify-center mb-2 shadow-sm">

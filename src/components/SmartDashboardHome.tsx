@@ -4,7 +4,6 @@ import {
   BookOpen,
   Bell,
   MessageCircle,
-  Globe,
   Landmark,
   HeartHandshake,
   Radio,
@@ -22,7 +21,6 @@ import {
   Facebook,
   Smartphone,
   Newspaper,
-  Calendar,
   RotateCw,
   Folder,
   Megaphone,
@@ -35,27 +33,31 @@ import {
   WHATSAPP_DIRECT_CHAT_URL,
   DEVELOPER_WHATSAPP_URL,
   getAppGiftWhatsAppShareUrl,
-  BloggerPostTab,
 } from '../data/appConfig';
 import { CombinedInstallStats } from '../utils/installStatsService';
 import { BAYANAT_DATABASE, BayanItem } from '../data/bayanatData';
 import {
   downloadSingleBayan,
   downloadSingleBook,
+  downloadSinglePoster,
   subscribeToDownloads,
 } from '../utils/downloadHelper';
 import {
   BookItem,
+  NewsPosterItem,
   ArchiveFolderSummary,
   isBayanNew,
   isBookNew,
+  isPosterNew,
   getBayanTimestampMs,
   getTimestampMsFromMtime,
   formatBayanDateUrdu,
   formatBookDateUrdu,
+  formatPosterDateUrdu,
   formatBookSize,
   shareBayanOnWhatsApp,
   shareBookOnWhatsApp,
+  sharePosterOnWhatsApp,
 } from '../utils/archiveService';
 import {
   PrayerCache,
@@ -93,15 +95,16 @@ interface Props {
   bayanatList?: BayanItem[];
   booksList?: BookItem[];
   booksCount?: number;
+  postersList?: NewsPosterItem[];
+  postersCount?: number;
   archiveFolders?: ArchiveFolderSummary[];
-  bloggerTabs?: BloggerPostTab[];
   onRefreshBlogger?: () => void;
   isRefreshingBlogger?: boolean;
-  onOpenUrl: (url: string) => void;
   onOpenLibrary: () => void;
   onOpenLibraryFolder?: (folderId: string) => void;
   onOpenBooks?: () => void;
   onOpenBookReader?: (book: BookItem) => void;
+  onOpenNews?: () => void;
   onOpenWhatsAppGroups: () => void;
   onOpenDonations: () => void;
   onOpenAutoSilent?: () => void;
@@ -117,23 +120,6 @@ interface Props {
 }
 
 const NOTIFY_EMAIL_KEY = 'khanqah_live_notify_email_v1';
-
-function getBloggerFolderIcon(iconName: BloggerPostTab['iconName']) {
-  switch (iconName) {
-    case 'audio':
-      return Headphones;
-    case 'books':
-      return BookOpen;
-    case 'news':
-      return Newspaper;
-    case 'app':
-      return Smartphone;
-    case 'blogger':
-      return Globe;
-    default:
-      return Folder;
-  }
-}
 
 const SlidingBayanTitle: React.FC<{ text: string }> = ({ text }) => {
   const viewportRef = useRef<HTMLDivElement | null>(null);
@@ -181,15 +167,16 @@ export const SmartDashboardHome: React.FC<Props> = ({
   bayanatList = BAYANAT_DATABASE,
   booksList = [],
   booksCount = 5,
+  postersList = [],
+  postersCount = 4,
   archiveFolders = [],
-  bloggerTabs = [],
   onRefreshBlogger,
   isRefreshingBlogger = false,
-  onOpenUrl,
   onOpenLibrary,
   onOpenLibraryFolder,
   onOpenBooks,
   onOpenBookReader,
+  onOpenNews,
   onOpenWhatsAppGroups,
   onOpenDonations,
   onOpenAutoSilent,
@@ -348,12 +335,13 @@ export const SmartDashboardHome: React.FC<Props> = ({
 
   const currentMinuteBucket = Math.floor(now.getTime() / 60000);
 
-  // Only show newly uploaded bayanat & books within the last 7 days (disappear automatically after 7 days)
+  // Only show newly uploaded bayanat, books & posters within the last 7 days (disappear automatically after 7 days)
   const latestUploadedItems = useMemo(() => {
     const refNowMs = currentMinuteBucket * 60000;
     type LatestEntry =
       | { kind: 'bayan'; item: BayanItem; ts: number }
-      | { kind: 'book'; item: BookItem; ts: number };
+      | { kind: 'book'; item: BookItem; ts: number }
+      | { kind: 'poster'; item: NewsPosterItem; ts: number };
 
     const entries: LatestEntry[] = [];
     for (const b of bayanatList) {
@@ -370,9 +358,18 @@ export const SmartDashboardHome: React.FC<Props> = ({
         });
       }
     }
+    for (const poster of postersList) {
+      if (poster.title.trim().length > 0 && isPosterNew(poster, refNowMs)) {
+        entries.push({
+          kind: 'poster',
+          item: poster,
+          ts: getTimestampMsFromMtime(poster.mtime),
+        });
+      }
+    }
     entries.sort((a, b) => b.ts - a.ts);
     return entries.slice(0, 12);
-  }, [bayanatList, booksList, currentMinuteBucket]);
+  }, [bayanatList, booksList, postersList, currentMinuteBucket]);
 
   const tickerDurationSeconds = useMemo(
     () => Math.max(20, Math.min(60, Math.round(tickerMessage.length * 0.28))),
@@ -403,7 +400,7 @@ export const SmartDashboardHome: React.FC<Props> = ({
     onNotify(t.clearedEmailToast);
   };
 
-  // Native App-Only Utility Cards (Archive.org MP3 Library + Automatic Books Library + WhatsApp Groups)
+  // Native App-Only Utility Cards (Archive.org MP3 Library + Automatic Books Library + News/Ishteharat + WhatsApp + Donations + Auto-Silent)
   const coreFolders = useMemo(
     () => [
       {
@@ -423,6 +420,18 @@ export const SmartDashboardHome: React.FC<Props> = ({
               icon: BookOpen,
               accent: 'text-[#8c6514] dark:text-[#d4af37]',
               onClick: onOpenBooks,
+            },
+          ]
+        : []),
+      ...(onOpenNews
+        ? [
+            {
+              id: 'news-updates',
+              label: 'اشتہارات و تازہ اعلانات',
+              subLabel: `${postersCount} اشتہارات · تازہ پوسٹرز`,
+              icon: Newspaper,
+              accent: 'text-[#007300] dark:text-[#d4af37]',
+              onClick: onOpenNews,
             },
           ]
         : []),
@@ -458,8 +467,10 @@ export const SmartDashboardHome: React.FC<Props> = ({
     [
       bayanatList.length,
       booksCount,
+      postersCount,
       onOpenLibrary,
       onOpenBooks,
+      onOpenNews,
       onOpenWhatsAppGroups,
       onOpenDonations,
       onOpenAutoSilent,
@@ -473,52 +484,6 @@ export const SmartDashboardHome: React.FC<Props> = ({
       autoSilentLabels.folderSub,
     ]
   );
-
-  // Live Blogger Posts Grid (excludes home & Urdu Book Library duplicate post)
-  const bloggerLiveFolders = useMemo(() => {
-    const list: {
-      id: string;
-      label: string;
-      subLabel: string;
-      icon: React.ComponentType<{ className?: string }>;
-      accent: string;
-      publishedDate?: string;
-      onClick: () => void;
-    }[] = [];
-
-    const seenId = new Set<string>();
-    for (const tab of bloggerTabs) {
-      if (tab.id === 'blogger-home') continue;
-      const lowerUrl = (tab.url || '').toLowerCase();
-      const lowerTitle = (tab.title || '').toLowerCase();
-      // Hide Blogger's Urdu Book Library folder since the native Archive Books Library replaces it
-      if (
-        tab.id === 'islamic-urdu-book-library' ||
-        lowerUrl.includes('urdu-books-library') ||
-        lowerUrl.includes('islamic-urdu-book-library') ||
-        lowerTitle.includes('book library') ||
-        tab.title.includes('اردو کتب') ||
-        tab.title.includes('بک لائبریری')
-      ) {
-        continue;
-      }
-      if (seenId.has(tab.id)) continue;
-      seenId.add(tab.id);
-
-      const IconComp = getBloggerFolderIcon(tab.iconName);
-      const dateStr = tab.published ? tab.published.slice(0, 10) : '';
-      list.push({
-        id: `blogger-folder-${tab.id}`,
-        label: tab.title,
-        subLabel: tab.snippet || 'خانقاہ دارالفلاح',
-        icon: IconComp,
-        accent: 'text-[#8c6514] dark:text-[#d4af37]',
-        publishedDate: dateStr,
-        onClick: () => onOpenUrl(tab.url),
-      });
-    }
-    return list;
-  }, [bloggerTabs, onOpenUrl]);
 
   const audioArchiveFolders = useMemo(
     () => archiveFolders.filter((f) => f.mediatype === 'audio'),
@@ -542,6 +507,7 @@ export const SmartDashboardHome: React.FC<Props> = ({
               <img
                 src={SHEIKH_GLASS_BANNER_URL}
                 alt={t.sheikhFullTitle}
+                decoding="async"
                 onError={() => setGlassBannerError(true)}
                 className="max-h-36 sm:max-h-44 md:max-h-48 w-full max-w-2xl object-contain mx-auto drop-shadow-sm"
               />
@@ -973,11 +939,11 @@ export const SmartDashboardHome: React.FC<Props> = ({
               </div>
               <div>
                 <h2 className="text-[13px] sm:text-sm font-bold text-[#064326] dark:text-[#d4af37]">
-                  {lang === 'ur' ? 'تازہ ترین اپلوڈ شدہ بیانات و کتب' : t.latestBayanatTitle}
+                  {lang === 'ur' ? 'تازہ ترین اپلوڈ شدہ بیانات، کتب و اشتہارات' : t.latestBayanatTitle}
                 </h2>
                 <p className="text-[10px] opacity-75">
                   {lang === 'ur'
-                    ? 'نئے بیانات اور کتب (اپلوڈ ہونے کے 7 دن تک "نیا" نشان کے ساتھ)'
+                    ? 'نئے بیانات، کتب اور اشتہارات (اپلوڈ ہونے کے 7 دن تک "نیا" نشان کے ساتھ)'
                     : t.latestBayanatSub}
                 </p>
               </div>
@@ -994,6 +960,104 @@ export const SmartDashboardHome: React.FC<Props> = ({
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
             {latestUploadedItems.map((entry) => {
+              if (entry.kind === 'poster') {
+                const poster = entry.item;
+                const isDownloading = activeDownloadIds.has(poster.id);
+                const dateLabel = formatPosterDateUrdu(poster);
+                const sizeLabel = formatBookSize(poster.size);
+
+                return (
+                  <div
+                    key={`latest-poster-${poster.id}`}
+                    className={`p-2.5 rounded-2xl border flex flex-col gap-1.5 transition-all ${
+                      isDark
+                        ? 'bg-[#0e2418] border-[#d4af37]/45 hover:border-[#d4af37]'
+                        : 'bg-[#fffdf6] border-[#d4af37]/45 hover:border-[#d4af37]'
+                    }`}
+                  >
+                    <button
+                      type="button"
+                      onClick={() => onOpenNews?.()}
+                      className={`w-full cursor-pointer space-y-1 ${
+                        dir === 'ltr' ? 'text-left' : 'text-right'
+                      }`}
+                      title={poster.title}
+                    >
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        <span className="khanqah-new-neon-badge px-1.5 py-0.5 rounded text-[9.5px] font-extrabold tracking-wide shrink-0 whitespace-nowrap leading-none">
+                          {t.newBadge}
+                        </span>
+                        <span className="px-1.5 py-0.5 rounded bg-[#007300] text-[#fff7b2] text-[9px] font-bold shrink-0">
+                          اشتہار
+                        </span>
+                        <SlidingBayanTitle text={poster.title} />
+                      </div>
+
+                      <div className="flex items-center gap-1.5 text-[10px] opacity-75 truncate">
+                        <span className="text-[#8c6514] dark:text-[#d4af37] font-semibold truncate">
+                          اشتہارات و تازہ اعلانات
+                        </span>
+                        {dateLabel && (
+                          <>
+                            <span aria-hidden="true">·</span>
+                            <span className="tabular-nums shrink-0">{dateLabel}</span>
+                          </>
+                        )}
+                        {sizeLabel && (
+                          <>
+                            <span aria-hidden="true">·</span>
+                            <span className="tabular-nums shrink-0" dir="ltr">
+                              {sizeLabel}
+                            </span>
+                          </>
+                        )}
+                      </div>
+                    </button>
+
+                    <div className="grid grid-cols-3 gap-1.5 pt-1.5 border-t border-emerald-900/10 dark:border-[#d4af37]/20">
+                      <button
+                        type="button"
+                        onClick={() => onOpenNews?.()}
+                        className="h-8 px-1.5 rounded-xl bg-[#064326] hover:bg-[#095c34] text-white dark:bg-[#d4af37] dark:text-[#051a0f] flex items-center justify-center gap-1 text-[10px] sm:text-[10.5px] font-bold whitespace-nowrap transition-all active:scale-95 cursor-pointer"
+                        title="اشتہار دیکھیں"
+                      >
+                        <Eye className="w-3 h-3 shrink-0" />
+                        <span>دیکھیں</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => downloadSinglePoster(poster, onNotify)}
+                        disabled={isDownloading}
+                        className={`h-8 px-1.5 rounded-xl flex items-center justify-center gap-1 text-[10px] sm:text-[10.5px] font-bold whitespace-nowrap transition-all active:scale-95 cursor-pointer disabled:opacity-60 ${
+                          isDark
+                            ? 'bg-white/10 hover:bg-emerald-600 text-white'
+                            : 'bg-emerald-900/10 hover:bg-[#064326] text-[#064326] hover:text-white'
+                        }`}
+                        title={t.downloadLabel}
+                      >
+                        {isDownloading ? (
+                          <Loader2 className="w-3 h-3 animate-spin shrink-0" />
+                        ) : (
+                          <Download className="w-3 h-3 shrink-0" />
+                        )}
+                        <span>{isDownloading ? t.loadingLabel : t.downloadLabel}</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => sharePosterOnWhatsApp(poster)}
+                        className="h-8 px-1.5 rounded-xl bg-[#25D366] hover:bg-[#1faa4e] text-white flex items-center justify-center gap-1 text-[10px] sm:text-[10.5px] font-bold whitespace-nowrap transition-all active:scale-95 cursor-pointer"
+                        title={t.shareLabel}
+                      >
+                        <Share2 className="w-3 h-3 shrink-0" />
+                        <span>{t.shareLabel}</span>
+                      </button>
+                    </div>
+                  </div>
+                );
+              }
+
               if (entry.kind === 'book') {
                 const book = entry.item;
                 const isDownloading = activeDownloadIds.has(book.id);
@@ -1228,41 +1292,6 @@ export const SmartDashboardHome: React.FC<Props> = ({
           </div>
 
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 sm:gap-2.5">
-            {bloggerLiveFolders.map((item) => {
-              const IconComponent = item.icon;
-              return (
-                <button
-                  key={item.id}
-                  onClick={item.onClick}
-                  className={`khanqah-folder-card min-h-[96px] p-2.5 rounded-2xl border flex flex-col items-center justify-center text-center gap-1 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#d4af37] ${
-                    isDark
-                      ? 'bg-[#0e2217] border-[#d4af37]/30 hover:bg-[#122e1f] text-emerald-50 shadow-sm'
-                      : 'bg-white border-emerald-950/10 hover:bg-[#f9fbfa] text-[#11261b] shadow-xs'
-                  }`}
-                >
-                  <div
-                    className={`khanqah-folder-icon w-9 h-9 rounded-xl flex items-center justify-center ${
-                      isDark ? 'bg-white/[0.06]' : 'bg-[#f4f7f6]'
-                    } ${item.accent}`}
-                  >
-                    <IconComponent className="w-5 h-5" />
-                  </div>
-                  <span className="text-[12px] sm:text-[13px] font-bold leading-snug line-clamp-2">
-                    {item.label}
-                  </span>
-                  <span className="text-[10px] opacity-65 font-medium line-clamp-1">
-                    {item.subLabel}
-                  </span>
-                  {item.publishedDate && (
-                    <span className="inline-flex items-center gap-1 text-[9.5px] opacity-60 tabular-nums">
-                      <Calendar className="w-2.5 h-2.5" />
-                      {item.publishedDate}
-                    </span>
-                  )}
-                </button>
-              );
-            })}
-
             {coreFolders.map((item) => {
               const IconComponent = item.icon;
               return (

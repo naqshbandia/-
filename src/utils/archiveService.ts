@@ -642,6 +642,14 @@ function isCoverImageFile(filename: string): boolean {
   );
 }
 
+function normalizeCoverKey(nameOrStem: string): string {
+  return nameOrStem
+    .replace(/\.(jpg|jpeg|png|webp|pdf)$/i, '')
+    .toLowerCase()
+    .replace(/[\s_\-]+/g, '')
+    .trim();
+}
+
 async function fetchExternalCoversMap(): Promise<Map<string, string>> {
   const coverMap = new Map<string, string>();
   try {
@@ -653,14 +661,14 @@ async function fetchExternalCoversMap(): Promise<Map<string, string>> {
       const name = String(f?.name || '');
       if (!isCoverImageFile(name)) continue;
       const base = name.replace(/\.(jpg|jpeg|png|webp)$/i, '').trim().toLowerCase();
+      const normalized = normalizeCoverKey(name);
       const encodedName = name
         .split('/')
         .map((seg) => encodeURIComponent(seg))
         .join('/');
-      coverMap.set(
-        base,
-        `https://archive.org/download/${ARCHIVE_COVERS_COLLECTION}/${encodedName}`
-      );
+      const coverUrl = `https://archive.org/download/${ARCHIVE_COVERS_COLLECTION}/${encodedName}`;
+      coverMap.set(base, coverUrl);
+      if (normalized) coverMap.set(normalized, coverUrl);
     }
   } catch {}
   return coverMap;
@@ -682,11 +690,14 @@ async function fetchBookCollectionMetadata(
     const name = String(f?.name || '');
     if (!isCoverImageFile(name)) continue;
     const base = name.replace(/\.(jpg|jpeg|png|webp)$/i, '').trim().toLowerCase();
+    const normalized = normalizeCoverKey(name);
     const encodedName = name
       .split('/')
       .map((seg) => encodeURIComponent(seg))
       .join('/');
-    localCovers.set(base, `https://archive.org/download/${collectionId}/${encodedName}`);
+    const coverUrl = `https://archive.org/download/${collectionId}/${encodedName}`;
+    localCovers.set(base, coverUrl);
+    if (normalized) localCovers.set(normalized, coverUrl);
   }
 
   // Deduplicate whitespace-variant files with identical trimmed names
@@ -714,6 +725,7 @@ async function fetchBookCollectionMetadata(
     const name = String(f?.name || '');
     const rawBase = name.replace(/\.pdf$/i, '').trim();
     const lowerBase = rawBase.toLowerCase();
+    const normBase = normalizeCoverKey(rawBase);
     const override = KNOWN_BOOK_OVERRIDES[rawBase] || KNOWN_BOOK_OVERRIDES[lowerBase];
     const cleanTitle = cleanBookBaseTitle(name);
     const encodedName = name
@@ -724,7 +736,9 @@ async function fetchBookCollectionMetadata(
     const matchedCover =
       override?.coverUrl ||
       localCovers.get(lowerBase) ||
-      externalCovers.get(lowerBase);
+      localCovers.get(normBase) ||
+      externalCovers.get(lowerBase) ||
+      externalCovers.get(normBase);
 
     items.push({
       id: `book-${collectionId}-${rawBase}`,
@@ -826,5 +840,177 @@ export function useArchiveBooks() {
     books,
     isSyncingBooks,
     syncBooks,
+  };
+}
+
+// ============================================================================
+// Automatic Archive.org News Updates & Ishteharat (Posters Sync)
+// ============================================================================
+
+const ARCHIVE_POSTERS_CACHE_KEY = 'khanqah_archive_live_posters_v1';
+export const ARCHIVE_NEWS_POSTERS_COLLECTION = '20260422_20260422_1213';
+
+export interface NewsPosterItem {
+  id: string;
+  collectionId: string;
+  filename: string;
+  title: string;
+  imageUrl: string;
+  size?: string;
+  mtime?: string;
+}
+
+export const DEFAULT_ARCHIVE_POSTERS: NewsPosterItem[] = [
+  {
+    id: 'poster-20260422-shab-islahi',
+    collectionId: ARCHIVE_NEWS_POSTERS_COLLECTION,
+    filename: 'شب اصلاحی سہ ماہی مسجد اسلام دین براز جمعرات .png',
+    title: 'شب اصلاحی سہ ماہی مسجد اسلام دین براز جمعرات',
+    imageUrl:
+      'https://archive.org/download/20260422_20260422_1213/%D8%B4%D8%A8%20%D8%A7%D8%B5%D9%84%D8%A7%D8%AD%DB%8C%20%D8%B3%DB%81%20%D9%85%D8%A7%DB%81%DB%8C%20%D9%85%D8%B3%D8%AC%D8%AF%20%D8%A7%D8%B3%D9%84%D8%A7%D9%85%20%D8%AF%DB%8C%D9%86%20%D8%A8%D8%B1%D8%A7%D8%B2%20%D8%AC%D9%85%D8%B9%D8%B1%D8%A7%D8%AA%20.png',
+    size: '4334661',
+    mtime: '1778409594',
+  },
+  {
+    id: 'poster-20260422-jamia-markazi',
+    collectionId: ARCHIVE_NEWS_POSTERS_COLLECTION,
+    filename: 'جامعہ المرکزی الاسلامی کے پی کے پاکستان.png',
+    title: 'جامعہ المرکزی الاسلامی کے پی کے پاکستان',
+    imageUrl:
+      'https://archive.org/download/20260422_20260422_1213/%D8%AC%D8%A7%D9%85%D8%B9%DB%81%20%D8%A7%D9%84%D9%85%D8%B1%DA%A9%D8%B2%DB%8C%20%D8%A7%D9%84%D8%A7%D8%B3%D9%84%D8%A7%D9%85%DB%8C%20%DA%A9%DB%92%20%D9%BE%DB%8C%20%DA%A9%DB%92%20%D9%BE%D8%A7%DA%A9%D8%B3%D8%AA%D8%A7%D9%86.png',
+    size: '3018862',
+    mtime: '1778408817',
+  },
+  {
+    id: 'poster-20260422-haftawar-itwar',
+    collectionId: ARCHIVE_NEWS_POSTERS_COLLECTION,
+    filename: 'ہفتہ وار بروز اتوار.png',
+    title: 'ہفتہ وار بروز اتوار',
+    imageUrl:
+      'https://archive.org/download/20260422_20260422_1213/%DB%81%D9%81%D8%AA%DB%81%20%D9%88%D8%A7%D8%B1%20%D8%A8%D8%B1%D9%88%D8%B2%20%D8%A7%D8%AA%D9%88%D8%A7%D8%B1.png',
+    size: '2621278',
+    mtime: '1778408801',
+  },
+  {
+    id: 'poster-20260422-har-jumma',
+    collectionId: ARCHIVE_NEWS_POSTERS_COLLECTION,
+    filename: 'ہر جمعۃ المبارک.png',
+    title: 'ہر جمعۃ المبارک',
+    imageUrl:
+      'https://archive.org/download/20260422_20260422_1213/%DB%81%D8%B1%20%D8%AC%D9%85%D8%B9%DB%83%20%D8%A7%D9%84%D9%85%D8%A8%D8%A7%D8%B1%DA%A9.png',
+    size: '2337098',
+    mtime: '1778408793',
+  },
+];
+
+export function isPosterNew(poster: NewsPosterItem, referenceNowMs = Date.now()): boolean {
+  return isTimestampNew(poster.mtime, referenceNowMs);
+}
+
+export function formatPosterDateUrdu(poster: NewsPosterItem): string {
+  return formatMtimeUrdu(poster.mtime);
+}
+
+export function sharePosterOnWhatsApp(poster: NewsPosterItem) {
+  const text = [
+    `📢 *خانقاہ دارالفلاح — تازہ اعلان و اشتہار*`,
+    `📌 *عنوان:* ${poster.title}`,
+    ``,
+    `🖼️ اشتہار / پوسٹر دیکھیں یا ڈاؤنلوڈ کریں:`,
+    poster.imageUrl,
+  ].join('\n');
+
+  const waUrl = `https://wa.me/?text=${encodeURIComponent(text)}`;
+  const a = document.createElement('a');
+  a.href = waUrl;
+  a.target = '_blank';
+  a.rel = 'noopener noreferrer';
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(() => {
+    try {
+      document.body.removeChild(a);
+    } catch {}
+  }, 500);
+}
+
+async function fetchNewsPostersFromCollection(collectionId: string): Promise<NewsPosterItem[]> {
+  const res = await fetch(`https://archive.org/metadata/${encodeURIComponent(collectionId)}`);
+  if (!res.ok) return [];
+  const json = await res.json();
+  const files: any[] = Array.isArray(json?.files) ? json.files : [];
+  const items: NewsPosterItem[] = [];
+
+  for (const f of files) {
+    const name = String(f?.name || '');
+    if (!isCoverImageFile(name)) continue;
+    const lower = name.toLowerCase();
+    // Skip internal app logo assets if announcements exist, or keep non-internal logos
+    const baseTitle = name.replace(/\.(png|jpe?g|webp)$/i, '').trim();
+    if (!baseTitle) continue;
+    const encodedName = name
+      .split('/')
+      .map((seg) => encodeURIComponent(seg))
+      .join('/');
+    items.push({
+      id: `poster-${collectionId}-${baseTitle}`,
+      collectionId,
+      filename: name,
+      title: baseTitle,
+      imageUrl: `https://archive.org/download/${encodeURIComponent(collectionId)}/${encodedName}`,
+      size: f?.size ? String(f.size) : undefined,
+      mtime: f?.mtime ? String(f.mtime) : undefined,
+    });
+    void lower;
+  }
+
+  items.sort(
+    (a, b) => getTimestampMsFromMtime(b.mtime) - getTimestampMsFromMtime(a.mtime)
+  );
+  return items;
+}
+
+export function useArchiveNewsPosters() {
+  const [posters, setPosters] = useState<NewsPosterItem[]>(() => {
+    try {
+      const cached = localStorage.getItem(ARCHIVE_POSTERS_CACHE_KEY);
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch {}
+    return DEFAULT_ARCHIVE_POSTERS;
+  });
+
+  const [isSyncingPosters, setIsSyncingPosters] = useState(false);
+
+  const syncPosters = useCallback(async (onNotify?: (msg: string) => void) => {
+    setIsSyncingPosters(true);
+    try {
+      const live = await fetchNewsPostersFromCollection(ARCHIVE_NEWS_POSTERS_COLLECTION);
+      if (live.length > 0) {
+        setPosters(live);
+        try {
+          localStorage.setItem(ARCHIVE_POSTERS_CACHE_KEY, JSON.stringify(live));
+        } catch {}
+        if (onNotify) {
+          onNotify(`اشتہارات و اعلانات تازہ ہو گئے — ${live.length} اشتہارات دستیاب ہیں!`);
+        }
+      }
+    } catch {
+      // Keep cached/default posters smoothly
+    } finally {
+      setIsSyncingPosters(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    syncPosters();
+  }, [syncPosters]);
+
+  return {
+    posters,
+    isSyncingPosters,
+    syncPosters,
   };
 }

@@ -89,27 +89,48 @@ function escapeJsString(val: string): string {
 /**
  * Exact shared stylesheet from Ramzan ul Mubarak ki Aham Masail.html
  */
-const RAMZAN_STYLE_CSS = `
+function getRamzanStyleCss(isEmbedded = false, isCombined = false): string {
+  const bodyCss = isCombined
+    ? `margin: 0;
+            padding: 10px 6px 24px 6px;
+            background: transparent;`
+    : `margin: 0;
+            padding: 0;
+            background: transparent;`;
+
+  const categoryBoxCss = isEmbedded
+    ? `max-width: 100%;
+            width: 100%;
+            margin: 0 auto;`
+    : isCombined
+    ? `max-width: 340px;
+            width: 100%;
+            margin: 0 auto 24px auto;`
+    : `max-width: 340px;
+            width: 100%;
+            margin: 0 auto;`;
+
+  return `
         body {
-            margin: 0;
-            padding: 10px 6px 28px 6px;
-            background: transparent;
+            ${bodyCss}
         }
+
         .category-box {
             background: transparent;
             overflow: visible;
             font-family: 'Segoe UI', 'Noto Sans Arabic', Tahoma, sans-serif;
-            max-width: 380px;
-            width: 100%;
-            margin: 0 auto 24px auto;
+            ${categoryBoxCss}
             direction: rtl;
         }
+
+        /* سرچ بار */
         .search-container {
             margin-bottom: 10px;
             position: relative;
             display: flex;
             align-items: center;
         }
+
         .search-input {
             width: 100%;
             padding: 8px 34px 8px 12px;
@@ -124,11 +145,13 @@ const RAMZAN_STYLE_CSS = `
             transition: all 0.3s ease;
             box-sizing: border-box;
         }
+
         .search-input:focus {
             border-color: #006400;
             box-shadow: 0 0 8px rgba(0, 100, 0, 0.2);
             background: #ffffff;
         }
+
         .search-icon {
             position: absolute;
             right: 12px;
@@ -136,6 +159,8 @@ const RAMZAN_STYLE_CSS = `
             color: #b08d43;
             pointer-events: none;
         }
+
+        /* ہیڈر */
         .cat-header {
             background: linear-gradient(135deg, #004d00 0%, #007300 50%, #004d00 100%);
             color: #fff;
@@ -152,14 +177,14 @@ const RAMZAN_STYLE_CSS = `
             font-size: 12px;
             box-shadow: 0 4px 10px rgba(0, 77, 0, 0.2);
         }
+
         .header-title-wrap {
             display: flex;
             align-items: center;
             gap: 6px;
             direction: rtl;
-            flex: 1;
-            min-width: 0;
         }
+
         .cat-count {
             background: rgba(255, 255, 255, 0.18);
             border: 1px solid #d4af37;
@@ -170,8 +195,8 @@ const RAMZAN_STYLE_CSS = `
             display: none;
             align-items: center;
             justify-content: center;
-            flex-shrink: 0;
         }
+
         .download-all-btn {
             background: linear-gradient(135deg, #d4af37, #a67c2e);
             color: #fff;
@@ -188,10 +213,13 @@ const RAMZAN_STYLE_CSS = `
             box-shadow: 0 2px 5px rgba(0, 0, 0, 0.22);
             transition: transform 0.2s ease, filter 0.2s ease;
         }
+
         .download-all-btn:hover {
             filter: brightness(1.1);
             transform: scale(1.03);
         }
+
+        /* آڈیو کارڈ */
         .audio-item {
             padding: 10px;
             margin-top: 8px;
@@ -204,16 +232,20 @@ const RAMZAN_STYLE_CSS = `
             overflow: hidden;
             transition: transform 0.3s ease, box-shadow 0.3s ease;
         }
+
         .audio-item > * {
             position: relative;
             z-index: 2;
         }
+
+        /* چلتے وقت گھومنے والی گولڈ و سبز چمکدار لکیر */
         .audio-item.is-playing {
             border-color: transparent;
             transform: translateY(-1px);
             box-shadow: 0 0 14px rgba(255, 215, 0, 0.7), 0 0 26px rgba(0, 150, 0, 0.45);
             animation: cardOuterGlow 1.6s ease-in-out infinite alternate;
         }
+
         .audio-item.is-playing::before {
             content: "";
             position: absolute;
@@ -233,6 +265,7 @@ const RAMZAN_STYLE_CSS = `
             animation: rotateShineBorder 2.4s linear infinite;
             z-index: 0;
         }
+
         .audio-item.is-playing::after {
             content: "";
             position: absolute;
@@ -245,35 +278,47 @@ const RAMZAN_STYLE_CSS = `
                 inset -8px 0 16px -6px rgba(0, 170, 0, 0.85);
             animation: sideShimmer 1.4s ease-in-out infinite alternate;
         }
+
         @keyframes rotateShineBorder {
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
+
         @keyframes cardOuterGlow {
-            0% { box-shadow: 0 0 10px rgba(255, 215, 0, 0.55), 0 0 18px rgba(0, 130, 0, 0.35); }
-            100% { box-shadow: 0 0 18px rgba(255, 215, 0, 0.95), 0 0 32px rgba(0, 190, 60, 0.65); }
-        }
-        @keyframes sideShimmer {
             0% {
-                box-shadow: inset 6px 0 12px -5px rgba(255, 215, 0, 0.65),
-                            inset -6px 0 12px -5px rgba(0, 160, 0, 0.55);
+                box-shadow: 0 0 10px rgba(255, 215, 0, 0.55), 0 0 18px rgba(0, 130, 0, 0.35);
             }
             100% {
-                box-shadow: inset 12px 0 20px -4px rgba(255, 215, 0, 1),
-                            inset -12px 0 20px -4px rgba(0, 200, 60, 0.95);
+                box-shadow: 0 0 18px rgba(255, 215, 0, 0.95), 0 0 32px rgba(0, 190, 60, 0.65);
             }
         }
+
+        @keyframes sideShimmer {
+            0% {
+                box-shadow:
+                    inset 6px 0 12px -5px rgba(255, 215, 0, 0.65),
+                    inset -6px 0 12px -5px rgba(0, 160, 0, 0.55);
+            }
+            100% {
+                box-shadow:
+                    inset 12px 0 20px -4px rgba(255, 215, 0, 1),
+                    inset -12px 0 20px -4px rgba(0, 200, 60, 0.95);
+            }
+        }
+
         .title-row {
             display: flex;
             align-items: center;
             justify-content: space-between;
             gap: 6px;
         }
+
         .title-left {
             display: flex;
             align-items: center;
             flex: 1;
         }
+
         .bayan-num {
             background: linear-gradient(135deg, #d4af37, #9e7728);
             color: #ffffff;
@@ -292,12 +337,14 @@ const RAMZAN_STYLE_CSS = `
             flex-shrink: 0;
             box-sizing: border-box;
         }
+
         .audio-title {
             font-size: 12.5px;
             font-weight: bold;
             color: #004d00;
             line-height: 1.35;
         }
+
         .new-label {
             background: linear-gradient(90deg, #ff0000, #d40000);
             color: white;
@@ -310,7 +357,9 @@ const RAMZAN_STYLE_CSS = `
             display: inline-block;
             vertical-align: middle;
         }
+
         @keyframes blinker { 50% { opacity: 0.2; } }
+
         .playing-badge {
             display: none;
             align-items: flex-end;
@@ -322,9 +371,11 @@ const RAMZAN_STYLE_CSS = `
             border: 1px solid #ffd700;
             flex-shrink: 0;
         }
+
         .audio-item.is-playing .playing-badge {
             display: inline-flex;
         }
+
         .eq-bar {
             width: 2.5px;
             background: #ffd700;
@@ -333,10 +384,12 @@ const RAMZAN_STYLE_CSS = `
         }
         .eq-bar:nth-child(2) { animation-delay: 0.2s; }
         .eq-bar:nth-child(3) { animation-delay: 0.4s; }
+
         @keyframes eqBounce {
             0% { height: 3px; }
             100% { height: 11px; }
         }
+
         .player-bg {
             background: linear-gradient(90deg, #004d00, #d4af37, #004d00);
             background-size: 200% 100%;
@@ -349,22 +402,26 @@ const RAMZAN_STYLE_CSS = `
             direction: ltr;
             box-shadow: 0 2px 5px rgba(0, 0, 0, 0.12);
         }
+
         .audio-item.is-playing .player-bg {
             background: linear-gradient(90deg, #006400, #fff000, #00c853, #ffd700, #006400);
             background-size: 300% 100%;
             animation: playerShine 2s linear infinite;
             box-shadow: 0 0 10px rgba(255, 215, 0, 0.85);
         }
+
         @keyframes playerShine {
             0% { background-position: 0% 50%; }
             100% { background-position: 300% 50%; }
         }
+
         audio {
             width: 100%;
             height: 32px;
             display: block;
             border-radius: 7px;
         }
+
         .spinner {
             position: absolute;
             top: 50%;
@@ -380,14 +437,18 @@ const RAMZAN_STYLE_CSS = `
             z-index: 10;
             pointer-events: none;
         }
+
         @keyframes spin {
             to { transform: translate(-50%, -50%) rotate(360deg); }
         }
+
+        /* بٹن رو: ڈاؤن لوڈ اور واٹس ایپ */
         .action-row {
             display: flex;
             gap: 6px;
             margin-top: 7px;
         }
+
         .action-btn {
             flex: 1;
             display: inline-flex;
@@ -406,16 +467,19 @@ const RAMZAN_STYLE_CSS = `
             transition: transform 0.2s ease, filter 0.2s ease;
             font-family: inherit;
         }
+
         .action-btn:hover {
             filter: brightness(1.07);
             transform: translateY(-1px);
         }
+
         .dl-btn {
             background: linear-gradient(135deg, #005c00, #008200);
             color: #ffffff;
             border: 1px solid #d4af37;
             box-shadow: 0 2px 5px rgba(0, 100, 0, 0.2);
         }
+
         .dl-progress {
             position: absolute;
             top: 0;
@@ -426,6 +490,7 @@ const RAMZAN_STYLE_CSS = `
             transition: width 0.15s linear;
             z-index: 0;
         }
+
         .dl-text {
             position: relative;
             z-index: 1;
@@ -433,12 +498,14 @@ const RAMZAN_STYLE_CSS = `
             align-items: center;
             gap: 4px;
         }
+
         .wa-btn {
             background: linear-gradient(135deg, #25d366, #128c7e);
             color: #ffffff;
             border: 1px solid #0e6f63;
             box-shadow: 0 2px 5px rgba(18, 140, 126, 0.22);
         }
+
         .meta-row {
             display: flex;
             justify-content: space-between;
@@ -449,12 +516,15 @@ const RAMZAN_STYLE_CSS = `
             direction: ltr;
             align-items: center;
         }
+
         .maqam-text {
             color: #c40000;
             font-weight: bold;
             font-size: 10px;
             direction: rtl;
         }
+
+        /* پیجینیشن بار (Next / Back) */
         .pagination-bar {
             display: none;
             align-items: center;
@@ -467,6 +537,7 @@ const RAMZAN_STYLE_CSS = `
             border-radius: 12px;
             box-shadow: 0 3px 8px rgba(0, 77, 0, 0.18);
         }
+
         .page-btn {
             background: linear-gradient(135deg, #d4af37, #a67c2e);
             color: #ffffff;
@@ -482,15 +553,18 @@ const RAMZAN_STYLE_CSS = `
             transition: transform 0.2s ease, opacity 0.2s ease, filter 0.2s ease;
             font-family: inherit;
         }
+
         .page-btn:hover:not(:disabled) {
             transform: scale(1.04);
             filter: brightness(1.08);
         }
+
         .page-btn:disabled {
             opacity: 0.42;
             cursor: not-allowed;
             filter: grayscale(40%);
         }
+
         .page-info {
             color: #fff7b2;
             font-size: 11px;
@@ -498,6 +572,7 @@ const RAMZAN_STYLE_CSS = `
             text-align: center;
             direction: ltr;
         }
+
         .empty-msg {
             text-align: center;
             padding: 18px 10px;
@@ -509,10 +584,11 @@ const RAMZAN_STYLE_CSS = `
             margin-top: 6px;
         }
 `;
+}
 
 /**
- * Generates an exact copy of the user's .category-box widget block (Ramzan ul Mubarak ki Aham Masail.html style)
- * that can be pasted repeatedly inside a single HTML page or standalone file.
+ * Generates an exact copy of the user's .category-box widget block (Ramzan ul Mubarak ki Aham Masail.html)
+ * that can be embedded in the app or exported as standalone / combined HTML files.
  */
 export function generateCategoryBoxBlockHtml(config: {
   archiveId: string;
@@ -520,18 +596,24 @@ export function generateCategoryBoxBlockHtml(config: {
   itemsPerPage?: number;
   defaultMaqam?: string;
   includeFolderNameInFile?: boolean;
+  embedId?: string;
 }): string {
   const jsArchiveId = escapeJsString(config.archiveId);
   const jsTitle = escapeJsString(config.title);
   const itemsPerPage = config.itemsPerPage ?? 6;
   const jsMaqam = escapeJsString(config.defaultMaqam || 'پاکستان');
   const includeFolderName = config.includeFolderNameInFile ?? true;
+  const jsEmbedId = escapeJsString(config.embedId || '');
 
   return `    <div class="category-box">
+
+        <!-- سرچ بار -->
         <div class="search-container">
             <span class="search-icon">🔍</span>
             <input type="text" class="search-input" placeholder="بیان یا نعت تلاش کریں...">
         </div>
+
+        <!-- ہیڈر -->
         <div class="cat-header">
             <div class="header-title-wrap">
                 <span class="cat-title">LOADING...</span>
@@ -539,27 +621,34 @@ export function generateCategoryBoxBlockHtml(config: {
             </div>
             <a href="#" class="download-all-btn" title="پورا فولڈر ZIP فائل میں ڈاؤن لوڈ کریں">⬇️ Download All</a>
         </div>
+
+        <!-- آڈیو فہرست -->
         <div class="bayan-list-container">
             <div class="empty-msg">لوڈنگ ہو رہی ہے...</div>
         </div>
+
+        <!-- پیجینیشن (Next / Back) -->
         <div class="pagination-bar">
             <button type="button" class="page-btn prev-btn">→ Back</button>
             <span class="page-info">Page 1 / 1</span>
             <button type="button" class="page-btn next-btn">Next ←</button>
         </div>
+
         <script>
             (function () {
                 // ==========================================================
-                // سیٹنگز: اس فولڈر کی Archive ID اور عنوان
+                // صرف یہاں تبدیلیاں کریں
                 // ==========================================================
                 const CONFIG = {
-                    archiveID: ${jsArchiveId},
-                    title: ${jsTitle},
-                    itemsPerPage: ${itemsPerPage},
-                    defaultMaqam: ${jsMaqam},
-                    includeFolderNameInFile: ${includeFolderName}
+                    archiveID: ${jsArchiveId}, // آرکائیو فولڈر ID
+                    title: ${jsTitle},              // باکس کا عنوان
+                    itemsPerPage: ${itemsPerPage},                                // ایک صفحے پر کتنے بیانات دکھائیں
+                    defaultMaqam: ${jsMaqam},                         // اگر نام میں [مقام] نہ ہو
+                    includeFolderNameInFile: ${includeFolderName}                    // ڈاؤن لوڈ فائل کے نام میں فولڈر کا نام شامل ہو؟
                 };
                 // ==========================================================
+
+                const EMBED_ID = ${jsEmbedId};
                 const root = document.currentScript.closest('.category-box');
                 const titleEl = root.querySelector('.cat-title');
                 const countEl = root.querySelector('.cat-count');
@@ -570,11 +659,48 @@ export function generateCategoryBoxBlockHtml(config: {
                 const prevBtn = root.querySelector('.prev-btn');
                 const nextBtn = root.querySelector('.next-btn');
                 const pageInfo = root.querySelector('.page-info');
+
                 titleEl.textContent = CONFIG.title;
+
                 let bayanFiles = [];
                 let filteredFiles = [];
                 let currentPage = 1;
                 const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
+
+                function notifyParentHeight() {
+                    if (!EMBED_ID || window.parent === window) return;
+                    try {
+                        const h = Math.max(root.scrollHeight, document.body.scrollHeight, document.documentElement.scrollHeight);
+                        window.parent.postMessage({ type: 'kdf-iframe-height', id: EMBED_ID, height: h + 8 }, '*');
+                    } catch (e) {}
+                }
+
+                if (EMBED_ID && window.parent !== window) {
+                    try {
+                        const ro = new ResizeObserver(notifyParentHeight);
+                        ro.observe(root);
+                    } catch (e) {}
+                    window.addEventListener('message', function (ev) {
+                        const d = ev.data;
+                        if (!d || typeof d !== 'object') return;
+                        if (d.type === 'kdf-pause-all' && d.exceptId !== EMBED_ID) {
+                            root.querySelectorAll('.q-player').forEach(function (p) {
+                                if (!p.paused) p.pause();
+                            });
+                            root.querySelectorAll('.audio-item').forEach(function (el) {
+                                el.classList.remove('is-playing');
+                            });
+                        } else if (d.type === 'kdf-search' && typeof d.query === 'string') {
+                            searchInput.value = d.query;
+                            const query = d.query.trim().toLowerCase();
+                            filteredFiles = bayanFiles.filter(function (f) {
+                                return (f.title || f.name).toLowerCase().includes(query);
+                            });
+                            currentPage = 1;
+                            updateView();
+                        }
+                    });
+                }
 
                 function escapeHTML(str) {
                     return String(str)
@@ -590,6 +716,7 @@ export function generateCategoryBoxBlockHtml(config: {
                         const res = await fetch(\`https://archive.org/metadata/\${encodeURIComponent(CONFIG.archiveID)}\`);
                         if (!res.ok) throw new Error("Network error");
                         const data = await res.json();
+
                         if (data && Array.isArray(data.files)) {
                             bayanFiles = data.files.filter(f => {
                                 const n = (f.name || '').toLowerCase();
@@ -597,8 +724,10 @@ export function generateCategoryBoxBlockHtml(config: {
                             });
                             bayanFiles.sort((a, b) => (Number(b.mtime) || 0) - (Number(a.mtime) || 0));
                             filteredFiles = [...bayanFiles];
+
                             countEl.textContent = bayanFiles.length;
                             countEl.style.display = 'inline-flex';
+
                             if (bayanFiles.length > 0) {
                                 const mp3Formats = [...new Set(bayanFiles.map(f => f.format).filter(Boolean))];
                                 const formatPart = mp3Formats.length > 0
@@ -610,15 +739,18 @@ export function generateCategoryBoxBlockHtml(config: {
                                 downloadAllBtn.setAttribute('download', safeZipName);
                                 downloadAllBtn.style.display = 'inline-flex';
                             }
+
                             currentPage = 1;
                             updateView();
                         } else {
                             listContainer.innerHTML = \`<div class="empty-msg">اس فولڈر میں کوئی آڈیو فائل موجود نہیں ہے۔</div>\`;
                             paginationBar.style.display = 'none';
+                            notifyParentHeight();
                         }
                     } catch (e) {
                         listContainer.innerHTML = \`<div class="empty-msg" style="color:#c00;">ڈیٹا لوڈ نہیں ہو سکا۔ براہ کرم Archive ID چیک کریں۔</div>\`;
                         paginationBar.style.display = 'none';
+                        notifyParentHeight();
                     }
                 }
 
@@ -633,8 +765,10 @@ export function generateCategoryBoxBlockHtml(config: {
                 function updateView() {
                     const totalItems = filteredFiles.length;
                     const totalPages = Math.max(1, Math.ceil(totalItems / CONFIG.itemsPerPage));
+
                     if (currentPage > totalPages) currentPage = totalPages;
                     if (currentPage < 1) currentPage = 1;
+
                     if (totalPages <= 1) {
                         paginationBar.style.display = 'none';
                     } else {
@@ -643,21 +777,29 @@ export function generateCategoryBoxBlockHtml(config: {
                         prevBtn.disabled = (currentPage === 1);
                         nextBtn.disabled = (currentPage === totalPages);
                     }
+
                     const startIndex = (currentPage - 1) * CONFIG.itemsPerPage;
-                    render(filteredFiles.slice(startIndex, startIndex + CONFIG.itemsPerPage), startIndex);
+                    const pageFiles = filteredFiles.slice(startIndex, startIndex + CONFIG.itemsPerPage);
+                    render(pageFiles, startIndex);
+                    notifyParentHeight();
                 }
 
+                // براہِ راست فائل ڈاؤن لوڈ (بغیر کسی نئے ٹیب میں کھلے)
                 function startDirectDownload(btn, url, fileName) {
                     if (btn.dataset.downloading === "true") return;
                     btn.dataset.downloading = "true";
+
                     const labelEl = btn.querySelector('.dl-text');
                     const progressFill = btn.querySelector('.dl-progress');
                     const originalHTML = labelEl.innerHTML;
+
                     labelEl.textContent = "⏳ شروع ہو رہا ہے...";
                     progressFill.style.width = "0%";
+
                     const xhr = new XMLHttpRequest();
                     xhr.open("GET", url, true);
                     xhr.responseType = "blob";
+
                     xhr.onprogress = function (event) {
                         if (event.lengthComputable && event.total > 0) {
                             const percent = Math.round((event.loaded / event.total) * 100);
@@ -668,6 +810,7 @@ export function generateCategoryBoxBlockHtml(config: {
                             labelEl.textContent = \`⏳ \${mb} MB...\`;
                         }
                     };
+
                     xhr.onload = function () {
                         if (xhr.status >= 200 && xhr.status < 300) {
                             const blob = xhr.response;
@@ -682,6 +825,7 @@ export function generateCategoryBoxBlockHtml(config: {
                                 document.body.removeChild(a);
                                 URL.revokeObjectURL(blobUrl);
                             }, 5000);
+
                             progressFill.style.width = "100%";
                             labelEl.textContent = "✅ ڈاؤن لوڈ مکمل!";
                             setTimeout(() => {
@@ -693,9 +837,11 @@ export function generateCategoryBoxBlockHtml(config: {
                             fallbackDownload();
                         }
                     };
+
                     xhr.onerror = function () {
                         fallbackDownload();
                     };
+
                     function fallbackDownload() {
                         const a = document.createElement("a");
                         a.href = url;
@@ -704,6 +850,7 @@ export function generateCategoryBoxBlockHtml(config: {
                         document.body.appendChild(a);
                         a.click();
                         document.body.removeChild(a);
+
                         labelEl.textContent = "⬇️ ڈاؤن لوڈ...";
                         progressFill.style.width = "0%";
                         setTimeout(() => {
@@ -711,6 +858,7 @@ export function generateCategoryBoxBlockHtml(config: {
                             btn.dataset.downloading = "false";
                         }, 2500);
                     }
+
                     xhr.send();
                 }
 
@@ -719,33 +867,41 @@ export function generateCategoryBoxBlockHtml(config: {
                         listContainer.innerHTML = \`<div class="empty-msg">کوئی آڈیو نہیں ملی۔</div>\`;
                         return;
                     }
+
                     let html = '';
                     const pageUrl = (window.location.href && window.location.href.startsWith('http')) ? window.location.href : '';
                     const safeFolderPrefix = CONFIG.title.replace(/[\\\\/:*?"<>|]/g, '').trim();
+
                     files.forEach((file, index) => {
                         const safePath = file.name.split('/').map(encodeURIComponent).join('/');
                         const url = \`https://archive.org/download/\${encodeURIComponent(CONFIG.archiveID)}/\${safePath}\`;
                         const size = file.size ? (Number(file.size) / (1024 * 1024)).toFixed(1) + " MB" : "---";
                         const date = file.mtime ? new Date(parseInt(file.mtime, 10) * 1000).toLocaleDateString("en-GB") : "Recent";
+
                         let rawTitle = file.title || file.name.split('/').pop().replace(/\\.mp3$/i, '');
+
                         let maqam = CONFIG.defaultMaqam;
                         const match = rawTitle.match(/\\[(.*?)\\]/);
                         if (match) {
                             maqam = match[1];
                             rawTitle = rawTitle.replace(match[0], '').trim();
                         }
+
                         const cleanTrackName = rawTitle ? rawTitle.replace(/[\\\\/:*?"<>|]/g, '').trim() : 'audio';
                         const cleanFileName = (CONFIG.includeFolderNameInFile && safeFolderPrefix)
                             ? \`\${safeFolderPrefix} - \${cleanTrackName}.mp3\`
                             : \`\${cleanTrackName}.mp3\`;
+
                         const mtimeMs = (parseInt(file.mtime || '0', 10) || 0) * 1000;
                         const isWithin7Days = mtimeMs > 0 && (Date.now() - mtimeMs) >= -86400000 && (Date.now() - mtimeMs) <= SEVEN_DAYS_MS;
                         const isNew = isWithin7Days ? '<span class="new-label">NEW</span> ' : '';
+
                         let waText = \`🎙️ *\${rawTitle}*\\n📂 فولڈر: \${CONFIG.title}\\n📍 مقام: \${maqam}\\n\\n🎧 آڈیو سنیں یا ڈاؤن لوڈ کریں:\\n\${url}\`;
                         if (pageUrl) {
                             waText += \`\\n\\n🌐 ویب پیج:\\n\${pageUrl}\`;
                         }
                         const waLink = \`https://api.whatsapp.com/send?text=\${encodeURIComponent(waText)}\`;
+
                         html += \`
                             <div class="audio-item">
                                 <div class="title-row">
@@ -759,12 +915,14 @@ export function generateCategoryBoxBlockHtml(config: {
                                         <span class="eq-bar"></span>
                                     </span>
                                 </div>
+
                                 <div class="player-bg">
                                     <div class="spinner"></div>
                                     <audio class="q-player" controls preload="none">
                                         <source src="\${url}" type="audio/mpeg">
                                     </audio>
                                 </div>
+
                                 <div class="action-row">
                                     <button type="button" class="action-btn dl-btn" data-url="\${escapeHTML(url)}" data-filename="\${escapeHTML(cleanFileName)}">
                                         <span class="dl-progress"></span>
@@ -777,6 +935,7 @@ export function generateCategoryBoxBlockHtml(config: {
                                         <span>واٹس ایپ شیئر</span>
                                     </a>
                                 </div>
+
                                 <div class="meta-row">
                                     <span>\${size}</span>
                                     <span class="maqam-text">📍 \${escapeHTML(maqam)}</span>
@@ -790,9 +949,11 @@ export function generateCategoryBoxBlockHtml(config: {
                         const audio = card.querySelector('.q-player');
                         const spinner = card.querySelector('.spinner');
                         const dlBtn = card.querySelector('.dl-btn');
+
                         dlBtn.addEventListener('click', () => {
                             startDirectDownload(dlBtn, dlBtn.dataset.url, dlBtn.dataset.filename);
                         });
+
                         audio.addEventListener('play', () => {
                             document.querySelectorAll('.q-player').forEach(p => {
                                 if (p !== audio && !p.paused) p.pause();
@@ -802,21 +963,31 @@ export function generateCategoryBoxBlockHtml(config: {
                             });
                             card.classList.add('is-playing');
                             if (audio.readyState < 3 && spinner) spinner.style.display = 'block';
+                            if (EMBED_ID && window.parent !== window) {
+                                try {
+                                    window.parent.postMessage({ type: 'kdf-audio-play', id: EMBED_ID }, '*');
+                                } catch (e) {}
+                            }
                         });
+
                         audio.addEventListener('playing', () => {
                             if (spinner) spinner.style.display = 'none';
                             card.classList.add('is-playing');
                         });
+
                         audio.addEventListener('canplay', () => {
                             if (spinner) spinner.style.display = 'none';
                         });
+
                         audio.addEventListener('waiting', () => {
                             if (spinner) spinner.style.display = 'block';
                         });
+
                         audio.addEventListener('pause', () => {
                             if (spinner) spinner.style.display = 'none';
                             card.classList.remove('is-playing');
                         });
+
                         audio.addEventListener('ended', () => {
                             if (spinner) spinner.style.display = 'none';
                             card.classList.remove('is-playing');
@@ -824,43 +995,57 @@ export function generateCategoryBoxBlockHtml(config: {
                     });
                 }
 
+                // سرچ ایونٹ
                 searchInput.addEventListener('input', () => {
                     const query = searchInput.value.trim().toLowerCase();
-                    filteredFiles = bayanFiles.filter(f => (f.title || f.name).toLowerCase().includes(query));
+                    filteredFiles = bayanFiles.filter(f =>
+                        (f.title || f.name).toLowerCase().includes(query)
+                    );
                     currentPage = 1;
                     updateView();
                 });
+
+                // پیجینیشن ایونٹس
                 prevBtn.addEventListener('click', () => {
                     if (currentPage > 1) {
                         currentPage--;
                         updateView();
-                        root.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                        if (!EMBED_ID) {
+                            root.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                        }
                     }
                 });
+
                 nextBtn.addEventListener('click', () => {
                     const totalPages = Math.ceil(filteredFiles.length / CONFIG.itemsPerPage);
                     if (currentPage < totalPages) {
                         currentPage++;
                         updateView();
-                        root.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                        if (!EMBED_ID) {
+                            root.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                        }
                     }
                 });
+
                 loadList();
+                notifyParentHeight();
             })();
         </script>
     </div>`;
 }
 
 /**
- * Generates a single-folder standalone HTML file matching Ramzan ul Mubarak ki Aham Masail.html.
+ * Generates a single-folder standalone or embedded HTML file matching Ramzan ul Mubarak ki Aham Masail.html.
  */
 export function generateFolderWidgetHtml(config: {
   archiveId: string;
   title: string;
   itemsPerPage?: number;
   defaultMaqam?: string;
+  embedId?: string;
 }): string {
   const safeTitle = escapeHtmlAttr(config.title);
+  const isEmbedded = Boolean(config.embedId);
   const boxHtml = generateCategoryBoxBlockHtml(config);
   return `<!DOCTYPE html>
 <html lang="ur" dir="rtl">
@@ -868,7 +1053,7 @@ export function generateFolderWidgetHtml(config: {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>${safeTitle} — خانقاہ دارالفلاح</title>
-    <style>${RAMZAN_STYLE_CSS}</style>
+    <style>${getRamzanStyleCss(isEmbedded, false)}</style>
 </head>
 <body>
 ${boxHtml}
@@ -903,7 +1088,7 @@ export function generateCombinedAllFoldersHtml(
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>${safeTitle}</title>
-    <style>${RAMZAN_STYLE_CSS}</style>
+    <style>${getRamzanStyleCss(false, true)}</style>
 </head>
 <body>
 ${blocks}

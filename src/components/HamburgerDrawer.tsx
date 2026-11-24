@@ -58,6 +58,7 @@ interface Props {
   onOpenAllBayanat: () => void;
   onOpenIslahiBayanat: () => void;
   onOpenBooks?: () => void;
+  onOpenNews?: () => void;
   onOpenUrl?: (url: string) => void;
   onOpenWhatsAppGroups?: () => void;
   onOpenDonations?: () => void;
@@ -88,6 +89,7 @@ export const HamburgerDrawer: React.FC<Props> = ({
   onOpenAllBayanat,
   onOpenIslahiBayanat,
   onOpenBooks,
+  onOpenNews,
   onOpenUrl,
   onOpenWhatsAppGroups,
   onOpenDonations,
@@ -385,11 +387,15 @@ export const HamburgerDrawer: React.FC<Props> = ({
                   </button>
                 )}
 
-                {onOpenUrl && (
+                {(onOpenNews || onOpenUrl) && (
                   <button
                     onClick={() => {
                       onClose();
-                      onOpenUrl(NEWS_UPDATES_URL);
+                      if (onOpenNews) {
+                        onOpenNews();
+                      } else if (onOpenUrl) {
+                        onOpenUrl(NEWS_UPDATES_URL);
+                      }
                     }}
                     className={rowClass}
                   >
