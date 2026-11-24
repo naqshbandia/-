@@ -617,7 +617,7 @@ export const UI_STRINGS: Record<AppLanguage, UIStrings> = {
     bannerStep3Text: 'ایپ خانقاہ دارالفلاح کے لوگو کے ساتھ آپ کے موبائل میں محفوظ ہو جائے گی۔',
     closeBtn: 'بند کریں',
 
-    searchPlaceholder: 'بیان کا نام، فولڈر، تاریخ (2026)، مقام (مسجد اسلام دین، دارالہدیٰ) یا اشتہار تلاش کریں...',
+    searchPlaceholder: 'بیان، کتاب، اشتہار، فولڈر یا تاریخ (2026) تلاش کریں...',
     clearBtn: 'صاف کریں',
     filterLabel: 'فلٹر:',
     filterAll: 'سب مواد',

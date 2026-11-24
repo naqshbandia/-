@@ -11,6 +11,9 @@ import {
   Play,
   Pause,
   Printer,
+  Settings,
+  Copy,
+  ExternalLink,
 } from 'lucide-react';
 import { BaseModal } from './Modals';
 import {
@@ -102,6 +105,8 @@ export const AutoSilentModal: React.FC<Props> = ({
   const [isAutoPlaying, setIsAutoPlaying] = useState(true);
   const [isExportingJpg, setIsExportingJpg] = useState(false);
   const [isExportingPdf, setIsExportingPdf] = useState(false);
+  const [showDndSettingsTip, setShowDndSettingsTip] = useState(false);
+  const [copiedSchedule, setCopiedSchedule] = useState(false);
   const touchStartX = useRef<number | null>(null);
   const totalSlides = 4;
 
@@ -200,6 +205,84 @@ export const AutoSilentModal: React.FC<Props> = ({
     setCurrentSlide((s) => (s + 1) % totalSlides);
   };
 
+  const buildSchedulePlainText = () =>
+    slots
+      .filter((s) => s.enabled)
+      .map((s) => `${s.labelUrdu}: ${formatTo12Hour(s.start)} تا ${formatTo12Hour(s.end)}`)
+      .join('\n');
+
+  const handleCopyScheduleTimes = async () => {
+    const text = buildSchedulePlainText();
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedSchedule(true);
+      window.setTimeout(() => setCopiedSchedule(false), 3000);
+      onNotify?.('تمام 6 نمازوں کے آٹو سائلنٹ اوقات کاپی ہو گئے!');
+    } catch {
+      onNotify?.('اوقات دیکھ کر موبائل سیٹنگ میں درج کریں۔');
+    }
+  };
+
+  const handleOpenMobileDndSettings = async () => {
+    // 1. Copy timings silently so user has them handy immediately
+    try {
+      await navigator.clipboard?.writeText(buildSchedulePlainText());
+    } catch {
+      // Ignore clipboard unavailability
+    }
+
+    setShowDndSettingsTip(true);
+
+    // 2. If running inside an Android APK / Native WebView wrapper with a bridge, trigger native DND Settings directly
+    let invokedNativeBridge = false;
+    try {
+      const bridge = window as unknown as {
+        Android?: {
+          openDndSettings?: () => void;
+          openAutoSilentSettings?: () => void;
+          openSoundSettings?: () => void;
+        };
+        ReactNativeWebView?: { postMessage?: (msg: string) => void };
+      };
+      if (typeof bridge.Android?.openDndSettings === 'function') {
+        bridge.Android.openDndSettings();
+        invokedNativeBridge = true;
+      } else if (typeof bridge.Android?.openAutoSilentSettings === 'function') {
+        bridge.Android.openAutoSilentSettings();
+        invokedNativeBridge = true;
+      } else if (typeof bridge.Android?.openSoundSettings === 'function') {
+        bridge.Android.openSoundSettings();
+        invokedNativeBridge = true;
+      } else if (typeof bridge.ReactNativeWebView?.postMessage === 'function') {
+        bridge.ReactNativeWebView.postMessage(JSON.stringify({ type: 'OPEN_DND_SETTINGS' }));
+        invokedNativeBridge = true;
+      }
+    } catch {
+      // Ignore bridge errors
+    }
+
+    // 3. On Android devices without native JS bridge, try launching Android Do Not Disturb Intent URI
+    const isAndroid = /Android/i.test(navigator.userAgent || '');
+    if (!invokedNativeBridge && isAndroid) {
+      try {
+        const intentLink = document.createElement('a');
+        intentLink.href = 'intent:#Intent;action=android.settings.ZEN_MODE_SETTINGS;end';
+        intentLink.style.display = 'none';
+        document.body.appendChild(intentLink);
+        intentLink.click();
+        document.body.removeChild(intentLink);
+      } catch {
+        // Browser security sandbox blocked Intent; inline guidance stays visible
+      }
+    }
+
+    onNotify?.(
+      invokedNativeBridge
+        ? 'موبائل کی Do Not Disturb سیٹنگ کھولی جا رہی ہے...'
+        : 'اوقات کاپی ہو گئے! اگر سیٹنگ خود نہ کھلے تو اوپر سے 🌙 Do Not Disturb بٹن 2 سیکنڈ دبا کر رکھیں۔'
+    );
+  };
+
   return (
     <BaseModal
       isOpen={isOpen}
@@ -212,7 +295,7 @@ export const AutoSilentModal: React.FC<Props> = ({
       <div className="space-y-2.5 text-xs" dir={dir}>
         {/* Sadaqah Jariyah Intro */}
         <div
-          className={`p-2.5 rounded-xl border border-[#d4af37]/45 text-center space-y-1 ${
+          className={`p-2.5 rounded-xl border border-[#d4af37]/45 text-center space-y-1.5 ${
             isDark ? 'bg-[#081b11] text-emerald-50' : 'bg-[#f4f9f6] text-[#11261b]'
           }`}
         >
@@ -222,6 +305,63 @@ export const AutoSilentModal: React.FC<Props> = ({
           <p className="text-[11px] opacity-90 leading-relaxed">
             صرف ایک بار نیچے دی گئی تصویری ہدایات (1 سے 4) کے مطابق اپنے موبائل میں شیڈول بنا کر محفوظ کر لیں، روزانہ نماز کے وقت موبائل خودکار طور پر سائلنٹ ہو جائے گا۔
           </p>
+
+          {/* Direct Mobile DND Settings Launch & Copy Schedule Buttons */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 pt-1">
+            <button
+              type="button"
+              onClick={handleOpenMobileDndSettings}
+              className="py-2 px-3 rounded-xl bg-gradient-to-r from-[#064326] to-[#0a6137] hover:opacity-95 text-white font-bold text-[11.5px] border border-[#d4af37]/80 shadow-sm flex items-center justify-center gap-1.5 active:scale-95 transition-all cursor-pointer"
+            >
+              <Settings className="w-3.5 h-3.5 text-[#f7e7a9] shrink-0" />
+              <span>موبائل Do Not Disturb سیٹنگ کھولیں</span>
+              <ExternalLink className="w-3 h-3 opacity-80 shrink-0" />
+            </button>
+
+            <button
+              type="button"
+              onClick={handleCopyScheduleTimes}
+              className={`py-2 px-3 rounded-xl border font-bold text-[11.5px] flex items-center justify-center gap-1.5 active:scale-95 transition-all cursor-pointer ${
+                copiedSchedule
+                  ? 'bg-[#d4af37] text-[#051a0f] border-[#d4af37]'
+                  : isDark
+                  ? 'bg-[#0d281a] hover:bg-[#133825] text-[#f3d97d] border-[#d4af37]/50'
+                  : 'bg-white hover:bg-emerald-50 text-[#064326] border-[#064326]/30'
+              }`}
+            >
+              {copiedSchedule ? (
+                <>
+                  <Check className="w-3.5 h-3.5 shrink-0" />
+                  <span>6 نمازوں کے اوقات کاپی ہو گئے ✓</span>
+                </>
+              ) : (
+                <>
+                  <Copy className="w-3.5 h-3.5 shrink-0" />
+                  <span>6 نمازوں کے اوقات کاپی کریں</span>
+                </>
+              )}
+            </button>
+          </div>
+
+          {showDndSettingsTip && (
+            <div
+              className={`mt-1.5 p-2 rounded-xl border text-[10.5px] leading-relaxed text-start ${
+                isDark
+                  ? 'bg-[#0d2619] border-[#d4af37]/45 text-emerald-100'
+                  : 'bg-amber-50 border-[#d4af37]/60 text-[#11261b]'
+              }`}
+            >
+              <div className="font-bold text-[#8c6514] dark:text-[#f7e7a9] mb-0.5">
+                ⚡ آسان شارٹ کٹ (ہر اینڈرائڈ موبائل کے لیے):
+              </div>
+              <p>
+                ویب ایپ/کروم میں سیکیورٹی کی وجہ سے اگر فون کی سیٹنگ خود نہ کھلے تو{' '}
+                <strong>موبائل کی اسکرین اوپر سے نیچے کھینچیں</strong> اور{' '}
+                <strong>🌙 Do Not Disturb</strong> بٹن کو{' '}
+                <strong>2 سیکنڈ دبا کر رکھیں (Long Press)</strong> — آپ فوراً شیڈول سیٹنگ میں پہنچ جائیں گے۔ کاپی شدہ اوقات وہاں درج کر دیں۔
+              </p>
+            </div>
+          )}
         </div>
 
         {/* Step Number Pills (1, 2, 3, 4) */}

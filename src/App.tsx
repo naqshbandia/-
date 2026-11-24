@@ -526,9 +526,17 @@ function AppContent() {
           onClose={() => setIsSearchOpen(false)}
           onNavigateUrl={handleNavigateUrl}
           onPlayAudio={handlePlayAudio}
+          onOpenBookReader={(book) => {
+            setInitialReadingBookId(book.id);
+            setActiveView('books');
+          }}
+          onOpenNews={() => setActiveView('news')}
+          onOpenLibraryFolder={(folderId) => handleOpenLibraryFolder(folderId)}
           onNotify={showNotification}
           isDark={isDark}
           bayanatList={bayanat}
+          booksList={books}
+          postersList={posters}
           bloggerTabs={tabs}
           lang={lang}
         />

@@ -11,15 +11,32 @@ import {
   FolderDown,
   Loader2,
   Share2,
+  Newspaper,
+  Eye,
 } from 'lucide-react';
 import { BAYANAT_DATABASE, BLOG_POSTS, BayanItem, BlogPostItem } from '../data/bayanatData';
 import { BloggerPostTab } from '../data/appConfig';
-import { downloadSingleBayan, downloadFolderBayanat, subscribeToDownloads } from '../utils/downloadHelper';
 import {
+  downloadSingleBayan,
+  downloadSingleBook,
+  downloadSinglePoster,
+  downloadFolderBayanat,
+  subscribeToDownloads,
+} from '../utils/downloadHelper';
+import {
+  BookItem,
+  NewsPosterItem,
   normalizeSearchText,
   shareBayanOnWhatsApp,
+  shareBookOnWhatsApp,
+  sharePosterOnWhatsApp,
   isBayanNew,
+  isBookNew,
+  isPosterNew,
   formatBayanDateUrdu,
+  formatBookDateUrdu,
+  formatBookSize,
+  formatPosterDateUrdu,
 } from '../utils/archiveService';
 import {
   AppLanguage,
@@ -33,16 +50,17 @@ interface Props {
   onClose: () => void;
   onNavigateUrl: (url: string) => void;
   onPlayAudio?: (bayan: BayanItem) => void;
+  onOpenBookReader?: (book: BookItem) => void;
+  onOpenNews?: () => void;
+  onOpenLibraryFolder?: (folderId: string) => void;
   onNotify?: (message: string) => void;
   isDark: boolean;
   bayanatList?: BayanItem[];
+  booksList?: BookItem[];
+  postersList?: NewsPosterItem[];
   bloggerTabs?: BloggerPostTab[];
   lang?: AppLanguage;
 }
-
-export type UnifiedSearchResult =
-  | { type: 'post'; data: BlogPostItem }
-  | { type: 'bayan'; data: BayanItem };
 
 export interface FolderGroup {
   id: string;
@@ -52,14 +70,26 @@ export interface FolderGroup {
   items: BayanItem[];
 }
 
+export type UnifiedSearchResult =
+  | { type: 'folder'; data: FolderGroup }
+  | { type: 'book'; data: BookItem }
+  | { type: 'poster'; data: NewsPosterItem }
+  | { type: 'bayan'; data: BayanItem }
+  | { type: 'post'; data: BlogPostItem };
+
 export const SmartSearchBar: React.FC<Props> = ({
   isOpen,
   onClose,
   onNavigateUrl,
   onPlayAudio,
+  onOpenBookReader,
+  onOpenNews,
+  onOpenLibraryFolder,
   onNotify,
   isDark,
   bayanatList = BAYANAT_DATABASE,
+  booksList = [],
+  postersList = [],
   bloggerTabs = [],
   lang = DEFAULT_LANGUAGE,
 }) => {
@@ -67,7 +97,7 @@ export const SmartSearchBar: React.FC<Props> = ({
   const dir = getDir(lang);
   const [query, setQuery] = useState('');
   const [selectedFilter, setSelectedFilter] = useState<
-    'all' | 'folders' | 'bayanat' | 'islahi' | 'dars' | 'posts'
+    'all' | 'folders' | 'bayanat' | 'books' | 'posters' | 'islahi' | 'dars' | 'posts'
   >('all');
   const [downloadingFolderId, setDownloadingFolderId] = useState<string | null>(null);
   const [folderProgress, setFolderProgress] = useState<{
@@ -97,16 +127,16 @@ export const SmartSearchBar: React.FC<Props> = ({
     for (const p of BLOG_POSTS) {
       map.set(p.url, p);
     }
-    for (const t of bloggerTabs) {
-      if (!map.has(t.url)) {
-        map.set(t.url, {
-          id: t.id,
-          title: t.title,
-          urduTitle: t.title,
-          url: t.url,
-          published: t.published ? t.published.slice(0, 10) : '',
-          description: t.snippet || 'خانقاہ دارالفلاح پوسٹ / اعلان / اشتہار',
-          category: t.iconName === 'news' ? 'اعلان و اشتہار' : 'بلاگر پوسٹ',
+    for (const tab of bloggerTabs) {
+      if (!map.has(tab.url)) {
+        map.set(tab.url, {
+          id: tab.id,
+          title: tab.title,
+          urduTitle: tab.title,
+          url: tab.url,
+          published: tab.published ? tab.published.slice(0, 10) : '',
+          description: tab.snippet || 'خانقاہ دارالفلاح پوسٹ / اعلان / اشتہار',
+          category: tab.iconName === 'news' ? 'اعلان و اشتہار' : 'بلاگر پوسٹ',
         });
       }
     }
@@ -131,6 +161,14 @@ export const SmartSearchBar: React.FC<Props> = ({
     return Array.from(map.values());
   }, [bayanatList]);
 
+  const filteredFolders = useMemo(() => {
+    const q = normalizeSearchText(query);
+    if (!q) return foldersList;
+    return foldersList.filter(
+      (f) => normalizeTextMatch(f.urdu, q) || normalizeTextMatch(f.title, q)
+    );
+  }, [foldersList, query]);
+
   const searchResults = useMemo(() => {
     const q = normalizeSearchText(query);
     if (!q && selectedFilter === 'all') {
@@ -139,23 +177,52 @@ export const SmartSearchBar: React.FC<Props> = ({
 
     const results: UnifiedSearchResult[] = [];
 
-    // Search Posts & Announcements / Ishtihar
-    if (selectedFilter === 'all' || selectedFilter === 'posts') {
-      for (const post of allPosts) {
-        const titleMatch =
-          normalizeTextMatch(post.title, q) || normalizeTextMatch(post.urduTitle, q);
-        const descMatch = normalizeTextMatch(post.description, q);
-        const catMatch = normalizeTextMatch(post.category, q);
-        const dateMatch = normalizeTextMatch(post.published, q);
+    // 1. Folders (shown in 'all' when query matches a folder name)
+    if (selectedFilter === 'all' && q) {
+      for (const folder of filteredFolders) {
+        results.push({ type: 'folder', data: folder });
+      }
+    }
 
-        if (!q || titleMatch || descMatch || catMatch || dateMatch) {
-          results.push({ type: 'post', data: post });
+    // 2. Books (کتابیں)
+    if (selectedFilter === 'all' || selectedFilter === 'books') {
+      for (const book of booksList) {
+        const urduDate = formatBookDateUrdu(book);
+        const titleMatch =
+          normalizeTextMatch(book.title, q) || normalizeTextMatch(book.urduTitle, q);
+        const collectionMatch =
+          normalizeTextMatch(book.collectionUrdu, q) ||
+          normalizeTextMatch(book.collectionTitle, q);
+        const filenameMatch = normalizeTextMatch(book.filename, q);
+        const dateMatch = normalizeTextMatch(urduDate, q);
+
+        if (!q || titleMatch || collectionMatch || filenameMatch || dateMatch) {
+          results.push({ type: 'book', data: book });
         }
       }
     }
 
-    // Search Bayanat by title, folder, filename, date (mtime & Urdu date), and location
-    if (selectedFilter !== 'posts' && selectedFilter !== 'folders') {
+    // 3. News & Ishteharat Posters (اشتہارات و اعلانات)
+    if (selectedFilter === 'all' || selectedFilter === 'posters') {
+      for (const poster of postersList) {
+        const urduDate = formatPosterDateUrdu(poster);
+        const titleMatch = normalizeTextMatch(poster.title, q);
+        const filenameMatch = normalizeTextMatch(poster.filename, q);
+        const dateMatch = normalizeTextMatch(urduDate, q);
+
+        if (!q || titleMatch || filenameMatch || dateMatch) {
+          results.push({ type: 'poster', data: poster });
+        }
+      }
+    }
+
+    // 4. Bayanat (آڈیو بیانات)
+    if (
+      selectedFilter === 'all' ||
+      selectedFilter === 'bayanat' ||
+      selectedFilter === 'islahi' ||
+      selectedFilter === 'dars'
+    ) {
       for (const bayan of bayanatList) {
         if (selectedFilter === 'islahi' && bayan.category !== 'Islahi') continue;
         if (selectedFilter === 'dars' && bayan.category !== 'Dars') continue;
@@ -182,8 +249,23 @@ export const SmartSearchBar: React.FC<Props> = ({
       }
     }
 
+    // 5. Blog Posts / Misc Posts
+    if (selectedFilter === 'all' || selectedFilter === 'posts') {
+      for (const post of allPosts) {
+        const titleMatch =
+          normalizeTextMatch(post.title, q) || normalizeTextMatch(post.urduTitle, q);
+        const descMatch = normalizeTextMatch(post.description, q);
+        const catMatch = normalizeTextMatch(post.category, q);
+        const dateMatch = normalizeTextMatch(post.published, q);
+
+        if (!q || titleMatch || descMatch || catMatch || dateMatch) {
+          results.push({ type: 'post', data: post });
+        }
+      }
+    }
+
     return results;
-  }, [query, selectedFilter, allPosts, bayanatList]);
+  }, [query, selectedFilter, allPosts, bayanatList, booksList, postersList, filteredFolders]);
 
   if (!isOpen) return null;
 
@@ -199,10 +281,31 @@ export const SmartSearchBar: React.FC<Props> = ({
     onClose();
   };
 
+  const handleSelectBook = (book: BookItem) => {
+    if (onOpenBookReader) {
+      onOpenBookReader(book);
+    }
+    onClose();
+  };
+
+  const handleSelectPoster = () => {
+    if (onOpenNews) {
+      onOpenNews();
+    }
+    onClose();
+  };
+
+  const handleSelectFolder = (folderId: string) => {
+    if (onOpenLibraryFolder) {
+      onOpenLibraryFolder(folderId);
+    }
+    onClose();
+  };
+
   const handleDownloadSingle = async (e: React.MouseEvent, bayan: BayanItem) => {
     e.stopPropagation();
     await downloadSingleBayan(bayan, (msg) => {
-      if (onNotify) onNotify(msg);
+      onNotify?.(msg);
     });
   };
 
@@ -211,14 +314,36 @@ export const SmartSearchBar: React.FC<Props> = ({
     shareBayanOnWhatsApp(bayan);
   };
 
+  const handleDownloadBook = async (e: React.MouseEvent, book: BookItem) => {
+    e.stopPropagation();
+    await downloadSingleBook(book, (msg) => {
+      onNotify?.(msg);
+    });
+  };
+
+  const handleShareBook = (e: React.MouseEvent, book: BookItem) => {
+    e.stopPropagation();
+    shareBookOnWhatsApp(book);
+  };
+
+  const handleDownloadPoster = async (e: React.MouseEvent, poster: NewsPosterItem) => {
+    e.stopPropagation();
+    await downloadSinglePoster(poster, (msg) => {
+      onNotify?.(msg);
+    });
+  };
+
+  const handleSharePoster = (e: React.MouseEvent, poster: NewsPosterItem) => {
+    e.stopPropagation();
+    sharePosterOnWhatsApp(poster);
+  };
+
   const handleDownloadWholeFolder = async (e: React.MouseEvent, folder: FolderGroup) => {
     e.stopPropagation();
     if (downloadingFolderId) return;
 
     setDownloadingFolderId(folder.id);
-    if (onNotify) {
-      onNotify(`فولڈر ڈاؤنلوڈ شروع: ${folder.urdu} (${folder.items.length} بیانات)`);
-    }
+    onNotify?.(`فولڈر ڈاؤنلوڈ شروع: ${folder.urdu} (${folder.items.length} بیانات)`);
 
     await downloadFolderBayanat(
       folder.urdu,
@@ -229,9 +354,7 @@ export const SmartSearchBar: React.FC<Props> = ({
       () => {
         setDownloadingFolderId(null);
         setFolderProgress(null);
-        if (onNotify) {
-          onNotify(`فولڈر "${folder.urdu}" کے تمام بیانات میموری میں ڈاؤنلوڈ ہو گئے!`);
-        }
+        onNotify?.(`فولڈر "${folder.urdu}" کے تمام بیانات میموری میں ڈاؤنلوڈ ہو گئے!`);
       }
     );
   };
@@ -300,8 +423,10 @@ export const SmartSearchBar: React.FC<Props> = ({
           {(
             [
               ['all', t.filterAll],
-              ['folders', `${t.filterFolders} (${foldersList.length})`],
               ['bayanat', `${t.filterBayanat} (${bayanatList.length})`],
+              ['books', `کتابیں (${booksList.length})`],
+              ['posters', `اشتہارات (${postersList.length})`],
+              ['folders', `${t.filterFolders} (${foldersList.length})`],
               ['islahi', t.filterIslahi],
               ['dars', t.filterDars],
               ['posts', t.filterPosts],
@@ -326,52 +451,61 @@ export const SmartSearchBar: React.FC<Props> = ({
         {/* FOLDERS VIEW */}
         {selectedFilter === 'folders' && (
           <div className="mt-2 max-h-[60vh] overflow-y-auto space-y-2">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              {foldersList.map((folder) => {
-                const isDownloading = downloadingFolderId === folder.id;
-                return (
-                  <div
-                    key={folder.id}
-                    className={`p-3 rounded-xl border transition-all flex flex-col justify-between ${
-                      isDark
-                        ? 'bg-[#0d2217] border-[#d4af37]/30 hover:border-[#d4af37]'
-                        : 'bg-white border-emerald-900/15 shadow-xs hover:border-[#d4af37]'
-                    }`}
-                  >
-                    <div>
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="text-xs font-bold text-[#064326] dark:text-[#00ff99]">
-                          {folder.items.length} بیانات
-                        </span>
-                        <Folder className="w-5 h-5 text-[#d4af37]" />
-                      </div>
-                      <h4 className="text-base font-bold font-lalezar leading-tight mb-1">
-                        {folder.urdu}
-                      </h4>
-                      <p className="text-[11px] opacity-65 font-sans line-clamp-1">{folder.title}</p>
-                    </div>
-
-                    <button
-                      onClick={(e) => handleDownloadWholeFolder(e, folder)}
-                      disabled={isDownloading}
-                      className="mt-3 w-full py-2 px-3 bg-[#064326] hover:bg-[#095c34] text-white font-lalezar text-xs rounded-lg shadow flex items-center justify-center gap-1.5 active:scale-95 transition-all disabled:opacity-60 cursor-pointer"
+            {filteredFolders.length === 0 ? (
+              <div className="p-6 text-center opacity-70 font-lalezar text-base">
+                {t.noResults}
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {filteredFolders.map((folder) => {
+                  const isDownloading = downloadingFolderId === folder.id;
+                  return (
+                    <div
+                      key={folder.id}
+                      onClick={() => handleSelectFolder(folder.id)}
+                      className={`p-3 rounded-xl border transition-all flex flex-col justify-between cursor-pointer ${
+                        isDark
+                          ? 'bg-[#0d2217] border-[#d4af37]/30 hover:border-[#d4af37]'
+                          : 'bg-white border-emerald-900/15 shadow-xs hover:border-[#d4af37]'
+                      }`}
                     >
-                      {isDownloading ? (
-                        <>
-                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                          <span>{t.downloadingText}</span>
-                        </>
-                      ) : (
-                        <>
-                          <FolderDown className="w-3.5 h-3.5 text-[#d4af37]" />
-                          <span>{t.downloadWholeFolder} ({folder.items.length} {t.filesWord})</span>
-                        </>
-                      )}
-                    </button>
-                  </div>
-                );
-              })}
-            </div>
+                      <div>
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-xs font-bold text-[#064326] dark:text-[#00ff99]">
+                            {folder.items.length} بیانات
+                          </span>
+                          <Folder className="w-5 h-5 text-[#d4af37]" />
+                        </div>
+                        <h4 className="text-base font-bold font-lalezar leading-tight mb-1">
+                          {folder.urdu}
+                        </h4>
+                        <p className="text-[11px] opacity-65 font-sans line-clamp-1">{folder.title}</p>
+                      </div>
+
+                      <button
+                        onClick={(e) => handleDownloadWholeFolder(e, folder)}
+                        disabled={isDownloading}
+                        className="mt-3 w-full py-2 px-3 bg-[#064326] hover:bg-[#095c34] text-white font-lalezar text-xs rounded-lg shadow flex items-center justify-center gap-1.5 active:scale-95 transition-all disabled:opacity-60 cursor-pointer"
+                      >
+                        {isDownloading ? (
+                          <>
+                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                            <span>{t.downloadingText}</span>
+                          </>
+                        ) : (
+                          <>
+                            <FolderDown className="w-3.5 h-3.5 text-[#d4af37]" />
+                            <span>
+                              {t.downloadWholeFolder} ({folder.items.length} {t.filesWord})
+                            </span>
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         )}
 
@@ -387,10 +521,10 @@ export const SmartSearchBar: React.FC<Props> = ({
                 isDark ? 'bg-[#062214] text-[#d4af37]' : 'bg-[#ebf2ee] text-[#064326]'
               }`}
             >
-              <span className="font-bold">{t.resultsAvailable} {searchResults.length}</span>
-              <span className="text-[10px] opacity-75">
-                {t.searchHint}
+              <span className="font-bold">
+                {t.resultsAvailable} {searchResults.length}
               </span>
+              <span className="text-[10px] opacity-75">{t.searchHint}</span>
             </div>
 
             {searchResults.length === 0 ? (
@@ -399,7 +533,241 @@ export const SmartSearchBar: React.FC<Props> = ({
               </div>
             ) : (
               searchResults.map((item, idx) => {
-                if (item.type === 'post') {
+                if (item.type === 'folder') {
+                  const folder = item.data;
+                  const isDownloading = downloadingFolderId === folder.id;
+                  return (
+                    <div
+                      key={`folder-${folder.id}-${idx}`}
+                      onClick={() => handleSelectFolder(folder.id)}
+                      className={`p-2.5 cursor-pointer transition-colors flex items-center justify-between gap-2 ${
+                        isDark ? 'hover:bg-[#112e1f]' : 'hover:bg-emerald-50/70'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                        <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#004d00] to-[#007300] border border-[#d4af37] text-[#d4af37] flex items-center justify-center shrink-0">
+                          <Folder className="w-4 h-4" />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-1.5">
+                            <span className="px-1.5 py-0.5 rounded bg-[#064326] text-[#d4af37] text-[10px] font-bold shrink-0">
+                              فولڈر
+                            </span>
+                            <h4 className="text-sm sm:text-base font-bold font-lalezar leading-tight truncate">
+                              {folder.urdu}
+                            </h4>
+                          </div>
+                          <div className="text-[11px] opacity-75 mt-0.5">
+                            {folder.items.length} بیانات · کھولنے کے لیے کلک کریں
+                          </div>
+                        </div>
+                      </div>
+
+                      <button
+                        onClick={(e) => handleDownloadWholeFolder(e, folder)}
+                        disabled={isDownloading}
+                        className="px-2.5 py-1.5 rounded-lg bg-[#064326] hover:bg-[#095c34] text-white font-lalezar text-xs shadow-xs flex items-center gap-1 shrink-0 cursor-pointer"
+                        title={t.downloadWholeFolder}
+                      >
+                        {isDownloading ? (
+                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        ) : (
+                          <>
+                            <FolderDown className="w-3.5 h-3.5 text-[#d4af37]" />
+                            <span className="hidden xs:inline">{t.downloadLabel}</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  );
+                } else if (item.type === 'book') {
+                  const book = item.data;
+                  const isNew = isBookNew(book);
+                  const dateLabel = formatBookDateUrdu(book);
+                  const sizeLabel = formatBookSize(book.size);
+                  const isDownloading = activeDownloadIds.has(book.id);
+                  return (
+                    <div
+                      key={`book-${book.id}-${idx}`}
+                      onClick={() => handleSelectBook(book)}
+                      className={`p-2.5 cursor-pointer transition-colors flex items-center justify-between gap-2 ${
+                        isDark ? 'hover:bg-[#112e1f]' : 'hover:bg-emerald-50/70'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                        <div className="w-9 h-11 rounded-lg bg-gradient-to-br from-[#064326] to-[#0b5c34] border border-[#d4af37]/70 text-[#f3d97d] overflow-hidden flex items-center justify-center shrink-0">
+                          {book.coverUrl ? (
+                            <img
+                              src={book.coverUrl}
+                              alt={book.urduTitle}
+                              loading="lazy"
+                              decoding="async"
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <BookOpen className="w-4 h-4" />
+                          )}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-1.5">
+                            <span className="px-1.5 py-0.5 rounded bg-amber-600 text-white text-[10px] font-bold shrink-0">
+                              کتاب
+                            </span>
+                            {isNew && (
+                              <span className="px-1.5 py-0.5 rounded bg-[#d4af37] text-[#051a0f] text-[10px] font-bold shrink-0">
+                                {t.newShortBadge}
+                              </span>
+                            )}
+                            <h4 className="text-sm sm:text-base font-bold font-lalezar leading-tight truncate">
+                              {book.urduTitle || book.title}
+                            </h4>
+                          </div>
+                          <div className="flex flex-wrap items-center gap-2 text-[11px] opacity-75 mt-0.5">
+                            <span className="text-[#064326] dark:text-[#d4af37] font-semibold truncate">
+                              {book.collectionUrdu}
+                            </span>
+                            {sizeLabel && (
+                              <>
+                                <span aria-hidden="true">·</span>
+                                <span className="tabular-nums">{sizeLabel}</span>
+                              </>
+                            )}
+                            {dateLabel && (
+                              <>
+                                <span aria-hidden="true">·</span>
+                                <span className="tabular-nums">{dateLabel}</span>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-1.5 shrink-0" dir="ltr">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleSelectBook(book);
+                          }}
+                          className="p-2 rounded-lg bg-[#d4af37] hover:bg-[#c5a028] text-[#051a0f] shadow-xs active:scale-95 transition-all cursor-pointer"
+                          title="پڑھیں"
+                        >
+                          <Eye className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          onClick={(e) => handleShareBook(e, book)}
+                          className="p-2 rounded-lg bg-[#25D366] hover:bg-[#1faa4e] text-white shadow-xs active:scale-95 transition-all cursor-pointer"
+                          title={t.shareLabel}
+                        >
+                          <Share2 className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          onClick={(e) => handleDownloadBook(e, book)}
+                          disabled={isDownloading}
+                          className={`px-2.5 py-1.5 active:scale-95 text-white font-lalezar text-xs rounded-lg shadow-xs flex items-center gap-1 transition-all cursor-pointer ${
+                            isDownloading
+                              ? 'bg-amber-600 cursor-wait opacity-90'
+                              : 'bg-[#064326] hover:bg-[#095c34]'
+                          }`}
+                          title={t.downloadLabel}
+                        >
+                          {isDownloading ? (
+                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          ) : (
+                            <>
+                              <Download className="w-3.5 h-3.5" />
+                              <span className="hidden xs:inline">PDF</span>
+                            </>
+                          )}
+                        </button>
+                      </div>
+                    </div>
+                  );
+                } else if (item.type === 'poster') {
+                  const poster = item.data;
+                  const isNew = isPosterNew(poster);
+                  const dateLabel = formatPosterDateUrdu(poster);
+                  const isDownloading = activeDownloadIds.has(poster.id);
+                  return (
+                    <div
+                      key={`poster-${poster.id}-${idx}`}
+                      onClick={handleSelectPoster}
+                      className={`p-2.5 cursor-pointer transition-colors flex items-center justify-between gap-2 ${
+                        isDark ? 'hover:bg-[#112e1f]' : 'hover:bg-emerald-50/70'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                        <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-[#064326] to-[#0b5c34] border border-[#d4af37]/70 text-[#f3d97d] overflow-hidden flex items-center justify-center shrink-0">
+                          {poster.imageUrl ? (
+                            <img
+                              src={poster.imageUrl}
+                              alt={poster.title}
+                              loading="lazy"
+                              decoding="async"
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <Newspaper className="w-4 h-4" />
+                          )}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-1.5">
+                            <span className="px-1.5 py-0.5 rounded bg-rose-700 text-white text-[10px] font-bold shrink-0">
+                              اشتہار
+                            </span>
+                            {isNew && (
+                              <span className="px-1.5 py-0.5 rounded bg-[#d4af37] text-[#051a0f] text-[10px] font-bold shrink-0">
+                                {t.newShortBadge}
+                              </span>
+                            )}
+                            <h4 className="text-sm sm:text-base font-bold font-lalezar leading-tight truncate">
+                              {poster.title}
+                            </h4>
+                          </div>
+                          <div className="flex flex-wrap items-center gap-2 text-[11px] opacity-75 mt-0.5">
+                            <span className="text-[#064326] dark:text-[#d4af37] font-semibold">
+                              خبریں اور اشتہارات
+                            </span>
+                            {dateLabel && (
+                              <>
+                                <span aria-hidden="true">·</span>
+                                <span className="tabular-nums">{dateLabel}</span>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-1.5 shrink-0" dir="ltr">
+                        <button
+                          onClick={(e) => handleSharePoster(e, poster)}
+                          className="p-2 rounded-lg bg-[#25D366] hover:bg-[#1faa4e] text-white shadow-xs active:scale-95 transition-all cursor-pointer"
+                          title={t.shareLabel}
+                        >
+                          <Share2 className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          onClick={(e) => handleDownloadPoster(e, poster)}
+                          disabled={isDownloading}
+                          className={`px-2.5 py-1.5 active:scale-95 text-white font-lalezar text-xs rounded-lg shadow-xs flex items-center gap-1 transition-all cursor-pointer ${
+                            isDownloading
+                              ? 'bg-amber-600 cursor-wait opacity-90'
+                              : 'bg-[#064326] hover:bg-[#095c34]'
+                          }`}
+                          title={t.downloadLabel}
+                        >
+                          {isDownloading ? (
+                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          ) : (
+                            <>
+                              <Download className="w-3.5 h-3.5" />
+                              <span className="hidden xs:inline">{t.downloadLabel}</span>
+                            </>
+                          )}
+                        </button>
+                      </div>
+                    </div>
+                  );
+                } else if (item.type === 'post') {
                   const post = item.data;
                   return (
                     <div

@@ -1444,40 +1444,8 @@ export const SmartDashboardHome: React.FC<Props> = ({
               : 'bg-white text-[#11261b] shadow-xs'
           }`}
         >
-          {/* Compact Emerald-Green Box Folders (Styled like تعارفِ خانقاہ green folder button) */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2">
-            <button
-              type="button"
-              onClick={onOpenIntroKhanqah}
-              className="khanqah-folder-card rounded-2xl bg-[var(--kdf-primary,#064326)] hover:opacity-95 text-white border border-[var(--kdf-accent,#d4af37)]/70 p-2.5 flex flex-col items-center justify-center text-center gap-1 shadow-sm cursor-pointer min-h-[78px]"
-            >
-              <div className="khanqah-folder-icon w-8 h-8 rounded-xl bg-white/10 border border-[#d4af37]/45 text-[#d4af37] flex items-center justify-center shrink-0">
-                <Landmark className="w-4 h-4" />
-              </div>
-              <span className="text-[11.5px] sm:text-xs font-bold leading-tight">
-                {t.footerFolderKhanqah}
-              </span>
-              <span className="text-[9.5px] text-emerald-100/75 leading-none">
-                {t.footerFolderKhanqahSub}
-              </span>
-            </button>
-
-            <button
-              type="button"
-              onClick={onOpenIntroSheikh}
-              className="khanqah-folder-card rounded-2xl bg-[var(--kdf-primary,#064326)] hover:opacity-95 text-white border border-[var(--kdf-accent,#d4af37)]/70 p-2.5 flex flex-col items-center justify-center text-center gap-1 shadow-sm cursor-pointer min-h-[78px]"
-            >
-              <div className="khanqah-folder-icon w-8 h-8 rounded-xl bg-white/10 border border-[#d4af37]/45 text-[#d4af37] flex items-center justify-center shrink-0">
-                <BookOpen className="w-4 h-4" />
-              </div>
-              <span className="text-[11.5px] sm:text-xs font-bold leading-tight">
-                {t.footerFolderSheikh}
-              </span>
-              <span className="text-[9.5px] text-emerald-100/75 leading-none">
-                {t.footerFolderSheikhSub}
-              </span>
-            </button>
-
+          {/* Compact Emerald-Green Box Folders */}
+          <div className="grid grid-cols-3 gap-2">
             <button
               type="button"
               onClick={onOpenTerms}
@@ -1513,7 +1481,7 @@ export const SmartDashboardHome: React.FC<Props> = ({
             <button
               type="button"
               onClick={onOpenContact}
-              className="khanqah-folder-card col-span-2 sm:col-span-1 rounded-2xl bg-[var(--kdf-primary,#064326)] hover:opacity-95 text-white border border-[var(--kdf-accent,#d4af37)]/70 p-2.5 flex flex-col items-center justify-center text-center gap-1 shadow-sm cursor-pointer min-h-[78px]"
+              className="khanqah-folder-card rounded-2xl bg-[var(--kdf-primary,#064326)] hover:opacity-95 text-white border border-[var(--kdf-accent,#d4af37)]/70 p-2.5 flex flex-col items-center justify-center text-center gap-1 shadow-sm cursor-pointer min-h-[78px]"
             >
               <div className="khanqah-folder-icon w-8 h-8 rounded-xl bg-white/10 border border-[#d4af37]/45 text-[#d4af37] flex items-center justify-center shrink-0">
                 <PhoneCall className="w-4 h-4" />
