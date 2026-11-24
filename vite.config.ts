@@ -6,7 +6,9 @@ import { VitePWA } from 'vite-plugin-pwa';
 
 export default defineConfig(() => {
   const repoName = process.env.GITHUB_REPOSITORY?.split('/')[1];
+  const isCapacitorBuild = process.env.VITE_CAPACITOR_BUILD === 'true';
   const isGitHubSubpath =
+    !isCapacitorBuild &&
     process.env.GITHUB_ACTIONS === 'true' &&
     !!repoName &&
     !repoName.endsWith('.github.io');

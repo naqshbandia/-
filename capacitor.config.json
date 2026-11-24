@@ -1,0 +1,8 @@
+{
+  "appId": "com.khanqahdarulfalah.app",
+  "appName": "Khanqah Darul Falah",
+  "webDir": "dist",
+  "android": {
+    "allowMixedContent": true
+  }
+}
