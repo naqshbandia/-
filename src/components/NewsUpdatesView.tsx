@@ -87,6 +87,16 @@ export const NewsUpdatesView: React.FC<Props> = ({
     return () => window.clearInterval(timer);
   }, [filteredPosters.length, fullscreenPoster]);
 
+  useEffect(() => {
+    if (!fullscreenPoster) return;
+    const handleBackIntercept = (e: Event) => {
+      e.preventDefault();
+      setFullscreenPoster(null);
+    };
+    window.addEventListener('kdf-back-intercept', handleBackIntercept);
+    return () => window.removeEventListener('kdf-back-intercept', handleBackIntercept);
+  }, [fullscreenPoster]);
+
   const currentPoster = filteredPosters[activeIndex] || null;
 
   const handleNext = () => {

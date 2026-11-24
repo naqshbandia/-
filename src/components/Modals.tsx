@@ -1,6 +1,7 @@
 import React from 'react';
-import { X, MessageCircle, Youtube, Facebook, ExternalLink, User, Sparkles, ShieldCheck, FileText, HeartHandshake, Copy, Check, Globe, Upload, Send, ArrowRight, CheckCircle2, AlertCircle, FileImage, FileDown, Share2 } from 'lucide-react';
-import { OFFICIAL_WHATSAPP_LINKS, WHATSAPP_DIRECT_CHAT_URL, BLOGGER_HOME_URL, getAppGiftWhatsAppShareUrl } from '../data/appConfig';
+import { X, MessageCircle, Youtube, Facebook, ExternalLink, Sparkles, ShieldCheck, FileText, HeartHandshake, Copy, Check, Globe, Upload, Send, ArrowRight, CheckCircle2, AlertCircle, FileImage, FileDown, Share2 } from 'lucide-react';
+import { OFFICIAL_WHATSAPP_LINKS, WHATSAPP_DIRECT_CHAT_URL, BLOGGER_HOME_URL, SHEIKH_GLASS_BANNER_URL, getAppGiftWhatsAppShareUrl } from '../data/appConfig';
+import khanqahLuxuryLogoImg from '../assets/images/khanqah_luxury_logo_1795501565146.jpg';
 import { CombinedInstallStats } from '../utils/installStatsService';
 import { exportReceiptFile, shareOrDownloadReceiptFile } from '../utils/donationReceipt';
 import {
@@ -100,9 +101,50 @@ export const IntroKhanqahModal: React.FC<{ isOpen: boolean; onClose: () => void;
   return (
     <BaseModal isOpen={isOpen} onClose={onClose} title={t.modalKhanqahTitle} isDark={isDark} lang={lang}>
       <div className="space-y-4 font-lalezar text-base leading-relaxed">
-        <div className={`p-3 border border-[#b08d43]/40 rounded-xl text-center ${isDark ? 'bg-[#382618]/70' : 'bg-amber-100/60'}`}>
-          <p className="text-[#b08d43] text-2xl font-bold">بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ</p>
-          <p className="text-xs mt-1 font-sans opacity-70">KHANQAH DAR-UL-FALAH DIGITAL ISLAMIC CENTER</p>
+        {/* Royal Luxury Khanqah Crest Showcase */}
+        <div className="relative rounded-2xl p-[2.5px] bg-gradient-to-br from-[#d4af37] via-[#f7e7a9] to-[#9b7420] shadow-[0_14px_30px_-10px_rgba(6,67,38,0.5)]">
+          <div className={`relative rounded-[14px] overflow-hidden px-4 py-5 text-center ${
+            isDark
+              ? 'bg-gradient-to-b from-[#042414] via-[#073a21] to-[#041d10]'
+              : 'bg-gradient-to-b from-[#063c22] via-[#0a4f2d] to-[#052d19]'
+          }`}>
+            {/* Subtle top glass sheen & warm radial halo */}
+            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_35%,rgba(212,175,55,0.22),transparent_68%)]" />
+            <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-[#f7e7a9]/70 to-transparent" />
+
+            {/* Ornamental Gold Corner Brackets */}
+            <span className="pointer-events-none absolute top-2.5 right-2.5 w-4 h-4 border-t-2 border-r-2 border-[#d4af37]/80 rounded-tr-sm" />
+            <span className="pointer-events-none absolute top-2.5 left-2.5 w-4 h-4 border-t-2 border-l-2 border-[#d4af37]/80 rounded-tl-sm" />
+            <span className="pointer-events-none absolute bottom-2.5 right-2.5 w-4 h-4 border-b-2 border-r-2 border-[#d4af37]/80 rounded-br-sm" />
+            <span className="pointer-events-none absolute bottom-2.5 left-2.5 w-4 h-4 border-b-2 border-l-2 border-[#d4af37]/80 rounded-bl-sm" />
+
+            {/* Medallion Logo Frame */}
+            <div className="relative mx-auto w-28 h-28 sm:w-32 sm:h-32 rounded-full p-[3px] bg-gradient-to-br from-[#f7e7a9] via-[#d4af37] to-[#8a6518] shadow-[0_0_28px_rgba(212,175,55,0.38)]">
+              <div className="w-full h-full rounded-full p-1 bg-[#042113] border border-[#f7e7a9]/40">
+                <img
+                  src={khanqahLuxuryLogoImg}
+                  alt={t.appName}
+                  referrerPolicy="no-referrer"
+                  decoding="async"
+                  className="w-full h-full rounded-full object-cover"
+                />
+              </div>
+            </div>
+
+            <div className="relative mt-3.5 space-y-1">
+              <p className="text-[#f3d97d] text-xl sm:text-2xl font-bold tracking-wide drop-shadow-xs">
+                بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ
+              </p>
+              <div className="flex items-center justify-center gap-2 pt-0.5">
+                <span className="h-px w-8 bg-gradient-to-r from-transparent to-[#d4af37]/80" />
+                <span className="text-white text-lg sm:text-xl font-bold">خانقاہ دارالفلاح</span>
+                <span className="h-px w-8 bg-gradient-to-l from-transparent to-[#d4af37]/80" />
+              </div>
+              <p className="text-[10px] sm:text-[11px] font-sans tracking-[0.18em] uppercase text-[#d4af37]/90">
+                KHANQAH DAR-UL-FALAH DIGITAL ISLAMIC CENTER
+              </p>
+            </div>
+          </div>
         </div>
 
         {lang === 'ps' ? (
@@ -787,15 +829,42 @@ export const DonationModal: React.FC<{
 // 2. شیخ حضرت مولانا محمد جمشید صاحب نقشبندی مجددی دامت برکاتہم کا تعارف
 export const IntroSheikhModal: React.FC<{ isOpen: boolean; onClose: () => void; isDark?: boolean; lang?: AppLanguage }> = ({ isOpen, onClose, isDark = true, lang = DEFAULT_LANGUAGE }) => {
   const t = UI_STRINGS[lang];
+  const [bannerError, setBannerError] = React.useState(false);
+
   return (
     <BaseModal isOpen={isOpen} onClose={onClose} title={t.modalSheikhTitle} isDark={isDark} lang={lang}>
       <div className="space-y-4 font-lalezar text-base leading-relaxed">
-        <div className={`text-center p-3 border border-[#b08d43]/50 rounded-xl ${isDark ? 'bg-[#382618]' : 'bg-amber-100/70'}`}>
-          <User className="w-10 h-10 text-[#b08d43] mx-auto mb-1" />
-          <h3 className="text-xl font-bold">
-            {t.sheikhFullTitle}
-          </h3>
-          <p className="text-xs text-[#b08d43] font-sans">دامت برکاتہم العالیہ</p>
+        {/* Royal Luxury Gallery Frame housing the intact crystal-glass calligraphy PNG */}
+        <div className="relative rounded-2xl p-[3px] bg-gradient-to-br from-[#d4af37] via-[#f7e7a9] to-[#9b7420] shadow-[0_14px_32px_-10px_rgba(6,67,38,0.55)]">
+          <div className="relative rounded-[13px] overflow-hidden bg-gradient-to-b from-[#042414] via-[#073b22] to-[#041e11] p-3 sm:p-4">
+            {/* Ambient radial gold glow & top hairline highlight */}
+            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_45%,rgba(212,175,55,0.2),transparent_72%)]" />
+            <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-[#f7e7a9]/75 to-transparent" />
+
+            {/* Ornamental Gold Corner Brackets */}
+            <span className="pointer-events-none absolute top-2 right-2 w-3.5 h-3.5 border-t-2 border-r-2 border-[#d4af37]/85 rounded-tr-sm" />
+            <span className="pointer-events-none absolute top-2 left-2 w-3.5 h-3.5 border-t-2 border-l-2 border-[#d4af37]/85 rounded-tl-sm" />
+            <span className="pointer-events-none absolute bottom-2 right-2 w-3.5 h-3.5 border-b-2 border-r-2 border-[#d4af37]/85 rounded-br-sm" />
+            <span className="pointer-events-none absolute bottom-2 left-2 w-3.5 h-3.5 border-b-2 border-l-2 border-[#d4af37]/85 rounded-bl-sm" />
+
+            {!bannerError ? (
+              <div className="relative rounded-xl p-[2px] bg-gradient-to-r from-[#b08d43] via-[#f6e29b] to-[#b08d43] shadow-lg">
+                <div className="rounded-[10px] overflow-hidden bg-gradient-to-b from-[#f8fbf9] to-[#edf4f0] p-1.5 sm:p-2">
+                  <img
+                    src={SHEIKH_GLASS_BANNER_URL}
+                    alt={t.sheikhFullTitle}
+                    decoding="async"
+                    onError={() => setBannerError(true)}
+                    className="w-full max-h-40 sm:max-h-44 object-contain mx-auto block"
+                  />
+                </div>
+              </div>
+            ) : (
+              <div className="py-4 px-3 text-center text-[#f7e7a9] font-bold text-lg">
+                {t.sheikhFullTitle}
+              </div>
+            )}
+          </div>
         </div>
 
         {lang === 'ps' ? (
@@ -1360,5 +1429,102 @@ export const PrivacyPolicyModal: React.FC<{ isOpen: boolean; onClose: () => void
     </BaseModal>
   );
 };
+
+// 13. ایپ سے باہر نکلنے یا ہوم پیج پر جانے کی تصدیق (Double Back Press Exit Choice)
+export const ExitAppConfirmModal: React.FC<{
+  isOpen: boolean;
+  onStayHome: () => void;
+  onConfirmExit: () => void;
+  isDark?: boolean;
+  lang?: AppLanguage;
+}> = ({ isOpen, onStayHome, onConfirmExit, isDark = true, lang = DEFAULT_LANGUAGE }) => {
+  if (!isOpen) return null;
+  const dir = getDir(lang);
+
+  const copy =
+    lang === 'ps'
+      ? {
+          title: 'له اپلیکیشن څخه ووځئ؟',
+          desc: 'آیا غواړئ د خانقاه دارالفلاح کور پاڼې (هوم) ته ولاړ شئ او که اپلیکیشن بند کړئ؟',
+          homeBtn: 'هوم پاڼې ته لاړ شئ',
+          exitBtn: 'ایپ بند کړئ (Exit)',
+        }
+      : lang === 'ar'
+      ? {
+          title: 'الخروج من التطبيق؟',
+          desc: 'هل ترغب في العودة إلى الصفحة الرئيسية أم الخروج من تطبيق خانقاه دار الفلاح؟',
+          homeBtn: 'الذهاب إلى الرئيسية',
+          exitBtn: 'خروج من التطبيق',
+        }
+      : lang === 'en'
+      ? {
+          title: 'Exit Application?',
+          desc: 'Would you like to go to the Khanqah Darul Falah Home Page or exit the app?',
+          homeBtn: 'Go to Home Page',
+          exitBtn: 'Exit App',
+        }
+      : {
+          title: 'ایپ سے باہر نکلیں یا ہوم پر جائیں؟',
+          desc: 'کیا آپ خانقاہ دارالفلاح کے ہوم پیج پر جانا چاہتے ہیں یا ایپ سے باہر نکلنا چاہتے ہیں؟',
+          homeBtn: 'ہوم پیج پر جائیں',
+          exitBtn: 'ایپ سے باہر نکلیں (Exit)',
+        };
+
+  return (
+    <div
+      className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/75 backdrop-blur-xs animate-in fade-in duration-150"
+      dir={dir}
+      onClick={onStayHome}
+    >
+      <div
+        className={`w-full max-w-sm rounded-2xl border-2 border-[#d4af37] shadow-2xl overflow-hidden transition-colors ${
+          isDark ? 'bg-[#0b2015] text-emerald-50' : 'bg-white text-[#11261b]'
+        }`}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div
+          className={`px-4 py-3 border-b border-[#d4af37]/35 flex items-center justify-between ${
+            isDark ? 'bg-[#062e1b]' : 'bg-[#ebf2ee]'
+          }`}
+        >
+          <h3 className="text-base font-extrabold font-lalezar text-[#064326] dark:text-[#d4af37]">
+            {copy.title}
+          </h3>
+          <button
+            type="button"
+            onClick={onStayHome}
+            className="p-1 rounded-lg text-[#b08d43] hover:bg-[#d4af37]/20 transition-colors cursor-pointer"
+            aria-label="Close"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        <div className="p-4 space-y-4 text-center">
+          <p className="text-sm font-medium leading-relaxed opacity-90">{copy.desc}</p>
+
+          <div className="grid grid-cols-2 gap-2.5 pt-1">
+            <button
+              type="button"
+              onClick={onStayHome}
+              className="py-2.5 px-3 rounded-xl bg-[#064326] hover:bg-[#095c34] text-white text-xs font-extrabold border border-[#d4af37]/70 shadow-sm transition-all active:scale-95 cursor-pointer"
+            >
+              {copy.homeBtn}
+            </button>
+
+            <button
+              type="button"
+              onClick={onConfirmExit}
+              className="py-2.5 px-3 rounded-xl bg-rose-700 hover:bg-rose-800 text-white text-xs font-extrabold border border-rose-400/50 shadow-sm transition-all active:scale-95 cursor-pointer"
+            >
+              {copy.exitBtn}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 
 

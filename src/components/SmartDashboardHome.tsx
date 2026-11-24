@@ -496,32 +496,100 @@ export const SmartDashboardHome: React.FC<Props> = ({
       dir={dir}
     >
       <div className="max-w-5xl mx-auto px-3 sm:px-5 py-3 space-y-3">
-        {/* 1. Top Sheikh Title Calligraphy Banner (Glass Crystal Card PNG Showcase) */}
+        {/* 1. Top Sheikh Title Calligraphy Banner (Luxury Emerald & Gold Stepped Bezel around intact Glass PNG) */}
+        <section className="relative rounded-3xl p-[3px] bg-gradient-to-br from-[#d4af37] via-[#f7e7a9] to-[#9b7420] shadow-[0_14px_32px_-12px_rgba(6,67,38,0.5)]">
+          <div
+            className={`relative rounded-[21px] overflow-hidden p-2.5 sm:p-3.5 transition-colors ${
+              isDark
+                ? 'bg-gradient-to-b from-[#042414] via-[#073b22] to-[#041e11]'
+                : 'bg-gradient-to-b from-[#063c22] via-[#0a4d2c] to-[#052d19]'
+            }`}
+          >
+            {/* Subtle radial gold glow & top hairline highlight */}
+            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_45%,rgba(212,175,55,0.2),transparent_72%)]" />
+            <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-[#f7e7a9]/70 to-transparent" />
+
+            {/* Ornamental Gold Corner Brackets */}
+            <span className="pointer-events-none absolute top-2 right-2.5 w-3.5 h-3.5 border-t-2 border-r-2 border-[#d4af37]/80 rounded-tr-sm" />
+            <span className="pointer-events-none absolute top-2 left-2.5 w-3.5 h-3.5 border-t-2 border-l-2 border-[#d4af37]/80 rounded-tl-sm" />
+            <span className="pointer-events-none absolute bottom-2 right-2.5 w-3.5 h-3.5 border-b-2 border-r-2 border-[#d4af37]/80 rounded-br-sm" />
+            <span className="pointer-events-none absolute bottom-2 left-2.5 w-3.5 h-3.5 border-b-2 border-l-2 border-[#d4af37]/80 rounded-bl-sm" />
+
+            {!glassBannerError ? (
+              <div className="relative mx-auto max-w-2xl rounded-2xl p-[2px] bg-gradient-to-r from-[#b08d43] via-[#f6e29b] to-[#b08d43] shadow-lg">
+                <div className="rounded-[14px] overflow-hidden bg-gradient-to-b from-[#f8fbf9] to-[#edf4f0] px-2.5 py-2 sm:px-4 sm:py-2.5 flex items-center justify-center">
+                  <img
+                    src={SHEIKH_GLASS_BANNER_URL}
+                    alt={t.sheikhFullTitle}
+                    decoding="async"
+                    onError={() => setGlassBannerError(true)}
+                    className="max-h-36 sm:max-h-44 md:max-h-48 w-full object-contain mx-auto drop-shadow-xs"
+                  />
+                </div>
+              </div>
+            ) : (
+              <div className="py-5 px-4 text-center text-white">
+                <p className="text-lg sm:text-xl font-bold text-[#f7e7a9]">
+                  {t.appName} ({t.appSubtitle})
+                </p>
+                <p className="text-xs sm:text-sm text-emerald-100 mt-1">
+                  {t.sheikhFullTitle}
+                </p>
+              </div>
+            )}
+          </div>
+        </section>
+
+        {/* 1B. Quick-Access Royal Buttons directly below Top Logo: تعارفِ خانقاہ & تعارفِ شیخ */}
         <section
-          className={`rounded-3xl border-2 border-[#d4af37]/80 overflow-hidden shadow-md transition-colors ${
-            isDark ? 'bg-[#0c2317]' : 'bg-white'
-          }`}
+          aria-label={`${t.footerFolderKhanqah} / ${t.footerFolderSheikh}`}
+          className="grid grid-cols-2 gap-2.5"
         >
-          {!glassBannerError ? (
-            <div className="w-full flex items-center justify-center bg-gradient-to-l from-[#064326]/10 via-transparent to-[#064326]/10 px-4 py-3 sm:py-4">
-              <img
-                src={SHEIKH_GLASS_BANNER_URL}
-                alt={t.sheikhFullTitle}
-                decoding="async"
-                onError={() => setGlassBannerError(true)}
-                className="max-h-36 sm:max-h-44 md:max-h-48 w-full max-w-2xl object-contain mx-auto drop-shadow-sm"
-              />
+          <button
+            type="button"
+            onClick={onOpenIntroKhanqah}
+            className={`group relative overflow-hidden rounded-2xl border-2 border-[#d4af37]/85 px-3 py-2.5 flex items-center gap-2.5 shadow-sm transition-all active:scale-[0.98] cursor-pointer ${
+              isDark
+                ? 'bg-gradient-to-br from-[#07361f] via-[#0a4729] to-[#052414] text-white hover:border-[#f7e7a9]'
+                : 'bg-gradient-to-br from-[#064326] via-[#095530] to-[#04321c] text-white hover:border-[#f7e7a9]'
+            }`}
+          >
+            <span className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-[#f7e7a9]/60 to-transparent" />
+            <div className="w-9 h-9 rounded-xl bg-white/10 border border-[#d4af37]/60 text-[#f3d97d] flex items-center justify-center shrink-0 shadow-xs group-hover:scale-105 transition-transform">
+              <Landmark className="w-4 h-4" />
             </div>
-          ) : (
-            <div className="py-5 px-4 text-center bg-[#064326] text-white">
-              <p className="text-lg sm:text-xl font-bold text-[#d4af37]">
-                {t.appName} ({t.appSubtitle})
-              </p>
-              <p className="text-xs sm:text-sm text-emerald-100 mt-1">
-                {t.sheikhFullTitle}
-              </p>
+            <div className="min-w-0 text-start">
+              <div className="text-xs sm:text-sm font-extrabold leading-tight truncate text-[#fef9e7]">
+                {t.footerFolderKhanqah}
+              </div>
+              <div className="text-[10px] text-[#d4af37] font-medium truncate mt-0.5">
+                {t.footerFolderKhanqahSub}
+              </div>
             </div>
-          )}
+          </button>
+
+          <button
+            type="button"
+            onClick={onOpenIntroSheikh}
+            className={`group relative overflow-hidden rounded-2xl border-2 border-[#d4af37]/85 px-3 py-2.5 flex items-center gap-2.5 shadow-sm transition-all active:scale-[0.98] cursor-pointer ${
+              isDark
+                ? 'bg-gradient-to-br from-[#07361f] via-[#0a4729] to-[#052414] text-white hover:border-[#f7e7a9]'
+                : 'bg-gradient-to-br from-[#064326] via-[#095530] to-[#04321c] text-white hover:border-[#f7e7a9]'
+            }`}
+          >
+            <span className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-[#f7e7a9]/60 to-transparent" />
+            <div className="w-9 h-9 rounded-xl bg-white/10 border border-[#d4af37]/60 text-[#f3d97d] flex items-center justify-center shrink-0 shadow-xs group-hover:scale-105 transition-transform">
+              <BookOpen className="w-4 h-4" />
+            </div>
+            <div className="min-w-0 text-start">
+              <div className="text-xs sm:text-sm font-extrabold leading-tight truncate text-[#fef9e7]">
+                {t.footerFolderSheikh}
+              </div>
+              <div className="text-[10px] text-[#d4af37] font-medium truncate mt-0.5">
+                {t.footerFolderSheikhSub}
+              </div>
+            </div>
+          </button>
         </section>
 
         {/* 2. Single-Line Urdu Scrolling Ticker Bar (Synced from GitHub khanqah-message.html) */}

@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Header } from './components/Header';
 import { SmartSearchBar } from './components/SmartSearchBar';
 import { HamburgerDrawer } from './components/HamburgerDrawer';
@@ -22,6 +22,7 @@ import {
   TermsModal,
   PrivacyPolicyModal,
   DonationModal,
+  ExitAppConfirmModal,
 } from './components/Modals';
 import { AutoSilentModal } from './components/AutoSilentModal';
 import { loadCachedKhanqahSchedule } from './utils/khanqahScheduleService';
@@ -225,6 +226,7 @@ function AppContent() {
   const [isPrivacyOpen, setIsPrivacyOpen] = useState(false);
   const [isDonationOpen, setIsDonationOpen] = useState(false);
   const [isAutoSilentOpen, setIsAutoSilentOpen] = useState(false);
+  const [isExitConfirmOpen, setIsExitConfirmOpen] = useState(false);
 
   const cachedPrayerData = React.useMemo<PrayerCache | null>(() => {
     try {
@@ -267,12 +269,12 @@ function AppContent() {
     showNotification(UI_STRINGS[nextLang].toastLangChanged);
   };
 
-  const showNotification = (msg: string) => {
+  const showNotification = useCallback((msg: string) => {
     setToastMessage(msg);
     setTimeout(() => {
       setToastMessage(null);
     }, 4500);
-  };
+  }, []);
 
   // Keyboard shortcut: Escape closes search or menu
   useEffect(() => {
@@ -285,6 +287,176 @@ function AppContent() {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
+
+  // Mobile Hardware / Gesture Back-Button Navigation:
+  // 1) Inside any folder, book reader, poster lightbox, modal, drawer, or search -> returns cleanly toward Home Page instead of exiting.
+  // 2) On Home Page -> 1st Back press warns "press again", 2nd Back press shows the Home-or-Exit choice dialog.
+  const isExitingRef = useRef(false);
+  const lastHomeBackPressRef = useRef(0);
+  const backNavStateRef = useRef({
+    activeView,
+    isMenuOpen,
+    isSearchOpen,
+    isExitConfirmOpen,
+    hasAnyModalOpen: false,
+    lang,
+  });
+
+  const hasAnyModalOpen =
+    isIntroKhanqahOpen ||
+    isIntroSheikhOpen ||
+    isContactOpen ||
+    isAboutOpen ||
+    isWhatsAppGroupsOpen ||
+    isTermsOpen ||
+    isPrivacyOpen ||
+    isDonationOpen ||
+    isAutoSilentOpen;
+
+  backNavStateRef.current = {
+    activeView,
+    isMenuOpen,
+    isSearchOpen,
+    isExitConfirmOpen,
+    hasAnyModalOpen,
+    lang,
+  };
+
+  const armBackGuard = useCallback(() => {
+    if (isExitingRef.current) return;
+    try {
+      if (!window.history.state?.kdfAppTrap) {
+        window.history.pushState({ kdfAppTrap: true }, '');
+      }
+    } catch {
+      // Ignore History API restrictions
+    }
+  }, []);
+
+  // Ensure guard entry is armed whenever user navigates or interacts
+  useEffect(() => {
+    armBackGuard();
+  }, [activeView, hasAnyModalOpen, isMenuOpen, isSearchOpen, isExitConfirmOpen, armBackGuard]);
+
+  useEffect(() => {
+    const handleUserActivation = () => {
+      armBackGuard();
+    };
+    window.addEventListener('pointerdown', handleUserActivation, { passive: true });
+    return () => window.removeEventListener('pointerdown', handleUserActivation);
+  }, [armBackGuard]);
+
+  useEffect(() => {
+    const handlePopState = () => {
+      if (isExitingRef.current) return;
+
+      const state = backNavStateRef.current;
+
+      // 1. If exit dialog is open, dismiss back to Home
+      if (state.isExitConfirmOpen) {
+        setIsExitConfirmOpen(false);
+        armBackGuard();
+        return;
+      }
+
+      // 2. If any info/donation/auto-silent modal is open, close it cleanly
+      if (state.hasAnyModalOpen) {
+        setIsIntroKhanqahOpen(false);
+        setIsIntroSheikhOpen(false);
+        setIsContactOpen(false);
+        setIsAboutOpen(false);
+        setIsWhatsAppGroupsOpen(false);
+        setIsTermsOpen(false);
+        setIsPrivacyOpen(false);
+        setIsDonationOpen(false);
+        setIsAutoSilentOpen(false);
+        armBackGuard();
+        return;
+      }
+
+      // 3. If drawer or search bar is open, close them
+      if (state.isMenuOpen || state.isSearchOpen) {
+        setIsMenuOpen(false);
+        setIsSearchOpen(false);
+        armBackGuard();
+        return;
+      }
+
+      // 4. Let nested views (e.g. open book PDF reader or fullscreen poster) handle back first
+      const backEvent = new CustomEvent('kdf-back-intercept', { cancelable: true });
+      const notCancelled = window.dispatchEvent(backEvent);
+      if (!notCancelled) {
+        armBackGuard();
+        return;
+      }
+
+      // 5. Inside any folder / sub-page -> return straight back to Home Page
+      if (state.activeView !== 'dashboard') {
+        setActiveView('dashboard');
+        armBackGuard();
+        return;
+      }
+
+      // 6. Already on Home Page -> require double Back press, then show Exit vs Home choice
+      const now = Date.now();
+      if (now - lastHomeBackPressRef.current <= 3500) {
+        lastHomeBackPressRef.current = 0;
+        setIsExitConfirmOpen(true);
+      } else {
+        lastHomeBackPressRef.current = now;
+        const hint =
+          state.lang === 'ps'
+            ? 'د وتلو لپاره د بېرته تلو (Back) تڼۍ یو ځل بیا فشار ورکړئ'
+            : state.lang === 'ar'
+            ? 'اضغط زر الرجوع مرة أخرى للخروج أو العودة للرئيسية'
+            : state.lang === 'en'
+            ? 'Press Back again to exit or confirm Home'
+            : 'ایپ سے باہر نکلنے کے لیے بیک بٹن دوبارہ دبائیں';
+        showNotification(hint);
+      }
+      armBackGuard();
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, [armBackGuard, showNotification]);
+
+  const handleStayHomeFromExit = () => {
+    setIsExitConfirmOpen(false);
+    setActiveView('dashboard');
+    armBackGuard();
+  };
+
+  const handleConfirmExitApp = () => {
+    isExitingRef.current = true;
+    setIsExitConfirmOpen(false);
+    setCurrentBayan(null);
+    try {
+      const bridgeWin = window as unknown as {
+        Android?: { exitApp?: () => void };
+        ReactNativeWebView?: { postMessage?: (msg: string) => void };
+      };
+      bridgeWin.Android?.exitApp?.();
+      bridgeWin.ReactNativeWebView?.postMessage?.(JSON.stringify({ type: 'EXIT_APP' }));
+    } catch {
+      // Ignore native bridge absence
+    }
+    window.close();
+    if (window.history.length > 2) {
+      window.history.go(-2);
+    } else if (window.history.length > 1) {
+      window.history.back();
+    }
+    window.setTimeout(() => {
+      isExitingRef.current = false;
+      armBackGuard();
+      showNotification(
+        lang === 'en'
+          ? 'Please use your device Home button to minimize or close this tab.'
+          : 'ایپ بند کرنے کے لیے اپنے موبائل کا ہوم بٹن یا بیک بٹن استعمال کریں۔'
+      );
+    }, 600);
+  };
 
   const handleNavigateUrl = (url: string) => {
     setCurrentUrl(url);
@@ -569,6 +741,14 @@ function AppContent() {
         officialSchedule={cachedKhanqahSchedule}
         prayerData={cachedPrayerData}
         onNotify={showNotification}
+      />
+
+      <ExitAppConfirmModal
+        isOpen={isExitConfirmOpen}
+        onStayHome={handleStayHomeFromExit}
+        onConfirmExit={handleConfirmExitApp}
+        isDark={isDark}
+        lang={lang}
       />
     </div>
   );

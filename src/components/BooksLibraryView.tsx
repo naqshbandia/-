@@ -78,6 +78,16 @@ export const BooksLibraryView: React.FC<Props> = ({
     }
   }, [initialBookId, books, onClearInitialBook]);
 
+  useEffect(() => {
+    if (!readingBook) return;
+    const handleBackIntercept = (e: Event) => {
+      e.preventDefault();
+      setReadingBook(null);
+    };
+    window.addEventListener('kdf-back-intercept', handleBackIntercept);
+    return () => window.removeEventListener('kdf-back-intercept', handleBackIntercept);
+  }, [readingBook]);
+
   const bookCollections = useMemo(() => {
     const map = new Map<string, { id: string; title: string; count: number }>();
     for (const b of books) {
