@@ -26,8 +26,16 @@ jobs:
           distribution: "temurin"
           java-version: "17"
 
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
+      - name: Configure built-in Android SDK
+        run: |
+          SDK_ROOT="${ANDROID_HOME:-/usr/local/lib/android/sdk}"
+          echo "ANDROID_HOME=$SDK_ROOT" >> $GITHUB_ENV
+          echo "ANDROID_SDK_ROOT=$SDK_ROOT" >> $GITHUB_ENV
+          SDKMANAGER=$(find "$SDK_ROOT/cmdline-tools" -name sdkmanager 2>/dev/null | head -n 1 || true)
+          if [ -n "$SDKMANAGER" ]; then
+            yes | "$SDKMANAGER" --licenses >/dev/null 2>&1 || true
+            "$SDKMANAGER" "platforms;android-34" "build-tools;34.0.0" || true
+          fi
 
       - name: Ensure ImageMagick for launcher icon sizing
         run: |
@@ -36,7 +44,7 @@ jobs:
           fi
 
       - name: Install dependencies
-        run: npm install
+        run: npm install --legacy-peer-deps
 
       - name: Build web bundle for Android APK
         env:
@@ -44,7 +52,7 @@ jobs:
         run: npm run build
 
       - name: Install Capacitor CLI & Android runtime
-        run: npm install --no-save @capacitor/core@6 @capacitor/cli@6 @capacitor/android@6
+        run: npm install --no-save --legacy-peer-deps @capacitor/core@6 @capacitor/cli@6 @capacitor/android@6
 
       - name: Generate and configure Native Android project
         run: |
@@ -57,7 +65,7 @@ jobs:
         run: |
           cd android
           chmod +x gradlew
-          ./gradlew assembleDebug
+          ./gradlew assembleDebug --no-daemon
           cp app/build/outputs/apk/debug/app-debug.apk ../Khanqah-Darul-Falah.apk
 
       - name: Upload APK Workflow Artifact
@@ -77,5 +85,5 @@ jobs:
           if gh release view "$TAG" >/dev/null 2>&1; then
             gh release upload "$TAG" Khanqah-Darul-Falah.apk --clobber
           else
-            gh release create "$TAG" Khanqah-Darul-Falah.apk --title "$TITLE" --notes "$NOTES"
+            gh release create "$TAG" Khanqah-Darul-Falah.apk --target "${{ github.ref_name }}" --title "$TITLE" --notes "$NOTES"
           fi
