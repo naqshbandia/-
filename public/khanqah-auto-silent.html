@@ -446,145 +446,9 @@
         مسجد میں نماز کے دوران موبائل کی گھنٹی بجنے سے بچنے کے لیے <b>صرف ایک بار</b> اپنے موبائل میں نیچے دکھائے گئے طریقے کے مطابق شیڈول بنا لیں — روزانہ نماز کے وقت موبائل خودکار طور پر سائلنٹ ہو جایا کرے گا!
       </div>
 
-      <!-- Step Tabs (1 - 2 - 3 - 4) -->
-      <div class="steps-nav">
-        <button type="button" class="step-tab active" onclick="goSlide(0)">1️⃣ سیٹنگز</button>
-        <button type="button" class="step-tab" onclick="goSlide(1)">2️⃣ شیڈول</button>
-        <button type="button" class="step-tab" onclick="goSlide(2)">3️⃣ 6 نمازیں</button>
-        <button type="button" class="step-tab" onclick="goSlide(3)">4️⃣ محفوظ</button>
-      </div>
-
-      <!-- Swipeable / Sliding Phone Screenshots Carousel -->
-      <div class="slider-wrap" id="sliderWrap">
-        <div class="slides-track" id="slidesTrack">
-          <!-- Slide 1 -->
-          <div class="slide">
-            <div class="slide-title-row">
-              <h3 class="slide-heading">مرحلہ 1: Do Not Disturb کھولیں</h3>
-              <span class="slide-num">تصویر 1 / 4</span>
-            </div>
-            <div class="phone-frame">
-              <div class="phone-notch"></div>
-              <div class="phone-screen">
-                <div class="phone-bar"><span>05:30 AM</span><span>📶 🔋 94%</span></div>
-                <div class="phone-app-title"><span>⚙ Settings › Sound</span></div>
-                <div class="mock-row">
-                  <span>🔊 Ringtone &amp; Volume</span>
-                  <span class="mock-sub">›</span>
-                </div>
-                <div class="mock-row highlight">
-                  <div>
-                    <strong>🌙 Do Not Disturb (DND)</strong>
-                    <span class="mock-sub">خودکار خاموشی و شیڈول کی سیٹنگ</span>
-                  </div>
-                  <span>👈</span>
-                </div>
-                <div class="mock-row">
-                  <div>
-                    <strong>📅 Schedules / Modes</strong>
-                    <span class="mock-sub">وقت مقرر کریں</span>
-                  </div>
-                  <span>›</span>
-                </div>
-              </div>
-            </div>
-            <p class="slide-desc">
-              <b>طریقہ:</b> اپنے موبائل کی <b>Settings (سیٹنگز)</b> میں جا کر <b>Sound &amp; Vibration</b> کھولیں اور وہاں <b>Do Not Disturb (ڈو ناٹ ڈسٹرب)</b> پر کلک کریں۔
-            </p>
-          </div>
-
-          <!-- Slide 2 -->
-          <div class="slide">
-            <div class="slide-title-row">
-              <h3 class="slide-heading">مرحلہ 2: Start و End ٹائم سیٹ کریں</h3>
-              <span class="slide-num">تصویر 2 / 4</span>
-            </div>
-            <div class="phone-frame">
-              <div class="phone-notch"></div>
-              <div class="phone-screen">
-                <div class="phone-bar"><span>Schedules</span><span>Auto Start ✓</span></div>
-                <div class="phone-app-title"><span>+ Add Prayer Schedule</span></div>
-                <div class="mock-row highlight">
-                  <div>
-                    <strong>🕌 نام: نمازِ فجر (Fajr)</strong>
-                    <span class="mock-sub" id="slide2FajrTimes">Start: 05:35 AM &nbsp;|&nbsp; End: 06:20 AM</span>
-                  </div>
-                  <div class="toggle-pill"></div>
-                </div>
-                <div class="day-pills">
-                  <span class="day-pill">S</span>
-                  <span class="day-pill">M</span>
-                  <span class="day-pill">T</span>
-                  <span class="day-pill">W</span>
-                  <span class="day-pill">T</span>
-                  <span class="day-pill">F</span>
-                  <span class="day-pill">S</span>
-                </div>
-                <div class="save-btn-mock">✓ Save Schedule (روزانہ آن رہے گا)</div>
-              </div>
-            </div>
-            <p class="slide-desc">
-              <b>طریقہ:</b> <b>Schedules</b> میں جا کر <b>+ Add / Time</b> دبائیں، نماز کا نام لکھیں، <b>Start Time</b> اور <b>End Time</b> سیٹ کر کے تمام 7 دن (روزانہ) منتخب کریں اور <b>Save</b> کر دیں۔
-            </p>
-          </div>
-
-          <!-- Slide 3 -->
-          <div class="slide">
-            <div class="slide-title-row">
-              <h3 class="slide-heading">مرحلہ 3: 5 نمازوں اور جمعہ کا شیڈول</h3>
-              <span class="slide-num">تصویر 3 / 4</span>
-            </div>
-            <div class="phone-frame">
-              <div class="phone-notch"></div>
-              <div class="phone-screen">
-                <div class="phone-bar"><span>Active Prayer Schedules</span><span id="mockActiveCount">6 / 6 ON</span></div>
-                <div id="mockSchedulePreview"></div>
-              </div>
-            </div>
-            <p class="slide-desc">
-              <b>طریقہ:</b> بالکل اسی طرح اوپر دیے گئے نمونے کے مطابق <b>فجر، ظہر، عصر، مغرب، عشاء</b> (روزانہ) اور <b>جمعہ</b> (صرف جمعہ کے دن) کے 6 شیڈول بنا کر آن کر دیں۔
-            </p>
-          </div>
-
-          <!-- Slide 4 -->
-          <div class="slide">
-            <div class="slide-title-row">
-              <h3 class="slide-heading">مرحلہ 4: کالز میوٹ اور فائنل تصدیق</h3>
-              <span class="slide-num">تصویر 4 / 4</span>
-            </div>
-            <div class="phone-frame">
-              <div class="phone-notch"></div>
-              <div class="phone-screen">
-                <div class="phone-bar"><span>DND Behavior</span><span>Saved ✓</span></div>
-                <div class="phone-app-title"><span>🔕 Silence Settings</span></div>
-                <div class="mock-row highlight">
-                  <div>
-                    <strong>📵 Calls &amp; Messages</strong>
-                    <span class="mock-sub">Don't allow any calls (کالز کی گھنٹی بند)</span>
-                  </div>
-                  <div class="toggle-pill"></div>
-                </div>
-                <div class="mock-row">
-                  <div>
-                    <strong>🔔 Notifications &amp; Media</strong>
-                    <span class="mock-sub">Muted during prayer schedule</span>
-                  </div>
-                  <div class="toggle-pill"></div>
-                </div>
-                <div class="save-btn-mock">✨ مکمل! اب نمازوں میں موبائل خود سائلنٹ ہوگا</div>
-              </div>
-            </div>
-            <p class="slide-desc">
-              <b>آخری مرحلہ:</b> Do Not Disturb کے اندر <b>Calls / People</b> کو "None / Don't allow" پر رکھیں تاکہ عین جماعت میں کوئی کال آئے تب بھی گھنٹی نہ بجے۔
-            </p>
-          </div>
-        </div>
-
-        <div class="slider-controls">
-          <button type="button" class="ctrl-btn" id="prevBtn" onclick="manualPrevSlide()">◀ پچھلا</button>
-          <button type="button" class="ctrl-btn" id="autoPlayBtn" onclick="toggleAutoPlay()" style="background:#d4af37;color:#051a0f;">⏸ خودکار (1 / 4)</button>
-          <button type="button" class="ctrl-btn" id="nextBtn" onclick="manualNextSlide()">اگلا ▶</button>
-        </div>
+      <div class="planner-card" style="margin-bottom: 14px;">
+        <h2 style="text-align:center;color:#064326;font-size:20px;margin:0 0 12px;">🕌 تمام 6 نمازوں کے خودکار سائلنٹ اوقات</h2>
+        <div id="mockSchedulePreview"></div>
       </div>
 
       <!-- Action Card: JPG & A4 PDF Download + WhatsApp Share + Imam Note -->
@@ -667,22 +531,13 @@
 
     function renderMockPreview() {
       const container = document.getElementById('mockSchedulePreview');
-      const countEl = document.getElementById('mockActiveCount');
-      const fajrEl = document.getElementById('slide2FajrTimes');
-      const activeCount = schedule.filter((p) => p.enabled).length;
-      if (countEl) countEl.textContent = activeCount + ' / 6 ON';
-      if (fajrEl && schedule[0]) {
-        fajrEl.innerHTML = 'Start: ' + to12(schedule[0].start) + ' &nbsp;|&nbsp; End: ' + to12(schedule[0].end);
-      }
+      if (!container) return;
       container.innerHTML = schedule
         .map(
           (p) => `
-          <div class="mock-row" style="padding:5px 8px;margin-bottom:4px;opacity:${p.enabled ? 1 : 0.45}">
-            <div>
-              <strong style="font-size:11px;">${p.name}</strong>
-              <span class="mock-sub">${to12(p.start)} → ${to12(p.end)}</span>
-            </div>
-            <div class="toggle-pill" style="background:${p.enabled ? '#00e676' : '#475569'}"></div>
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 14px;margin-bottom:8px;border-radius:14px;border:1.5px solid rgba(6,67,38,0.22);background:#f6faf7;opacity:${p.enabled ? 1 : 0.5}">
+            <strong style="font-size:15px;color:#064326;">${p.name}</strong>
+            <span dir="ltr" style="font-size:14px;font-weight:800;color:#043920;">${p.enabled ? to12(p.start) + ' → ' + to12(p.end) : 'OFF'}</span>
           </div>
         `
         )
@@ -696,78 +551,16 @@
 
     function updateWhatsAppLink() {
       const lines = [
-        '🔕 *نماز آٹو سائلنٹ موڈ — صدقۂ جاریہ*',
+        '🔕 *نماز آٹو سائلنٹ موڈ — خانقاہ دارالفلاح ایپ (صدقۂ جاریہ)*',
         '',
-        'مسجد میں نماز کے دوران موبائل خودکار طور پر سائلنٹ کرنے کے لیے Settings > Sound > Do Not Disturb > Schedules میں درج ذیل اوقات سیٹ کر لیں:',
+        'مسجد میں نماز کے دوران موبائل کی گھنٹی سے بچنے کے لیے نیچے لنک سے ایپ انسٹال کریں اور ایپ کھول کر *"آٹو سائلنٹ موڈ"* میں اپنی نمازوں کے اوقات آن کر لیں:',
         '',
-        ...schedule
-          .filter((p) => p.enabled)
-          .map((p) => '• ' + p.name + ': ' + to12(p.start) + ' تا ' + to12(p.end)),
+        'https://archive.org/download/khanqah-darul-falah/Khanqah-Darul-Falah.apk',
         '',
         '📌 *اہم نوٹ:* اگر آپ کی مسجد کے امام صاحب کسی نماز کا وقت تبدیل فرمائیں تو آپ بھی اپنے موبائل کے شیڈول میں اس نماز کا وقت ضرور تبدیل کر لیں۔',
-        '',
-        '🤲 اللہ تعالیٰ ہمیں خشوع و خضوع کے ساتھ نماز ادا کرنے کی توفیق عطا فرمائے۔'
       ].join('\n');
       document.getElementById('waShareBtn').href = 'https://wa.me/?text=' + encodeURIComponent(lines);
     }
-
-    let isAutoPlaying = true;
-    let autoTimer = null;
-
-    function updateAutoPlayBtn() {
-      const btn = document.getElementById('autoPlayBtn');
-      if (!btn) return;
-      if (isAutoPlaying) {
-        btn.textContent = '⏸ خودکار (' + (currentSlide + 1) + ' / ' + totalSlides + ')';
-        btn.style.background = '#d4af37';
-        btn.style.color = '#051a0f';
-      } else {
-        btn.textContent = '▶ چلائیں (' + (currentSlide + 1) + ' / ' + totalSlides + ')';
-        btn.style.background = '#064326';
-        btn.style.color = '#ffffff';
-      }
-    }
-
-    function startAutoPlayTimer() {
-      if (autoTimer) clearInterval(autoTimer);
-      if (!isAutoPlaying) return;
-      autoTimer = setInterval(() => {
-        goSlide((currentSlide + 1) % totalSlides, true);
-      }, 4000);
-    }
-
-    function toggleAutoPlay() {
-      isAutoPlaying = !isAutoPlaying;
-      updateAutoPlayBtn();
-      if (isAutoPlaying) startAutoPlayTimer();
-      else if (autoTimer) clearInterval(autoTimer);
-    }
-
-    function goSlide(idx, fromAuto) {
-      if (!fromAuto) {
-        isAutoPlaying = false;
-        if (autoTimer) clearInterval(autoTimer);
-      }
-      currentSlide = ((idx % totalSlides) + totalSlides) % totalSlides;
-      document.getElementById('slidesTrack').style.transform = 'translateX(-' + currentSlide * 100 + '%)';
-      document.querySelectorAll('.step-tab').forEach((btn, i) => {
-        btn.classList.toggle('active', i === currentSlide);
-      });
-      updateAutoPlayBtn();
-    }
-    function manualNextSlide() { goSlide(currentSlide + 1, false); }
-    function manualPrevSlide() { goSlide(currentSlide - 1, false); }
-
-    let touchStartX = 0;
-    const sliderWrap = document.getElementById('sliderWrap');
-    sliderWrap.addEventListener('touchstart', (e) => {
-      touchStartX = e.changedTouches[0].screenX;
-    }, { passive: true });
-    sliderWrap.addEventListener('touchend', (e) => {
-      const diff = e.changedTouches[0].screenX - touchStartX;
-      if (diff < -40) manualNextSlide();
-      else if (diff > 40) manualPrevSlide();
-    }, { passive: true });
 
     function roundRect(ctx, x, y, w, h, r) {
       ctx.beginPath();
@@ -1038,8 +831,6 @@
     }
 
     initGuide();
-    goSlide(0, true);
-    startAutoPlayTimer();
   </script>
 </body>
 </html>

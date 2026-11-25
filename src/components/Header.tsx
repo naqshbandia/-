@@ -14,6 +14,7 @@ import {
   Globe,
   Check,
   ChevronDown,
+  RotateCw,
 } from 'lucide-react';
 import {
   AppLanguage,
@@ -35,6 +36,8 @@ interface Props {
   onGoHome?: () => void;
   lang?: AppLanguage;
   onChangeLang?: (lang: AppLanguage) => void;
+  onRefresh?: () => void;
+  isRefreshing?: boolean;
 }
 
 export const Header: React.FC<Props> = ({
@@ -48,6 +51,8 @@ export const Header: React.FC<Props> = ({
   onGoHome,
   lang = DEFAULT_LANGUAGE,
   onChangeLang,
+  onRefresh,
+  isRefreshing = false,
 }) => {
   const [isLangMenuOpen, setIsLangMenuOpen] = useState(false);
   const langMenuRef = useRef<HTMLDivElement>(null);
@@ -247,6 +252,23 @@ export const Header: React.FC<Props> = ({
               <Sun className="w-4 h-4 text-amber-500" />
             )}
           </button>
+
+          {onRefresh && (
+            <button
+              type="button"
+              onClick={onRefresh}
+              disabled={isRefreshing}
+              className={`min-w-[32px] min-h-[34px] sm:min-w-[36px] sm:min-h-[38px] rounded-lg transition-all active:scale-95 flex items-center justify-center cursor-pointer ${
+                isDark
+                  ? 'text-[#d4af37] hover:text-white hover:bg-[#d4af37]/15'
+                  : 'text-[#064326] hover:bg-emerald-50'
+              } ${isRefreshing ? 'opacity-70' : ''}`}
+              title={t.refreshBtn}
+              aria-label={t.refreshBtn}
+            >
+              <RotateCw className={`w-4 h-4 sm:w-[18px] sm:h-[18px] ${isRefreshing ? 'animate-spin' : ''}`} />
+            </button>
+          )}
 
           <button
             onClick={onToggleSearch}

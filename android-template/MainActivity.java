@@ -257,9 +257,11 @@ public class MainActivity extends BridgeActivity {
 
                         if (!alreadyOnLive || hasNewVersion) {
                             if (hasNewVersion) {
-                                wv.clearCache(false);
+                                wv.clearCache(true);
+                                wv.loadUrl(liveUrl + "?_kdf_ota=" + now);
+                            } else {
+                                wv.loadUrl(liveUrl);
                             }
-                            wv.loadUrl(liveUrl);
                         }
                     });
                 }
@@ -292,6 +294,26 @@ public class MainActivity extends BridgeActivity {
 
         @JavascriptInterface
         public void checkLiveUpdate() {
+            checkAndLoadLiveUpdate(true);
+        }
+
+        @JavascriptInterface
+        public void forceLiveRefresh() {
+            runOnUiThread(() -> {
+                SharedPreferences prefs = getSharedPreferences(OTA_PREFS_NAME, MODE_PRIVATE);
+                prefs.edit().remove(KEY_LAST_OTA_FINGERPRINT).apply();
+                WebView wv = MainActivity.this.bridge != null
+                    ? MainActivity.this.bridge.getWebView()
+                    : null;
+                if (wv != null) {
+                    wv.clearCache(true);
+                    if (isNetworkAvailable()) {
+                        wv.loadUrl(getLiveWebUrl() + "?_kdf_refresh=" + System.currentTimeMillis());
+                    } else {
+                        wv.reload();
+                    }
+                }
+            });
             checkAndLoadLiveUpdate(true);
         }
 

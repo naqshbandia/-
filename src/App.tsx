@@ -38,7 +38,7 @@ const AutoSilentModal = lazy(() =>
 );
 import { loadCachedKhanqahSchedule } from './utils/khanqahScheduleService';
 import { PRAYER_CACHE_KEY, PrayerCache } from './utils/prayerEngine';
-import { syncAutoSilentFromAppBoot } from './utils/nativeAutoSilent';
+import { getAndroidBridge, syncAutoSilentFromAppBoot } from './utils/nativeAutoSilent';
 import { BayanItem } from './data/bayanatData';
 import { 
   GOLD_LIBRARY_URL, 
@@ -547,6 +547,38 @@ function AppContent() {
     syncPosters();
   };
 
+  const handleHeaderRefresh = async () => {
+    showNotification('ایپ اور تازہ ترین اپڈیٹ ریفریش ہو رہا ہے...');
+    handleManualRefresh();
+
+    const bridge = getAndroidBridge();
+    if (bridge && typeof bridge.forceLiveRefresh === 'function') {
+      bridge.forceLiveRefresh();
+      return;
+    }
+    if (bridge && typeof bridge.checkLiveUpdate === 'function') {
+      bridge.checkLiveUpdate();
+    }
+
+    if (typeof navigator !== 'undefined' && navigator.onLine) {
+      try {
+        if ('serviceWorker' in navigator) {
+          const regs = await navigator.serviceWorker.getRegistrations();
+          await Promise.all(regs.map((r) => r.update().catch(() => undefined)));
+        }
+        if ('caches' in window) {
+          const keys = await window.caches.keys();
+          await Promise.all(keys.map((k) => window.caches.delete(k)));
+        }
+      } catch {
+        // Ignore cache cleanup errors
+      }
+      window.setTimeout(() => {
+        window.location.reload();
+      }, 450);
+    }
+  };
+
   const handleOpenLibraryFolder = (folderId = 'all') => {
     setSelectedLibraryFolderId(folderId);
     setActiveView('library');
@@ -575,6 +607,8 @@ function AppContent() {
         onGoHome={() => setActiveView('dashboard')}
         lang={lang}
         onChangeLang={handleChangeLanguage}
+        onRefresh={handleHeaderRefresh}
+        isRefreshing={isRefreshing || isSyncingArchive || isSyncingBooks || isSyncingPosters}
       />
 
       {/* PWA 1-Click Android App Install Banner */}

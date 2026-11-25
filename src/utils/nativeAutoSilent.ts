@@ -32,6 +32,8 @@ export const AUTO_SILENT_STORAGE_KEY = 'khanqah_auto_silent_user_config_v1';
 
 interface AndroidBridge {
   isNativeAndroid?: () => boolean;
+  checkLiveUpdate?: () => void;
+  forceLiveRefresh?: () => void;
   isDndPermissionGranted?: () => boolean;
   requestDndPermission?: () => void;
   hasExactAlarmPermission?: () => boolean;
