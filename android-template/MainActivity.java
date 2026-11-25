@@ -4,6 +4,7 @@ import android.app.DownloadManager;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.content.pm.PackageManager;
 import android.net.ConnectivityManager;
 import android.net.Network;
 import android.net.NetworkCapabilities;
@@ -26,16 +27,21 @@ import com.getcapacitor.BridgeActivity;
 
 import org.json.JSONObject;
 
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.nio.charset.StandardCharsets;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 public class MainActivity extends BridgeActivity {
 
     private static final String DEFAULT_LIVE_WEB_URL = "https://naqshbandia.github.io/-/";
+    private static final String LOCAL_BUNDLE_URL = "http://localhost/";
     private static final String OTA_PREFS_NAME = "kdf_ota_prefs";
     private static final String KEY_LAST_OTA_FINGERPRINT = "last_ota_fingerprint";
+    private static final String KEY_NOTIF_PERM_ASKED = "notif_perm_asked";
     private static final long OTA_CHECK_INTERVAL_MS = 10 * 60 * 1000L;
 
     private final ExecutorService otaExecutor = Executors.newSingleThreadExecutor();
@@ -130,8 +136,6 @@ public class MainActivity extends BridgeActivity {
                     }
                 }
             });
-
-            // Live update check runs in onStart() right after Capacitor initializes local bridge
         }
     }
 
@@ -139,7 +143,7 @@ public class MainActivity extends BridgeActivity {
     public void onStart() {
         super.onStart();
         if (this.bridge != null && this.bridge.getWebView() != null) {
-            this.bridge.getWebView().postDelayed(() -> checkAndLoadLiveUpdate(true), 350L);
+            this.bridge.getWebView().postDelayed(() -> checkAndLoadLiveUpdate(true, false), 350L);
         }
     }
 
@@ -148,25 +152,40 @@ public class MainActivity extends BridgeActivity {
         super.onResume();
         // Reconcile DND state (auto-exit if prayer ended while asleep) & re-arm alarms
         PrayerSilentScheduler.reconcileAndScheduleAll(this, false);
+        KhanqahNotificationHelper.ensureChannels(this);
+
         WebView wv = this.bridge != null ? this.bridge.getWebView() : null;
         if (wv != null) {
+            String curTitle = wv.getTitle();
+            String curUrl = wv.getUrl();
+            if ((curTitle != null && curTitle.contains("404"))
+                || (curTitle != null && curTitle.contains("Page not found"))) {
+                wv.loadUrl(LOCAL_BUNDLE_URL);
+            }
             wv.evaluateJavascript(
                 "window.dispatchEvent(new CustomEvent('kdf-native-resume'));",
                 null
             );
-            String curUrl = wv.getUrl();
             boolean onLive = curUrl != null && curUrl.startsWith(getLiveWebUrl());
-            checkAndLoadLiveUpdate(!onLive);
+            checkAndLoadLiveUpdate(!onLive, false);
         } else {
-            checkAndLoadLiveUpdate(false);
+            checkAndLoadLiveUpdate(false, false);
         }
-        KhanqahNotificationHelper.checkRemoteUpdatesAsync(this);
+        KhanqahNotificationHelper.checkRemoteUpdatesAsync(this, false);
     }
 
     @Override
     public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
         if (requestCode == REQ_CODE_POST_NOTIFICATIONS) {
+            boolean granted =
+                grantResults != null
+                    && grantResults.length > 0
+                    && grantResults[0] == PackageManager.PERMISSION_GRANTED;
+            if (granted) {
+                KhanqahNotificationHelper.ensureChannels(this);
+                KhanqahNotificationHelper.sendWelcomeNotificationOnce(this);
+            }
             if (this.bridge != null && this.bridge.getWebView() != null) {
                 this.bridge.getWebView().evaluateJavascript(
                     "window.dispatchEvent(new CustomEvent('kdf-native-resume'));",
@@ -179,11 +198,17 @@ public class MainActivity extends BridgeActivity {
     private void requestNotificationPermissionIfNeeded() {
         if (Build.VERSION.SDK_INT >= 33) {
             if (checkSelfPermission("android.permission.POST_NOTIFICATIONS")
-                != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+                != PackageManager.PERMISSION_GRANTED) {
+                getSharedPreferences(OTA_PREFS_NAME, MODE_PRIVATE)
+                    .edit()
+                    .putBoolean(KEY_NOTIF_PERM_ASKED, true)
+                    .apply();
                 requestPermissions(
                     new String[]{"android.permission.POST_NOTIFICATIONS"},
                     REQ_CODE_POST_NOTIFICATIONS
                 );
+            } else {
+                KhanqahNotificationHelper.sendWelcomeNotificationOnce(this);
             }
         }
     }
@@ -229,16 +254,26 @@ public class MainActivity extends BridgeActivity {
 
     /**
      * Live Over-The-Air (OTA) Updater:
-     * Checks GitHub Pages quickly in background.
-     * - When online & GitHub Pages is healthy (HTTP 200), automatically loads the latest GitHub Pages build
-     *   inside this WebView so customers receive every future update without reinstalling the APK.
-     * - When offline or unreachable, keeps using the APK's baked-in offline bundle smoothly.
+     * Strictly verifies HTTP 200 + real Khanqah HTML BEFORE ever navigating the WebView,
+     * so the user can NEVER hit a "404 There isn't a GitHub Pages site here" screen.
      */
-    private void checkAndLoadLiveUpdate(boolean forceCheck) {
+    private void checkAndLoadLiveUpdate(boolean forceCheck, boolean isManualRefresh) {
         long now = System.currentTimeMillis();
-        if (otaCheckInFlight) return;
+        if (otaCheckInFlight && !isManualRefresh) return;
         if (!forceCheck && (now - lastOtaCheckAtMs) < OTA_CHECK_INTERVAL_MS) return;
-        if (!isNetworkAvailable()) return;
+
+        if (!isNetworkAvailable()) {
+            if (isManualRefresh) {
+                runOnUiThread(() ->
+                    Toast.makeText(
+                        MainActivity.this,
+                        "انٹرنیٹ دستیاب نہیں — آف لائن ایپ فعال ہے",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                );
+            }
+            return;
+        }
 
         otaCheckInFlight = true;
         lastOtaCheckAtMs = now;
@@ -247,72 +282,116 @@ public class MainActivity extends BridgeActivity {
 
         otaExecutor.execute(() -> {
             HttpURLConnection conn = null;
+            BufferedReader reader = null;
+            boolean loadedLive = false;
             try {
                 URL url = new URL(probeUrl);
                 conn = (HttpURLConnection) url.openConnection();
-                conn.setRequestMethod("HEAD");
-                conn.setConnectTimeout(2500);
-                conn.setReadTimeout(2500);
+                conn.setRequestMethod("GET");
+                conn.setConnectTimeout(3500);
+                conn.setReadTimeout(3500);
                 conn.setUseCaches(false);
                 conn.setInstanceFollowRedirects(true);
                 conn.setRequestProperty("Cache-Control", "no-cache");
 
                 int code = conn.getResponseCode();
-                if (code == HttpURLConnection.HTTP_BAD_METHOD || code == HttpURLConnection.HTTP_NOT_IMPLEMENTED) {
-                    conn.disconnect();
-                    conn = (HttpURLConnection) url.openConnection();
-                    conn.setRequestMethod("GET");
-                    conn.setConnectTimeout(2500);
-                    conn.setReadTimeout(2500);
-                    conn.setUseCaches(false);
-                    code = conn.getResponseCode();
-                }
-
                 String contentType = conn.getContentType();
                 if (code == HttpURLConnection.HTTP_OK &&
                     (contentType == null || contentType.toLowerCase().contains("text/html"))) {
 
-                    String etag = conn.getHeaderField("ETag");
-                    String lastMod = conn.getHeaderField("Last-Modified");
-                    String contentLen = conn.getHeaderField("Content-Length");
-                    final String fingerprint =
-                        (etag != null ? etag : "") + "|" +
-                        (lastMod != null ? lastMod : "") + "|" +
-                        (contentLen != null ? contentLen : "");
-
-                    SharedPreferences prefs = getSharedPreferences(OTA_PREFS_NAME, MODE_PRIVATE);
-                    String prevFingerprint = prefs.getString(KEY_LAST_OTA_FINGERPRINT, "");
-                    final boolean hasNewVersion =
-                        !fingerprint.equals("||") && !fingerprint.equals(prevFingerprint);
-
-                    if (hasNewVersion) {
-                        prefs.edit().putString(KEY_LAST_OTA_FINGERPRINT, fingerprint).apply();
+                    reader = new BufferedReader(
+                        new InputStreamReader(conn.getInputStream(), StandardCharsets.UTF_8)
+                    );
+                    StringBuilder snippet = new StringBuilder();
+                    char[] buf = new char[2048];
+                    int readCount = reader.read(buf, 0, buf.length);
+                    if (readCount > 0) {
+                        snippet.append(buf, 0, readCount);
                     }
+                    String htmlHead = snippet.toString();
 
-                    runOnUiThread(() -> {
-                        if (isFinishing() || isDestroyed()) return;
-                        WebView wv = MainActivity.this.bridge != null
-                            ? MainActivity.this.bridge.getWebView()
-                            : null;
-                        if (wv == null) return;
+                    boolean isRealAppHtml =
+                        htmlHead.contains("id=\"root\"")
+                            || htmlHead.contains("Khanqah")
+                            || htmlHead.contains("خانقاہ");
+                    boolean isErrorPage =
+                        htmlHead.contains("There isn't a GitHub Pages site here")
+                            || htmlHead.contains("Site not found");
 
-                        String currentUrl = wv.getUrl();
-                        boolean alreadyOnLive = currentUrl != null && currentUrl.startsWith(liveUrl);
+                    if (isRealAppHtml && !isErrorPage) {
+                        String etag = conn.getHeaderField("ETag");
+                        String lastMod = conn.getHeaderField("Last-Modified");
+                        String contentLen = conn.getHeaderField("Content-Length");
+                        final String fingerprint =
+                            (etag != null ? etag : "") + "|" +
+                            (lastMod != null ? lastMod : "") + "|" +
+                            (contentLen != null ? contentLen : "");
 
-                        if (!alreadyOnLive || hasNewVersion) {
-                            wv.clearCache(true);
-                            wv.loadUrl(liveUrl + "?_kdf_ota=" + now);
+                        SharedPreferences prefs = getSharedPreferences(OTA_PREFS_NAME, MODE_PRIVATE);
+                        String prevFingerprint = prefs.getString(KEY_LAST_OTA_FINGERPRINT, "");
+                        final boolean hasNewVersion =
+                            !fingerprint.equals("||") && !fingerprint.equals(prevFingerprint);
+
+                        if (hasNewVersion) {
+                            prefs.edit().putString(KEY_LAST_OTA_FINGERPRINT, fingerprint).apply();
                         }
-                    });
+
+                        loadedLive = true;
+                        runOnUiThread(() -> {
+                            if (isFinishing() || isDestroyed()) return;
+                            WebView wv = MainActivity.this.bridge != null
+                                ? MainActivity.this.bridge.getWebView()
+                                : null;
+                            if (wv == null) return;
+
+                            String currentUrl = wv.getUrl();
+                            boolean alreadyOnLive = currentUrl != null && currentUrl.startsWith(liveUrl);
+
+                            if (!alreadyOnLive || hasNewVersion || isManualRefresh) {
+                                wv.clearCache(true);
+                                wv.loadUrl(liveUrl + "?_kdf_ota=" + now);
+                            }
+                        });
+                    }
                 }
             } catch (Exception ignored) {
-                // Offline or slow connection: keep running seamlessly on local APK dist bundle
+                // Offline or unreachable: stay seamlessly on built-in APK bundle
             } finally {
+                if (reader != null) {
+                    try {
+                        reader.close();
+                    } catch (Exception ignored) {
+                    }
+                }
                 if (conn != null) {
                     try {
                         conn.disconnect();
                     } catch (Exception ignored) {
                     }
+                }
+                if (isManualRefresh && !loadedLive) {
+                    runOnUiThread(() -> {
+                        if (isFinishing() || isDestroyed()) return;
+                        WebView wv = MainActivity.this.bridge != null
+                            ? MainActivity.this.bridge.getWebView()
+                            : null;
+                        if (wv != null) {
+                            String curUrl = wv.getUrl();
+                            String curTitle = wv.getTitle();
+                            if ((curTitle != null && curTitle.contains("404"))
+                                || (curUrl != null && !curUrl.startsWith(LOCAL_BUNDLE_URL))) {
+                                wv.clearCache(true);
+                                wv.loadUrl(LOCAL_BUNDLE_URL);
+                            } else {
+                                wv.clearCache(true);
+                            }
+                        }
+                        Toast.makeText(
+                            MainActivity.this,
+                            "تازہ ترین بیانات، کتب اور اعلانات ریفریش ہو گئے ✓",
+                            Toast.LENGTH_SHORT
+                        ).show();
+                    });
                 }
                 otaCheckInFlight = false;
             }
@@ -334,27 +413,15 @@ public class MainActivity extends BridgeActivity {
 
         @JavascriptInterface
         public void checkLiveUpdate() {
-            checkAndLoadLiveUpdate(true);
+            checkAndLoadLiveUpdate(true, false);
         }
 
         @JavascriptInterface
         public void forceLiveRefresh() {
-            runOnUiThread(() -> {
-                SharedPreferences prefs = getSharedPreferences(OTA_PREFS_NAME, MODE_PRIVATE);
-                prefs.edit().remove(KEY_LAST_OTA_FINGERPRINT).apply();
-                WebView wv = MainActivity.this.bridge != null
-                    ? MainActivity.this.bridge.getWebView()
-                    : null;
-                if (wv != null) {
-                    wv.clearCache(true);
-                    if (isNetworkAvailable()) {
-                        wv.loadUrl(getLiveWebUrl() + "?_kdf_refresh=" + System.currentTimeMillis());
-                    } else {
-                        wv.reload();
-                    }
-                }
-            });
-            checkAndLoadLiveUpdate(true);
+            SharedPreferences prefs = getSharedPreferences(OTA_PREFS_NAME, MODE_PRIVATE);
+            prefs.edit().remove(KEY_LAST_OTA_FINGERPRINT).apply();
+            KhanqahNotificationHelper.checkRemoteUpdatesAsync(MainActivity.this, true);
+            checkAndLoadLiveUpdate(true, true);
         }
 
         @JavascriptInterface
@@ -367,14 +434,25 @@ public class MainActivity extends BridgeActivity {
             runOnUiThread(() -> {
                 if (Build.VERSION.SDK_INT >= 33) {
                     if (checkSelfPermission("android.permission.POST_NOTIFICATIONS")
-                        != android.content.pm.PackageManager.PERMISSION_GRANTED) {
-                        requestPermissions(
-                            new String[]{"android.permission.POST_NOTIFICATIONS"},
-                            REQ_CODE_POST_NOTIFICATIONS
-                        );
-                        return;
+                        != PackageManager.PERMISSION_GRANTED) {
+                        SharedPreferences prefs = getSharedPreferences(OTA_PREFS_NAME, MODE_PRIVATE);
+                        boolean alreadyAsked = prefs.getBoolean(KEY_NOTIF_PERM_ASKED, false);
+                        boolean shouldShow = shouldShowRequestPermissionRationale("android.permission.POST_NOTIFICATIONS");
+                        if (!alreadyAsked || shouldShow) {
+                            prefs.edit().putBoolean(KEY_NOTIF_PERM_ASKED, true).apply();
+                            requestPermissions(
+                                new String[]{"android.permission.POST_NOTIFICATIONS"},
+                                REQ_CODE_POST_NOTIFICATIONS
+                            );
+                            return;
+                        }
                     }
                 }
+                Toast.makeText(
+                    MainActivity.this,
+                    "براہِ کرم نوٹیفکیشن (Allow Notifications) آن کر کے واپس آئیں",
+                    Toast.LENGTH_LONG
+                ).show();
                 openNotificationSettings();
             });
         }
@@ -410,14 +488,23 @@ public class MainActivity extends BridgeActivity {
                 requestNotificationPermission();
                 return false;
             }
-            KhanqahNotificationHelper.showStyledNotification(
+            boolean posted = KhanqahNotificationHelper.showStyledNotification(
                 MainActivity.this,
                 "🕌 خانقاہ دارالفلاح — نوٹیفکیشن فعال ہے",
                 "ماشاءاللہ! اب جب بھی کوئی نیا اصلاحی بیان، کتاب یا پیغام اپلوڈ ہوگا تو آپ کو خوبصورت اطلاع ملے گی۔",
                 "فوری ٹیسٹ کامیاب ✓",
                 5099
             );
-            return true;
+            runOnUiThread(() ->
+                Toast.makeText(
+                    MainActivity.this,
+                    posted
+                        ? "نوٹیفکیشن بھیج دیا گیا — اوپر اسٹیٹس بار میں دیکھیں ✓"
+                        : "نوٹیفکیشن بھیجنے کے لیے سیٹنگز سے اجازت آن کریں",
+                    Toast.LENGTH_SHORT
+                ).show()
+            );
+            return posted;
         }
 
         @JavascriptInterface

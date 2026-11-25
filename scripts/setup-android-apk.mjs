@@ -130,6 +130,27 @@ fs.writeFileSync(
 );
 console.log(`✓ Configured Live OTA Web URL: ${liveWebUrl}`);
 
+// 3b. Install crisp monochrome Android status-bar notification icon (required for Android 8-15 smallIcon)
+const drawableDir = path.join(resDir, 'drawable');
+fs.mkdirSync(drawableDir, { recursive: true });
+fs.writeFileSync(
+  path.join(drawableDir, 'ic_stat_khanqah.xml'),
+  `<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24"
+    android:tint="#FFFFFF">
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M12,2C9.8,4.1 7,6.2 7,9.5V12H5v8h5v-4.5c0,-1.1 0.9,-2 2,-2s2,0.9 2,2V20h5v-8h-2V9.5C17,6.2 14.2,4.1 12,2zM12,4.7c1.4,1.3 3,2.8 3,4.8V12H9V9.5C9,7.5 10.6,6 12,4.7zM4,21h16v1.5H4z" />
+</vector>
+`,
+  'utf8'
+);
+console.log('✓ Installed monochrome notification status-bar icon (ic_stat_khanqah.xml)');
+
 // 4. Build bright, vivid, zoomed & larger Adaptive + Legacy Launcher Icons
 const icon512 = path.join(rootDir, 'public', 'kdf-icon-512-v4.png');
 const icon192 = path.join(rootDir, 'public', 'kdf-icon-192-v4.png');

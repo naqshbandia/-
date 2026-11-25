@@ -115,13 +115,28 @@ export const HamburgerDrawer: React.FC<Props> = ({
   remoteTheme = ISLAMIC_THEMES[0],
   onChangeThemeOverride,
 }) => {
+  const inNativeApk = isRunningInNativeApk();
+  const [notifGranted, setNotifGranted] = React.useState<boolean>(() =>
+    inNativeApk ? getNativeNotificationGranted() : false
+  );
+
+  React.useEffect(() => {
+    if (!isOpen || !inNativeApk) return;
+    const syncNotif = () => setNotifGranted(getNativeNotificationGranted());
+    syncNotif();
+    window.addEventListener('kdf-native-resume', syncNotif);
+    window.addEventListener('focus', syncNotif);
+    return () => {
+      window.removeEventListener('kdf-native-resume', syncNotif);
+      window.removeEventListener('focus', syncNotif);
+    };
+  }, [isOpen, inNativeApk]);
+
   if (!isOpen) return null;
   const t = UI_STRINGS[lang];
   const donationLabels = getDonationLabels(lang);
   const autoSilentLabels = getAutoSilentLabels(lang);
   const dir = getDir(lang);
-  const inNativeApk = isRunningInNativeApk();
-  const notifGranted = inNativeApk ? getNativeNotificationGranted() : false;
 
   const rowClass = `w-full flex items-center justify-between px-3 py-2.5 rounded-xl transition-all group cursor-pointer ${
     dir === 'ltr' ? 'text-left' : 'text-right'
