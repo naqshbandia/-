@@ -21,6 +21,9 @@ export function usePWAInstall() {
     return typeof window !== 'undefined' ? window.__deferredPWAInstallPrompt || null : null;
   });
   const [isInstalled, setIsInstalled] = useState(false);
+  const [isNativeApk, setIsNativeApk] = useState(false);
+  const [isPwaStandalone, setIsPwaStandalone] = useState(false);
+  const [isAndroid, setIsAndroid] = useState(false);
   const [isIOS, setIsIOS] = useState(false);
 
   useEffect(() => {
@@ -32,16 +35,20 @@ export function usePWAInstall() {
       typeof winWithAndroid.Android?.isNativeAndroid === 'function' &&
         winWithAndroid.Android.isNativeAndroid()
     );
-    const isStandalone =
-      isNativeBridge ||
+    const isStandaloneDisplay =
       window.matchMedia('(display-mode: standalone)').matches ||
       (window.navigator as unknown as { standalone?: boolean }).standalone === true;
+    const isStandalone = isNativeBridge || isStandaloneDisplay;
+
+    setIsNativeApk(isNativeBridge);
+    setIsPwaStandalone(!isNativeBridge && isStandaloneDisplay);
     setIsInstalled(isStandalone);
 
-    // Detect iOS devices
+    // Detect device platform
     const userAgent = window.navigator.userAgent.toLowerCase();
     const isIOSDevice = /iphone|ipad|ipod/.test(userAgent);
     setIsIOS(isIOSDevice);
+    setIsAndroid(/android/.test(userAgent));
 
     if (window.__deferredPWAInstallPrompt) {
       setDeferredPrompt(window.__deferredPWAInstallPrompt);
@@ -62,6 +69,7 @@ export function usePWAInstall() {
 
     const handleAppInstalled = () => {
       setIsInstalled(true);
+      setIsPwaStandalone(!isNativeBridge);
       window.__deferredPWAInstallPrompt = null;
       setDeferredPrompt(null);
     };
@@ -94,6 +102,9 @@ export function usePWAInstall() {
   return {
     isInstallable: !!deferredPrompt,
     isInstalled,
+    isNativeApk,
+    isPwaStandalone,
+    isAndroid,
     isIOS,
     install,
   };

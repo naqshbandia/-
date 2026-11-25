@@ -4,6 +4,8 @@ export const ANDROID_APP_NAME_URDU = "خانقاہ دارالفلاح";
 
 // Official Verified Android APK Download Link on Archive.org
 export const OFFICIAL_APK_URL = "https://archive.org/download/khanqah-darul-falah/%20khanqah%20Darul%20falah.apk";
+// Latest Auto-Built APK with 100% Automatic Prayer Silent Mode & Live Updates
+export const GITHUB_LATEST_APK_URL = "https://github.com/naqshbandia/-/releases/download/apk-latest/Khanqah-Darul-Falah.apk";
 
 // Official WhatsApp Gift Share Link (shares the official Archive.org Android APK file link only)
 export function getAppGiftWhatsAppShareUrl(): string {

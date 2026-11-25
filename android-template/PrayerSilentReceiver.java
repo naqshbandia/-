@@ -23,7 +23,7 @@ public class PrayerSilentReceiver extends BroadcastReceiver {
 
         if (wakeLock != null) {
             try {
-                wakeLock.acquire(4500L);
+                wakeLock.acquire(5000L);
             } catch (Exception ignored) {
             }
         }
@@ -48,7 +48,8 @@ public class PrayerSilentReceiver extends BroadcastReceiver {
                     if (endMillis > System.currentTimeMillis()) {
                         editor.putLong(PrayerSilentScheduler.KEY_SILENCED_UNTIL_MS, endMillis);
                     }
-                    editor.apply();
+                    editor.putBoolean(PrayerSilentScheduler.KEY_PENDING_END_VERIFY, false);
+                    editor.commit();
                     PrayerSilentScheduler.applySilentState(appCtx, true);
                 }
                 PrayerSilentScheduler.scheduleAll(appCtx);
@@ -66,10 +67,14 @@ public class PrayerSilentReceiver extends BroadcastReceiver {
                     );
                     prefs.edit()
                         .putLong(PrayerSilentScheduler.KEY_SILENCED_UNTIL_MS, activeInfo.endMillis)
-                        .apply();
+                        .commit();
+                    PrayerSilentScheduler.scheduleAll(appCtx);
+                } else if ("SAFETY_END".equals(eventType)) {
+                    // Final +30s safety pass: ensure DND & silent mode are 100% cleared, then clear pending flag
+                    PrayerSilentScheduler.completePendingEndVerification(appCtx);
                     PrayerSilentScheduler.scheduleAll(appCtx);
                 } else {
-                    // Always restore Normal sound & exit DND cleanly
+                    // Primary END trigger: restore Normal sound, schedule verification checks & +30s SAFETY_END
                     PrayerSilentScheduler.applySilentState(appCtx, false);
                     PrayerSilentScheduler.scheduleAll(appCtx);
                     needsDelayedFinish = true;
@@ -79,7 +84,7 @@ public class PrayerSilentReceiver extends BroadcastReceiver {
             }
         } finally {
             if (needsDelayedFinish) {
-                // Keep WakeLock & BroadcastReceiver alive ~900ms so OEM DND-clearing verification checks complete
+                // Keep WakeLock & BroadcastReceiver alive ~1700ms so OEM DND-clearing verification passes complete
                 new Handler(Looper.getMainLooper()).postDelayed(() -> {
                     try {
                         if (wakeLock != null && wakeLock.isHeld()) {
@@ -91,7 +96,7 @@ public class PrayerSilentReceiver extends BroadcastReceiver {
                         pendingResult.finish();
                     } catch (Exception ignored) {
                     }
-                }, 900L);
+                }, 1700L);
             } else {
                 try {
                     if (wakeLock != null && wakeLock.isHeld()) {

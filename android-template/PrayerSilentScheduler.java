@@ -27,6 +27,7 @@ public class PrayerSilentScheduler {
     public static final String KEY_LAST_ENTERED_WINDOW_ID = "last_entered_window_id";
     public static final String KEY_PREV_FILTER = "prev_interruption_filter";
     public static final String KEY_PREV_RINGER = "prev_ringer_mode";
+    public static final String KEY_PENDING_END_VERIFY = "pending_end_verify";
 
     public static final String ACTION_SILENT_TRIGGER = "com.khanqahdarulfalah.app.ACTION_PRAYER_SILENT";
     public static final String EXTRA_EVENT_TYPE = "event_type"; // "START" | "END" | "SAFETY_END"
@@ -165,17 +166,20 @@ public class PrayerSilentScheduler {
         long now = System.currentTimeMillis();
         ActiveWindowInfo activeNow = getActiveWindowInfo(context, now);
         boolean currentlyMarkedSilenced = prefs.getBoolean(KEY_IS_SILENCED, false);
+        boolean pendingEndVerify = prefs.getBoolean(KEY_PENDING_END_VERIFY, false);
 
-        if (!activeNow.active && currentlyMarkedSilenced) {
+        if (!activeNow.active && (currentlyMarkedSilenced || pendingEndVerify)) {
             // Self-heal: prayer window already ended while phone was asleep/off -> immediately restore normal sound
             applySilentState(context, false);
+            currentlyMarkedSilenced = false;
         } else if (activeNow.active && applyIfInsideActiveWindow && !currentlyMarkedSilenced) {
             String lastWindow = prefs.getString(KEY_LAST_ENTERED_WINDOW_ID, "");
             if (!activeNow.windowId.equals(lastWindow)) {
                 prefs.edit()
                     .putString(KEY_LAST_ENTERED_WINDOW_ID, activeNow.windowId)
                     .putLong(KEY_SILENCED_UNTIL_MS, activeNow.endMillis)
-                    .apply();
+                    .putBoolean(KEY_PENDING_END_VERIFY, false)
+                    .commit();
                 applySilentState(context, true);
                 currentlyMarkedSilenced = true;
             }
@@ -243,11 +247,13 @@ public class PrayerSilentScheduler {
                 }
             }
 
-            // Always arm a safety verification END alarm +35s after active window ends
-            if (activeNow.active || prefs.getBoolean(KEY_IS_SILENCED, false)) {
+            // Always arm a safety verification END alarm +30s after active window ends OR if end verification is still pending
+            boolean stillSilencedOrPending =
+                prefs.getBoolean(KEY_IS_SILENCED, false) || prefs.getBoolean(KEY_PENDING_END_VERIFY, false);
+            if (activeNow.active || stillSilencedOrPending) {
                 long safetyTarget = activeNow.active
-                    ? (activeNow.endMillis + 35_000L)
-                    : Math.max(now + 15_000L, prefs.getLong(KEY_SILENCED_UNTIL_MS, now + 15_000L) + 35_000L);
+                    ? (activeNow.endMillis + 30_000L)
+                    : (now + 30_000L);
                 if (safetyTarget > now) {
                     armAlarm(
                         context,
@@ -483,6 +489,7 @@ public class PrayerSilentScheduler {
     ) {
         Intent intent = new Intent(context, PrayerSilentReceiver.class);
         intent.setAction(ACTION_SILENT_TRIGGER);
+        intent.addFlags(Intent.FLAG_RECEIVER_FOREGROUND);
         intent.setData(buildAlarmDataUri(eventType, slotIndex, requestCode));
         intent.putExtra(EXTRA_EVENT_TYPE, eventType);
         intent.putExtra(EXTRA_SLOT_KEY, slotKey);
@@ -531,15 +538,33 @@ public class PrayerSilentScheduler {
         if (!hasDndPermission(context)) return;
 
         SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
-        NotificationManager nm =
-            (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
-        AudioManager am =
-            (AudioManager) context.getSystemService(Context.AUDIO_SERVICE);
-
         int prevRinger = prefs.getInt(KEY_PREV_RINGER, AudioManager.RINGER_MODE_NORMAL);
         final int targetRinger = (prevRinger == AudioManager.RINGER_MODE_VIBRATE)
             ? AudioManager.RINGER_MODE_VIBRATE
             : AudioManager.RINGER_MODE_NORMAL;
+
+        prefs.edit()
+            .putBoolean(KEY_IS_SILENCED, false)
+            .putLong(KEY_SILENCED_UNTIL_MS, 0L)
+            .putBoolean(KEY_PENDING_END_VERIFY, true)
+            .commit();
+
+        applyNormalSoundPass(context, targetRinger);
+
+        // OEM (Xiaomi MIUI / HyperOS & Samsung OneUI) race verification:
+        // Some OEMs reset or delay DND change right after ringer mode transition; enforce ALL again cleanly.
+        final Context appCtx = context.getApplicationContext();
+        Handler mainHandler = new Handler(Looper.getMainLooper());
+        mainHandler.postDelayed(() -> verifyAndClearDnd(appCtx, targetRinger, false), 250L);
+        mainHandler.postDelayed(() -> verifyAndClearDnd(appCtx, targetRinger, false), 800L);
+        mainHandler.postDelayed(() -> verifyAndClearDnd(appCtx, targetRinger, true), 1500L);
+    }
+
+    private static boolean applyNormalSoundPass(Context context, int targetRinger) {
+        NotificationManager nm =
+            (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
+        AudioManager am =
+            (AudioManager) context.getSystemService(Context.AUDIO_SERVICE);
 
         try {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && nm != null) {
@@ -556,41 +581,55 @@ public class PrayerSilentScheduler {
         } catch (Exception ignored) {
         }
 
-        prefs.edit()
-            .putBoolean(KEY_IS_SILENCED, false)
-            .putLong(KEY_SILENCED_UNTIL_MS, 0L)
-            .apply();
+        // Second pass on NotificationManager immediately after setRingerMode (MIUI/HyperOS sync)
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && nm != null) {
+                if (nm.getCurrentInterruptionFilter() != NotificationManager.INTERRUPTION_FILTER_ALL) {
+                    nm.setInterruptionFilter(NotificationManager.INTERRUPTION_FILTER_ALL);
+                }
+            }
+        } catch (Exception ignored) {
+        }
 
-        // OEM (Xiaomi MIUI / HyperOS & Samsung OneUI) race verification:
-        // Some OEMs reset or delay DND change right after ringer mode transition; enforce ALL again cleanly.
-        final Context appCtx = context.getApplicationContext();
-        Handler mainHandler = new Handler(Looper.getMainLooper());
-        mainHandler.postDelayed(() -> verifyAndClearDnd(appCtx, targetRinger), 220L);
-        mainHandler.postDelayed(() -> verifyAndClearDnd(appCtx, targetRinger), 750L);
+        boolean filterClear = true;
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && nm != null) {
+            int f = nm.getCurrentInterruptionFilter();
+            filterClear = (f == NotificationManager.INTERRUPTION_FILTER_ALL
+                || f == NotificationManager.INTERRUPTION_FILTER_UNKNOWN);
+        }
+        boolean ringerClear = am == null || am.getRingerMode() != AudioManager.RINGER_MODE_SILENT;
+        return filterClear && ringerClear;
     }
 
-    private static void verifyAndClearDnd(Context context, int targetRinger) {
+    private static void verifyAndClearDnd(Context context, int targetRinger, boolean markDoneIfClear) {
         try {
             if (!hasDndPermission(context)) return;
             SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
             if (prefs.getBoolean(KEY_IS_SILENCED, false)) return;
 
-            NotificationManager nm =
-                (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
-            AudioManager am =
-                (AudioManager) context.getSystemService(Context.AUDIO_SERVICE);
-
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && nm != null) {
-                int current = nm.getCurrentInterruptionFilter();
-                if (current != NotificationManager.INTERRUPTION_FILTER_ALL) {
-                    nm.setInterruptionFilter(NotificationManager.INTERRUPTION_FILTER_ALL);
-                }
-            }
-            if (am != null && am.getRingerMode() == AudioManager.RINGER_MODE_SILENT) {
-                am.setRingerMode(targetRinger);
+            boolean isClear = applyNormalSoundPass(context, targetRinger);
+            if (isClear && markDoneIfClear) {
+                prefs.edit().putBoolean(KEY_PENDING_END_VERIFY, false).commit();
             }
         } catch (Exception ignored) {
         }
+    }
+
+    public static void completePendingEndVerification(Context context) {
+        SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+        if (!prefs.getBoolean(KEY_PENDING_END_VERIFY, false) && !prefs.getBoolean(KEY_IS_SILENCED, false)) {
+            return;
+        }
+        int prevRinger = prefs.getInt(KEY_PREV_RINGER, AudioManager.RINGER_MODE_NORMAL);
+        int targetRinger = (prevRinger == AudioManager.RINGER_MODE_VIBRATE)
+            ? AudioManager.RINGER_MODE_VIBRATE
+            : AudioManager.RINGER_MODE_NORMAL;
+        applyNormalSoundPass(context, targetRinger);
+        prefs.edit()
+            .putBoolean(KEY_IS_SILENCED, false)
+            .putLong(KEY_SILENCED_UNTIL_MS, 0L)
+            .putBoolean(KEY_PENDING_END_VERIFY, false)
+            .commit();
     }
 
     public static boolean applySilentState(Context context, boolean enableSilent) {
@@ -615,9 +654,12 @@ public class PrayerSilentScheduler {
                     }
                     prefs.edit()
                         .putBoolean(KEY_IS_SILENCED, true)
+                        .putBoolean(KEY_PENDING_END_VERIFY, false)
                         .putInt(KEY_PREV_FILTER, NotificationManager.INTERRUPTION_FILTER_ALL)
                         .putInt(KEY_PREV_RINGER, currentRinger)
-                        .apply();
+                        .commit();
+                } else {
+                    prefs.edit().putBoolean(KEY_PENDING_END_VERIFY, false).commit();
                 }
 
                 if (am != null) {

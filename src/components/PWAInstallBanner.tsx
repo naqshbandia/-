@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Download, X, Check, Share, Smartphone } from 'lucide-react';
 import { usePWAInstall } from '../utils/usePWAInstall';
-import { OFFICIAL_APK_URL } from '../data/appConfig';
+import { GITHUB_LATEST_APK_URL } from '../data/appConfig';
 import { recordApkDownloadClick, recordPwaInstalledEvent } from '../utils/installStatsService';
 import {
   AppLanguage,
@@ -21,13 +21,23 @@ export const PWAInstallBanner: React.FC<Props> = ({
   onNotify,
   lang = DEFAULT_LANGUAGE,
 }) => {
-  const { isInstallable, isInstalled, isIOS, install } = usePWAInstall();
+  const {
+    isInstallable,
+    isInstalled,
+    isNativeApk,
+    isPwaStandalone,
+    isAndroid,
+    isIOS,
+    install,
+  } = usePWAInstall();
   const [showHelpModal, setShowHelpModal] = useState(false);
   const [isDismissed, setIsDismissed] = useState(false);
   const t = UI_STRINGS[lang];
   const dir = getDir(lang);
 
-  if (isInstalled || isDismissed) {
+  const showAndroidPwaUpgrade = isPwaStandalone && isAndroid;
+
+  if (isNativeApk || (isInstalled && !showAndroidPwaUpgrade) || isDismissed) {
     return null;
   }
 
@@ -54,10 +64,14 @@ export const PWAInstallBanner: React.FC<Props> = ({
   return (
     <>
       <div
-        className={`w-full px-3 py-1.5 border-b text-xs font-lalezar transition-all ${
-          isDark
-            ? 'bg-[#072616] border-[#d4af37]/40 text-emerald-50'
-            : 'bg-[#e8f1ec] border-emerald-900/15 text-[#064326]'
+        className={`w-full px-3 py-2 border-b text-xs font-lalezar transition-all ${
+          showAndroidPwaUpgrade
+            ? isDark
+              ? 'bg-gradient-to-l from-[#1a1405] via-[#0a2d1b] to-[#072616] border-[#d4af37] text-amber-50'
+              : 'bg-gradient-to-l from-amber-50 via-emerald-50 to-white border-[#d4af37] text-[#064326]'
+            : isDark
+              ? 'bg-[#072616] border-[#d4af37]/40 text-emerald-50'
+              : 'bg-[#e8f1ec] border-emerald-900/15 text-[#064326]'
         }`}
         dir={dir}
       >
@@ -68,13 +82,24 @@ export const PWAInstallBanner: React.FC<Props> = ({
               alt={t.appName}
               className="w-7 h-7 rounded-xl shadow-xs object-cover shrink-0"
             />
-            <span className="truncate text-xs font-bold">
-              {t.bannerInstallPrompt}
-            </span>
+            {showAndroidPwaUpgrade ? (
+              <div className="min-w-0 leading-snug">
+                <p className="font-bold text-xs text-[#d4af37] dark:text-[#f0cf65] truncate">
+                  نیا آفیشل ایپ آ گیا (100% خودکار نماز سائلنٹ موڈ)
+                </p>
+                <p className="text-[11px] opacity-90 truncate">
+                  پرانا ایپ ڈلیٹ کر کے نیا ایپ انسٹال کریں — خودکار سائلنٹ موڈ بالکل درست چلتا ہے
+                </p>
+              </div>
+            ) : (
+              <span className="truncate text-xs font-bold">
+                {t.bannerInstallPrompt}
+              </span>
+            )}
           </div>
 
           <div className="flex items-center gap-1.5 shrink-0">
-            {isInstallable && (
+            {isInstallable && !showAndroidPwaUpgrade && (
               <button
                 onClick={handlePWAInstall}
                 className="inline-flex px-3 py-1.5 bg-[#064326] hover:bg-[#095c34] text-white font-bold rounded-lg shadow-xs border border-[#d4af37]/70 items-center gap-1 active:scale-95 transition-all text-xs whitespace-nowrap cursor-pointer"
@@ -84,19 +109,23 @@ export const PWAInstallBanner: React.FC<Props> = ({
               </button>
             )}
 
-            {/* Direct Archive.org APK Download / Install Link */}
+            {/* Direct Latest GitHub Release APK Download Link */}
             <a
-              href={OFFICIAL_APK_URL}
-              download="khanqah-Darul-falah.apk"
+              href={GITHUB_LATEST_APK_URL}
+              download="Khanqah-Darul-Falah.apk"
               onClick={handleAPKDownload}
               className={`px-2.5 py-1.5 font-bold rounded-lg shadow-xs flex items-center gap-1 active:scale-95 transition-all text-xs whitespace-nowrap ${
-                isInstallable
+                showAndroidPwaUpgrade || isInstallable
                   ? 'bg-[#d4af37] hover:bg-[#c29b29] text-[#051a0f]'
                   : 'bg-[#064326] hover:bg-[#095c34] text-white border border-[#d4af37]/60'
               }`}
             >
-              <Download className={`w-3.5 h-3.5 ${isInstallable ? 'text-[#051a0f]' : 'text-[#d4af37]'}`} />
-              <span>{t.bannerInstallApk}</span>
+              <Download
+                className={`w-3.5 h-3.5 ${
+                  showAndroidPwaUpgrade || isInstallable ? 'text-[#051a0f]' : 'text-[#d4af37]'
+                }`}
+              />
+              <span>{showAndroidPwaUpgrade ? 'نیا ایپ انسٹال کریں' : t.bannerInstallApk}</span>
             </a>
 
             <button
@@ -162,8 +191,8 @@ export const PWAInstallBanner: React.FC<Props> = ({
 
             <div className="flex items-center gap-2">
               <a
-                href={OFFICIAL_APK_URL}
-                download="khanqah-Darul-falah.apk"
+                href={GITHUB_LATEST_APK_URL}
+                download="Khanqah-Darul-Falah.apk"
                 onClick={handleAPKDownload}
                 className="flex-1 py-2 bg-[#064326] hover:bg-[#095c34] text-white font-lalezar text-xs rounded-xl shadow-md text-center font-bold"
               >
