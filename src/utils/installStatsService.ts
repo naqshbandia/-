@@ -105,13 +105,21 @@ export function detectDeviceContext(): {
     window.matchMedia('(display-mode: standalone)').matches ||
     (window.navigator as unknown as { standalone?: boolean }).standalone === true;
 
+  const winWithAndroid = window as unknown as {
+    Android?: { isNativeAndroid?: () => boolean };
+  };
+  const isNativeBridge = Boolean(
+    typeof winWithAndroid.Android?.isNativeAndroid === 'function' &&
+      winWithAndroid.Android.isNativeAndroid()
+  );
+
   const searchParams = new URLSearchParams(window.location.search);
   const isApkParam = searchParams.get('source') === 'apk' || searchParams.get('apk') === '1';
   const isAndroidReferrer = (document.referrer || '').startsWith('android-app://');
   const isAndroidWebView =
     /\bwv\b/.test(uaLower) || (/android/.test(uaLower) && /version\/[\d.]+/.test(uaLower));
 
-  if (isApkParam || isAndroidReferrer || isAndroidWebView) {
+  if (isNativeBridge || isApkParam || isAndroidReferrer || isAndroidWebView) {
     return { platform: 'android', installMode: 'apk_webview', installed: true };
   }
 

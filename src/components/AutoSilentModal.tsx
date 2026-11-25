@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useRef, useEffect } from 'react';
+import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import {
   BellOff,
   ChevronLeft,
@@ -14,6 +14,10 @@ import {
   Settings,
   Copy,
   ExternalLink,
+  ShieldCheck,
+  RotateCcw,
+  Volume2,
+  VolumeX,
 } from 'lucide-react';
 import { BaseModal } from './Modals';
 import {
@@ -29,57 +33,19 @@ import {
   JamaatKey,
   JamaatScheduleItem,
   PrayerCache,
-  resolveJamaatTime24,
   formatTo12Hour,
 } from '../utils/prayerEngine';
+import {
+  AutoSilentSlot,
+  NativeAutoSilentStatus,
+  buildDefaultAutoSilentSlots,
+  getAndroidBridge,
+  getNativeAutoSilentStatus,
+  loadAutoSilentConfig,
+  saveAndSyncAutoSilentConfig,
+} from '../utils/nativeAutoSilent';
 
-export interface AutoSilentSlot {
-  key: JamaatKey;
-  labelUrdu: string;
-  start: string;
-  end: string;
-  enabled: boolean;
-}
-
-function shiftMinutes24(time24: string, deltaMinutes: number): string {
-  const [hStr, mStr] = (time24 || '12:00').split(':');
-  const h = parseInt(hStr, 10);
-  const m = parseInt(mStr, 10);
-  if (isNaN(h) || isNaN(m)) return time24;
-  let total = (h * 60 + m + deltaMinutes) % (24 * 60);
-  if (total < 0) total += 24 * 60;
-  const hh = String(Math.floor(total / 60)).padStart(2, '0');
-  const mm = String(total % 60).padStart(2, '0');
-  return `${hh}:${mm}`;
-}
-
-function buildDefaultAutoSilentSlots(
-  officialSchedule?: Record<JamaatKey, JamaatScheduleItem>,
-  prayerData?: PrayerCache | null
-): AutoSilentSlot[] {
-  const specs: { key: JamaatKey; labelUrdu: string; fallback: string; before: number; after: number }[] = [
-    { key: 'Fajr', labelUrdu: '🌅 فجر (Fajr)', fallback: '06:00', before: -10, after: 20 },
-    { key: 'Dhuhr', labelUrdu: '☀️ ظہر (Dhuhr)', fallback: '13:30', before: -10, after: 20 },
-    { key: 'Asr', labelUrdu: '🌤️ عصر (Asr)', fallback: '16:00', before: -10, after: 20 },
-    { key: 'Maghrib', labelUrdu: '🌇 مغرب (Maghrib)', fallback: '17:20', before: -5, after: 20 },
-    { key: 'Isha', labelUrdu: '🌙 عشاء (Isha)', fallback: '19:00', before: -10, after: 25 },
-    { key: 'Jummah', labelUrdu: '🕌 جمعہ (Jummah)', fallback: '13:30', before: -30, after: 30 },
-  ];
-
-  return specs.map((spec) => {
-    const base24 =
-      officialSchedule && officialSchedule[spec.key]
-        ? resolveJamaatTime24(spec.key, officialSchedule[spec.key], prayerData || null)
-        : spec.fallback;
-    return {
-      key: spec.key,
-      labelUrdu: spec.labelUrdu,
-      start: shiftMinutes24(base24, spec.before),
-      end: shiftMinutes24(base24, spec.after),
-      enabled: true,
-    };
-  });
-}
+export type { AutoSilentSlot };
 
 interface Props {
   isOpen: boolean;
@@ -107,8 +73,54 @@ export const AutoSilentModal: React.FC<Props> = ({
   const [isExportingPdf, setIsExportingPdf] = useState(false);
   const [showDndSettingsTip, setShowDndSettingsTip] = useState(false);
   const [copiedSchedule, setCopiedSchedule] = useState(false);
+  const [isTestingSilent, setIsTestingSilent] = useState(false);
+  const [showScheduleEditor, setShowScheduleEditor] = useState(true);
   const touchStartX = useRef<number | null>(null);
   const totalSlides = 4;
+
+  const [config, setConfig] = useState(() =>
+    loadAutoSilentConfig(officialSchedule, prayerData)
+  );
+  const [nativeStatus, setNativeStatus] = useState<NativeAutoSilentStatus>(() =>
+    getNativeAutoSilentStatus()
+  );
+
+  const refreshNativeAndSync = useCallback(() => {
+    const status = getNativeAutoSilentStatus();
+    setNativeStatus(status);
+    if (status.isNative && status.dndGranted) {
+      const latest = loadAutoSilentConfig(officialSchedule, prayerData);
+      setConfig(latest);
+      saveAndSyncAutoSilentConfig(latest);
+      setNativeStatus(getNativeAutoSilentStatus());
+    }
+  }, [officialSchedule, prayerData]);
+
+  // Reload config & native permission status whenever modal opens or user returns from Android Settings
+  useEffect(() => {
+    if (!isOpen) return;
+    const latest = loadAutoSilentConfig(officialSchedule, prayerData);
+    setConfig(latest);
+    saveAndSyncAutoSilentConfig(latest);
+    setNativeStatus(getNativeAutoSilentStatus());
+
+    const handleResume = () => {
+      refreshNativeAndSync();
+    };
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        refreshNativeAndSync();
+      }
+    };
+    window.addEventListener('kdf-native-resume', handleResume);
+    window.addEventListener('focus', handleResume);
+    document.addEventListener('visibilitychange', handleVisibility);
+    return () => {
+      window.removeEventListener('kdf-native-resume', handleResume);
+      window.removeEventListener('focus', handleResume);
+      document.removeEventListener('visibilitychange', handleVisibility);
+    };
+  }, [isOpen, officialSchedule, prayerData, refreshNativeAndSync]);
 
   // Automatic smooth slide transition (pauses when modal closes or user pauses)
   useEffect(() => {
@@ -119,10 +131,101 @@ export const AutoSilentModal: React.FC<Props> = ({
     return () => window.clearInterval(timer);
   }, [isOpen, isAutoPlaying]);
 
-  const slots = useMemo(
-    () => buildDefaultAutoSilentSlots(officialSchedule, prayerData),
-    [officialSchedule, prayerData]
-  );
+  const slots = config.slots;
+
+  const handleToggleMaster = () => {
+    const next = {
+      ...config,
+      masterEnabled: !config.masterEnabled,
+    };
+    setConfig(next);
+    const { nativeResult } = saveAndSyncAutoSilentConfig(next);
+    setNativeStatus(getNativeAutoSilentStatus());
+    if (next.masterEnabled) {
+      if (nativeResult === 'NO_PERMISSION') {
+        getAndroidBridge()?.requestDndPermission?.();
+      } else {
+        onNotify?.('خودکار نماز آٹو سائلنٹ آن کر دیا گیا!');
+      }
+    } else {
+      onNotify?.('آٹو سائلنٹ شیڈول عارضی طور پر بند کر دیا گیا۔');
+    }
+  };
+
+  const handleToggleSlot = (key: JamaatKey) => {
+    const nextSlots = config.slots.map((s) =>
+      s.key === key ? { ...s, enabled: !s.enabled } : s
+    );
+    const next = { ...config, customized: true, slots: nextSlots };
+    setConfig(next);
+    saveAndSyncAutoSilentConfig(next);
+    setNativeStatus(getNativeAutoSilentStatus());
+  };
+
+  const handleChangeSlotTime = (
+    key: JamaatKey,
+    field: 'start' | 'end',
+    value: string
+  ) => {
+    if (!value) return;
+    const nextSlots = config.slots.map((s) =>
+      s.key === key ? { ...s, [field]: value } : s
+    );
+    setConfig({ ...config, customized: true, slots: nextSlots });
+  };
+
+  const handleSaveCustomSlots = () => {
+    const next = { ...config, masterEnabled: true, customized: true };
+    setConfig(next);
+    const { nativeResult } = saveAndSyncAutoSilentConfig(next);
+    setNativeStatus(getNativeAutoSilentStatus());
+    if (nativeStatus.isNative && nativeResult === 'NO_PERMISSION') {
+      onNotify?.('براہ کرم پہلے Do Not Disturb کی اجازت (Allow) آن کریں۔');
+      getAndroidBridge()?.requestDndPermission?.();
+    } else {
+      onNotify?.('تمام نمازوں کا آٹو سائلنٹ شیڈول محفوظ و فعال ہو گیا!');
+    }
+  };
+
+  const handleResetDefaultSlots = () => {
+    const defaults = buildDefaultAutoSilentSlots(officialSchedule, prayerData);
+    const next = {
+      masterEnabled: true,
+      customized: false,
+      slots: defaults,
+    };
+    setConfig(next);
+    saveAndSyncAutoSilentConfig(next);
+    setNativeStatus(getNativeAutoSilentStatus());
+    onNotify?.('اوقات مسجد کے تازہ ترین جماعت شیڈول کے مطابق ری سیٹ ہو گئے!');
+  };
+
+  const handleAllowDndPermission = () => {
+    const bridge = getAndroidBridge();
+    if (bridge && typeof bridge.requestDndPermission === 'function') {
+      bridge.requestDndPermission();
+      onNotify?.("کھلنے والی فہرست میں 'Khanqah Darul Falah' کو آن (Allow) کر کے بیک آئیں۔");
+    } else {
+      handleOpenMobileDndSettings();
+    }
+  };
+
+  const handleTestSilentToggle = () => {
+    const bridge = getAndroidBridge();
+    if (!bridge || typeof bridge.setSilentNow !== 'function') return;
+    const nextSilent = !isTestingSilent;
+    const ok = bridge.setSilentNow(nextSilent);
+    if (ok) {
+      setIsTestingSilent(nextSilent);
+      onNotify?.(
+        nextSilent
+          ? 'ٹیسٹ: آپ کا موبائل اس وقت سائلنٹ (DND) کر دیا گیا ہے!'
+          : 'ٹیسٹ: موبائل واپس نارمل موڈ پر بحال کر دیا گیا ہے!'
+      );
+    } else {
+      handleAllowDndPermission();
+    }
+  };
 
   const handleDownloadHtmlGuide = async () => {
     try {
@@ -137,13 +240,9 @@ export const AutoSilentModal: React.FC<Props> = ({
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
-      if (onNotify) {
-        onNotify('آٹو سائلنٹ HTML فائل ڈاؤنلوڈ ہو گئی!');
-      }
+      onNotify?.('آٹو سائلنٹ HTML فائل ڈاؤنلوڈ ہو گئی!');
     } catch {
-      if (onNotify) {
-        onNotify('HTML فائل ڈاؤنلوڈ کرنے میں دشواری پیش آئی۔');
-      }
+      onNotify?.('HTML فائل ڈاؤنلوڈ کرنے میں دشواری پیش آئی۔');
     }
   };
 
@@ -151,13 +250,9 @@ export const AutoSilentModal: React.FC<Props> = ({
     setIsExportingJpg(true);
     try {
       await downloadAutoSilentGuideJpg(slots);
-      if (onNotify) {
-        onNotify('پرنٹ کے قابل A4 JPG اشتہار ڈاؤنلوڈ ہو گیا — گیلری یا پرنٹ کے لیے تیار ہے!');
-      }
+      onNotify?.('پرنٹ کے قابل A4 JPG اشتہار ڈاؤنلوڈ ہو گیا — گیلری یا پرنٹ کے لیے تیار ہے!');
     } catch {
-      if (onNotify) {
-        onNotify('JPG تصویر بنانے میں دشواری پیش آئی۔');
-      }
+      onNotify?.('JPG تصویر بنانے میں دشواری پیش آئی۔');
     } finally {
       setIsExportingJpg(false);
     }
@@ -167,13 +262,9 @@ export const AutoSilentModal: React.FC<Props> = ({
     setIsExportingPdf(true);
     try {
       await downloadAutoSilentGuidePdf(slots);
-      if (onNotify) {
-        onNotify('مسجد پرنٹ کے لیے A4 PDF اشتہار ڈاؤنلوڈ ہو گیا!');
-      }
+      onNotify?.('مسجد پرنٹ کے لیے A4 PDF اشتہار ڈاؤنلوڈ ہو گیا!');
     } catch {
-      if (onNotify) {
-        onNotify('PDF اشتہار بنانے میں دشواری پیش آئی۔');
-      }
+      onNotify?.('PDF اشتہار بنانے میں دشواری پیش آئی۔');
     } finally {
       setIsExportingPdf(false);
     }
@@ -183,15 +274,15 @@ export const AutoSilentModal: React.FC<Props> = ({
     const lines = [
       '🔕 *نماز آٹو سائلنٹ موڈ — صدقۂ جاریہ*',
       '',
-      'مسجد میں نماز کے دوران موبائل کی گھنٹی بجنے سے بچنے کے لیے اپنے موبائل کی Settings → Sound → Do Not Disturb → Schedules میں درج ذیل اوقات سیٹ کر کے محفوظ کر لیں:',
+      'مسجد میں نماز کے دوران موبائل کی گھنٹی بجنے سے بچنے کے لیے درج ذیل اوقات پر موبائل آٹو سائلنٹ سیٹ کر لیں:',
       '',
       ...slots
         .filter((s) => s.enabled)
         .map((s) => `• ${s.labelUrdu}: ${formatTo12Hour(s.start)} تا ${formatTo12Hour(s.end)}`),
       '',
-      '📌 *اہم نوٹ:* اگر آپ کی مسجد کے امام صاحب کسی نماز کی جماعت کا وقت تبدیل فرمائیں، تو آپ بھی اپنے موبائل کے شیڈول میں اس نماز کا وقت ضرور تبدیل کر لیں۔',
+      '📌 *اہم نوٹ:* اگر آپ کی مسجد کے امام صاحب کسی نماز کی جماعت کا وقت تبدیل فرمائیں، تو آپ بھی اپنے شیڈول میں اس نماز کا وقت ضرور تبدیل کر لیں۔',
       '',
-      '🤲 ایک بار سیٹنگ کر لیں تو روزانہ نماز کے وقت موبائل خودکار طور پر سائلنٹ ہو جایا کرے گا۔',
+      '🤲 خانقاہ دارالفلاح اینڈرائڈ ایپ انسٹال کریں اور صرف ایک کلک پر نمازوں میں خودکار سائلنٹ موڈ آن کریں۔',
     ].join('\n');
     return `https://wa.me/?text=${encodeURIComponent(lines)}`;
   }, [slots]);
@@ -224,7 +315,6 @@ export const AutoSilentModal: React.FC<Props> = ({
   };
 
   const handleOpenMobileDndSettings = async () => {
-    // 1. Copy timings silently so user has them handy immediately
     try {
       await navigator.clipboard?.writeText(buildSchedulePlainText());
     } catch {
@@ -233,35 +323,20 @@ export const AutoSilentModal: React.FC<Props> = ({
 
     setShowDndSettingsTip(true);
 
-    // 2. If running inside an Android APK / Native WebView wrapper with a bridge, trigger native DND Settings directly
     let invokedNativeBridge = false;
     try {
-      const bridge = window as unknown as {
-        Android?: {
-          openDndSettings?: () => void;
-          openAutoSilentSettings?: () => void;
-          openSoundSettings?: () => void;
-        };
-        ReactNativeWebView?: { postMessage?: (msg: string) => void };
-      };
-      if (typeof bridge.Android?.openDndSettings === 'function') {
-        bridge.Android.openDndSettings();
+      const bridge = getAndroidBridge();
+      if (bridge && typeof bridge.openDndSettings === 'function') {
+        bridge.openDndSettings();
         invokedNativeBridge = true;
-      } else if (typeof bridge.Android?.openAutoSilentSettings === 'function') {
-        bridge.Android.openAutoSilentSettings();
-        invokedNativeBridge = true;
-      } else if (typeof bridge.Android?.openSoundSettings === 'function') {
-        bridge.Android.openSoundSettings();
-        invokedNativeBridge = true;
-      } else if (typeof bridge.ReactNativeWebView?.postMessage === 'function') {
-        bridge.ReactNativeWebView.postMessage(JSON.stringify({ type: 'OPEN_DND_SETTINGS' }));
+      } else if (bridge && typeof bridge.openSoundSettings === 'function') {
+        bridge.openSoundSettings();
         invokedNativeBridge = true;
       }
     } catch {
       // Ignore bridge errors
     }
 
-    // 3. On Android devices without native JS bridge, try launching Android Do Not Disturb Intent URI
     const isAndroid = /Android/i.test(navigator.userAgent || '');
     if (!invokedNativeBridge && isAndroid) {
       try {
@@ -272,7 +347,7 @@ export const AutoSilentModal: React.FC<Props> = ({
         intentLink.click();
         document.body.removeChild(intentLink);
       } catch {
-        // Browser security sandbox blocked Intent; inline guidance stays visible
+        // Ignore blocked Intent URI
       }
     }
 
@@ -293,59 +368,169 @@ export const AutoSilentModal: React.FC<Props> = ({
       compact
     >
       <div className="space-y-2.5 text-xs" dir={dir}>
-        {/* Sadaqah Jariyah Intro */}
+        {/* NATIVE AUTOMATIC SILENT CONTROL PANEL */}
         <div
-          className={`p-2.5 rounded-xl border border-[#d4af37]/45 text-center space-y-1.5 ${
-            isDark ? 'bg-[#081b11] text-emerald-50' : 'bg-[#f4f9f6] text-[#11261b]'
+          className={`p-3 rounded-2xl border-2 border-[#d4af37]/80 space-y-2.5 shadow-sm ${
+            isDark
+              ? 'bg-gradient-to-b from-[#062a18] to-[#081b11] text-emerald-50'
+              : 'bg-gradient-to-b from-[#f0faf4] to-white text-[#11261b]'
           }`}
         >
-          <p className="font-bold text-[#064326] dark:text-[#d4af37] text-xs">
-            مسجد میں نماز کے دوران موبائل کی گھنٹی سے مکمل نجات
-          </p>
-          <p className="text-[11px] opacity-90 leading-relaxed">
-            صرف ایک بار نیچے دی گئی تصویری ہدایات (1 سے 4) کے مطابق اپنے موبائل میں شیڈول بنا کر محفوظ کر لیں، روزانہ نماز کے وقت موبائل خودکار طور پر سائلنٹ ہو جائے گا۔
-          </p>
+          {nativeStatus.isNative ? (
+            <>
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-1.5 min-w-0">
+                  <ShieldCheck
+                    className={`w-4 h-4 shrink-0 ${
+                      nativeStatus.dndGranted ? 'text-[#00e676]' : 'text-[#d4af37]'
+                    }`}
+                  />
+                  <span className="font-extrabold text-xs sm:text-[13px] truncate">
+                    {nativeStatus.dndGranted
+                      ? config.masterEnabled
+                        ? 'آٹو سائلنٹ سسٹم فعال ہے ✅'
+                        : 'آٹو سائلنٹ عارضی طور پر بند ہے'
+                      : 'ایک بار خودکار سائلنٹ کی اجازت دیں'}
+                  </span>
+                </div>
 
-          {/* Direct Mobile DND Settings Launch & Copy Schedule Buttons */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 pt-1">
-            <button
-              type="button"
-              onClick={handleOpenMobileDndSettings}
-              className="py-2 px-3 rounded-xl bg-gradient-to-r from-[#064326] to-[#0a6137] hover:opacity-95 text-white font-bold text-[11.5px] border border-[#d4af37]/80 shadow-sm flex items-center justify-center gap-1.5 active:scale-95 transition-all cursor-pointer"
-            >
-              <Settings className="w-3.5 h-3.5 text-[#f7e7a9] shrink-0" />
-              <span>موبائل Do Not Disturb سیٹنگ کھولیں</span>
-              <ExternalLink className="w-3 h-3 opacity-80 shrink-0" />
-            </button>
+                {nativeStatus.dndGranted && (
+                  <button
+                    type="button"
+                    onClick={handleToggleMaster}
+                    className={`px-2.5 py-1 rounded-full text-[10.5px] font-extrabold border cursor-pointer transition-all shrink-0 ${
+                      config.masterEnabled
+                        ? 'bg-[#00c853] text-[#042110] border-white/60'
+                        : 'bg-slate-600 text-white border-slate-400'
+                    }`}
+                  >
+                    {config.masterEnabled ? 'آن ہے (ON)' : 'آف ہے (OFF)'}
+                  </button>
+                )}
+              </div>
 
-            <button
-              type="button"
-              onClick={handleCopyScheduleTimes}
-              className={`py-2 px-3 rounded-xl border font-bold text-[11.5px] flex items-center justify-center gap-1.5 active:scale-95 transition-all cursor-pointer ${
-                copiedSchedule
-                  ? 'bg-[#d4af37] text-[#051a0f] border-[#d4af37]'
-                  : isDark
-                  ? 'bg-[#0d281a] hover:bg-[#133825] text-[#f3d97d] border-[#d4af37]/50'
-                  : 'bg-white hover:bg-emerald-50 text-[#064326] border-[#064326]/30'
-              }`}
-            >
-              {copiedSchedule ? (
-                <>
-                  <Check className="w-3.5 h-3.5 shrink-0" />
-                  <span>6 نمازوں کے اوقات کاپی ہو گئے ✓</span>
-                </>
+              {!nativeStatus.dndGranted ? (
+                <div className="space-y-2">
+                  <p className="text-[11px] leading-relaxed opacity-90">
+                    صرف ایک بار نیچے <strong>اجازت دیں (Allow)</strong> بٹن دبا کر کھلنے والی فہرست میں{' '}
+                    <strong>Khanqah Darul Falah</strong> کو آن کر دیں — اس کے بعد آپ کے موبائل میں{' '}
+                    <strong>تمام 6 نمازوں میں خودکار سائلنٹ موڈ</strong> روزانہ خود چلے گا!
+                  </p>
+                  <button
+                    type="button"
+                    onClick={handleAllowDndPermission}
+                    className="w-full py-2.5 px-3 rounded-xl bg-gradient-to-r from-[#d4af37] via-[#f0cf65] to-[#b08d43] hover:brightness-105 text-[#051a0f] font-extrabold text-xs border border-white/50 shadow-md flex items-center justify-center gap-1.5 active:scale-95 transition-all cursor-pointer"
+                  >
+                    <ShieldCheck className="w-4 h-4 shrink-0" />
+                    <span>1 کلک میں اجازت دیں (Allow Auto-Silent)</span>
+                    <ExternalLink className="w-3.5 h-3.5 shrink-0" />
+                  </button>
+                </div>
               ) : (
-                <>
-                  <Copy className="w-3.5 h-3.5 shrink-0" />
-                  <span>6 نمازوں کے اوقات کاپی کریں</span>
-                </>
+                <div className="space-y-2">
+                  <p className="text-[11px] leading-relaxed opacity-90">
+                    ہر نماز کے وقت آپ کا موبائل خودکار طور پر خاموش ہو جائے گا اور نماز کے بعد خودکار نارمل (آواز والی) حالت پر واپس آ جائے گا۔
+                  </p>
+
+                  {!nativeStatus.exactAlarmGranted && (
+                    <button
+                      type="button"
+                      onClick={() => getAndroidBridge()?.requestExactAlarmPermission?.()}
+                      className="w-full py-1.5 px-2.5 rounded-xl bg-amber-500/20 border border-[#d4af37] text-[#8c6514] dark:text-[#f7e7a9] font-bold text-[11px] cursor-pointer"
+                    >
+                      ⏱️ عین وقت پر خاموشی کے لیے Alarms اجازت آن کریں
+                    </button>
+                  )}
+
+                  <div className="grid grid-cols-2 gap-1.5">
+                    <button
+                      type="button"
+                      onClick={handleTestSilentToggle}
+                      className={`py-2 px-2 rounded-xl border font-bold text-[11px] flex items-center justify-center gap-1 cursor-pointer active:scale-95 transition-all ${
+                        isTestingSilent
+                          ? 'bg-[#d4af37] text-[#051a0f] border-[#d4af37]'
+                          : 'bg-[#064326] text-white border-[#d4af37]/60 hover:bg-[#095c34]'
+                      }`}
+                    >
+                      {isTestingSilent ? (
+                        <>
+                          <Volume2 className="w-3.5 h-3.5 shrink-0" />
+                          <span>واپس نارمل کریں</span>
+                        </>
+                      ) : (
+                        <>
+                          <VolumeX className="w-3.5 h-3.5 text-[#f7e7a9] shrink-0" />
+                          <span>فوری ٹیسٹ (سائلنٹ)</span>
+                        </>
+                      )}
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setShowScheduleEditor((p) => !p)}
+                      className={`py-2 px-2 rounded-xl border font-bold text-[11px] flex items-center justify-center gap-1 cursor-pointer active:scale-95 transition-all ${
+                        isDark
+                          ? 'bg-[#0d281a] text-[#f3d97d] border-[#d4af37]/50'
+                          : 'bg-white text-[#064326] border-[#064326]/30'
+                      }`}
+                    >
+                      <Settings className="w-3.5 h-3.5 shrink-0" />
+                      <span>{showScheduleEditor ? 'اوقات چھپائیں' : 'اوقات تبدیل کریں'}</span>
+                    </button>
+                  </div>
+                </div>
               )}
-            </button>
-          </div>
+            </>
+          ) : (
+            /* Browser / PWA fallback buttons */
+            <div className="space-y-2 text-center">
+              <p className="font-bold text-[#064326] dark:text-[#d4af37] text-xs">
+                مسجد میں نماز کے دوران موبائل کی گھنٹی سے مکمل نجات
+              </p>
+              <p className="text-[11px] opacity-90 leading-relaxed">
+                آفیشل <strong>Android APK</strong> ایپ میں 1 کلک خودکار سائلنٹ سسٹم کام کرتا ہے؛ یا اپنے موبائل کی DND سیٹنگ میں یہ اوقات محفوظ کر لیں۔
+              </p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                <button
+                  type="button"
+                  onClick={handleOpenMobileDndSettings}
+                  className="py-2 px-3 rounded-xl bg-gradient-to-r from-[#064326] to-[#0a6137] hover:opacity-95 text-white font-bold text-[11.5px] border border-[#d4af37]/80 shadow-sm flex items-center justify-center gap-1.5 active:scale-95 transition-all cursor-pointer"
+                >
+                  <Settings className="w-3.5 h-3.5 text-[#f7e7a9] shrink-0" />
+                  <span>موبائل Do Not Disturb سیٹنگ</span>
+                  <ExternalLink className="w-3 h-3 opacity-80 shrink-0" />
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleCopyScheduleTimes}
+                  className={`py-2 px-3 rounded-xl border font-bold text-[11.5px] flex items-center justify-center gap-1.5 active:scale-95 transition-all cursor-pointer ${
+                    copiedSchedule
+                      ? 'bg-[#d4af37] text-[#051a0f] border-[#d4af37]'
+                      : isDark
+                      ? 'bg-[#0d281a] hover:bg-[#133825] text-[#f3d97d] border-[#d4af37]/50'
+                      : 'bg-white hover:bg-emerald-50 text-[#064326] border-[#064326]/30'
+                  }`}
+                >
+                  {copiedSchedule ? (
+                    <>
+                      <Check className="w-3.5 h-3.5 shrink-0" />
+                      <span>6 اوقات کاپی ہو گئے ✓</span>
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="w-3.5 h-3.5 shrink-0" />
+                      <span>6 نمازوں کے اوقات کاپی کریں</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          )}
 
           {showDndSettingsTip && (
             <div
-              className={`mt-1.5 p-2 rounded-xl border text-[10.5px] leading-relaxed text-start ${
+              className={`p-2 rounded-xl border text-[10.5px] leading-relaxed text-start ${
                 isDark
                   ? 'bg-[#0d2619] border-[#d4af37]/45 text-emerald-100'
                   : 'bg-amber-50 border-[#d4af37]/60 text-[#11261b]'
@@ -355,14 +540,99 @@ export const AutoSilentModal: React.FC<Props> = ({
                 ⚡ آسان شارٹ کٹ (ہر اینڈرائڈ موبائل کے لیے):
               </div>
               <p>
-                ویب ایپ/کروم میں سیکیورٹی کی وجہ سے اگر فون کی سیٹنگ خود نہ کھلے تو{' '}
+                ویب ایپ/کروم میں اگر فون کی سیٹنگ خود نہ کھلے تو{' '}
                 <strong>موبائل کی اسکرین اوپر سے نیچے کھینچیں</strong> اور{' '}
                 <strong>🌙 Do Not Disturb</strong> بٹن کو{' '}
-                <strong>2 سیکنڈ دبا کر رکھیں (Long Press)</strong> — آپ فوراً شیڈول سیٹنگ میں پہنچ جائیں گے۔ کاپی شدہ اوقات وہاں درج کر دیں۔
+                <strong>2 سیکنڈ دبا کر رکھیں (Long Press)</strong>۔
               </p>
             </div>
           )}
         </div>
+
+        {/* 6-Prayer Customizable Auto-Silent Schedule Table */}
+        {showScheduleEditor && (
+          <div
+            className={`p-2.5 rounded-2xl border border-[#d4af37]/45 space-y-2 ${
+              isDark ? 'bg-[#08180f] text-emerald-50' : 'bg-white text-[#11261b]'
+            }`}
+          >
+            <div className="flex items-center justify-between gap-2">
+              <span className="font-bold text-[11.5px] text-[#064326] dark:text-[#d4af37]">
+                🕌 تمام 6 نمازوں کے خودکار سائلنٹ اوقات
+              </span>
+              <button
+                type="button"
+                onClick={handleResetDefaultSlots}
+                className="inline-flex items-center gap-1 text-[10px] font-bold text-[#8c6514] dark:text-[#f7e7a9] hover:underline cursor-pointer"
+              >
+                <RotateCcw className="w-3 h-3" />
+                <span>مسجد اوقات ری سیٹ</span>
+              </button>
+            </div>
+
+            <div className="space-y-1.5">
+              {slots.map((slot) => (
+                <div
+                  key={slot.key}
+                  className={`p-2 rounded-xl border flex flex-wrap items-center justify-between gap-1.5 transition-opacity ${
+                    slot.enabled ? 'opacity-100' : 'opacity-50'
+                  } ${
+                    isDark
+                      ? 'bg-[#0c2317] border-[#d4af37]/25'
+                      : 'bg-[#f6faf7] border-emerald-900/15'
+                  }`}
+                >
+                  <div className="flex items-center gap-2 min-w-[115px]">
+                    <button
+                      type="button"
+                      onClick={() => handleToggleSlot(slot.key)}
+                      className={`px-2 py-0.5 rounded-full text-[9.5px] font-extrabold cursor-pointer ${
+                        slot.enabled
+                          ? 'bg-[#00c853] text-[#042110]'
+                          : 'bg-slate-500 text-white'
+                      }`}
+                    >
+                      {slot.enabled ? 'ON' : 'OFF'}
+                    </button>
+                    <span className="font-bold text-[11px]">{slot.labelUrdu}</span>
+                  </div>
+
+                  <div className="flex items-center gap-1 text-[10.5px]" dir="ltr">
+                    <input
+                      type="time"
+                      value={slot.start}
+                      onChange={(e) => handleChangeSlotTime(slot.key, 'start', e.target.value)}
+                      className={`px-1.5 py-0.5 rounded-lg border text-[10.5px] font-bold tabular-nums ${
+                        isDark
+                          ? 'bg-[#06140c] border-[#d4af37]/40 text-emerald-100'
+                          : 'bg-white border-emerald-900/20 text-[#064326]'
+                      }`}
+                    />
+                    <span className="opacity-65">→</span>
+                    <input
+                      type="time"
+                      value={slot.end}
+                      onChange={(e) => handleChangeSlotTime(slot.key, 'end', e.target.value)}
+                      className={`px-1.5 py-0.5 rounded-lg border text-[10.5px] font-bold tabular-nums ${
+                        isDark
+                          ? 'bg-[#06140c] border-[#d4af37]/40 text-emerald-100'
+                          : 'bg-white border-emerald-900/20 text-[#064326]'
+                      }`}
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <button
+              type="button"
+              onClick={handleSaveCustomSlots}
+              className="w-full py-2 px-3 rounded-xl bg-[#064326] hover:bg-[#095c34] text-white font-extrabold text-[11.5px] border border-[#d4af37] shadow-xs active:scale-95 transition-all cursor-pointer"
+            >
+              ✓ شیڈول محفوظ اور خودکار سائلنٹ اپڈیٹ کریں
+            </button>
+          </div>
+        )}
 
         {/* Step Number Pills (1, 2, 3, 4) */}
         <div className="grid grid-cols-4 gap-1.5">
@@ -554,7 +824,7 @@ export const AutoSilentModal: React.FC<Props> = ({
                 </div>
 
                 <p className="text-[11px] leading-relaxed px-2.5 py-1.5 rounded-lg border-r-3 border-[#d4af37] bg-black/5 dark:bg-white/5">
-                  اسی طرح فجر، ظہر، عصر، مغرب، عشاء (روزانہ) اور جمعہ (صرف جمعہ کے دن) کے <strong>6 شیڈول</strong> بنا کر آن کر دیں۔
+                  اسی طرح فجر، ظہر، عصر، مغرب، عشاء (روزانہ) اور جمعہ (صرف جمعہ کے دن) کے <strong>6 شیڈول</strong> خودکار طور پر آپ کے موبائل میں چلیں گے۔
                 </p>
               </div>
 
@@ -596,7 +866,7 @@ export const AutoSilentModal: React.FC<Props> = ({
                 </div>
 
                 <p className="text-[11px] leading-relaxed px-2.5 py-1.5 rounded-lg border-r-3 border-[#d4af37] bg-black/5 dark:bg-white/5">
-                  آخر میں یقینی بنائیں کہ <strong>Calls</strong> "Allow None / Mute" پر ہو اور <strong>Repeat Caller</strong> بند ہو تاکہ عین جماعت میں بھی فون نہ بجے۔
+                  نماز کے دوران تمام کالز اور نوٹیفیکیشن خاموش رہیں گے اور نماز کے بعد موبائل خود بخود واپس نارمل آواز پر آ جائے گا۔
                 </p>
               </div>
             </div>

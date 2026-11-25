@@ -23,7 +23,7 @@ export const APP_GIFT_WHATSAPP_SHARE_URL = getAppGiftWhatsAppShareUrl();
 
 // Official Sheikh / Khanqah Top Title Calligraphy Banner (Glass Crystal Card PNG)
 export const SHEIKH_TITLE_BANNER_URL = "https://archive.org/download/20260422_20260422_1213/%D8%B4%DB%8C%D8%AE%20%D8%B5%D8%A7%D8%AD%D8%A8%20%D9%84%D9%88%DA%AF%D9%88%20%D9%84%DA%A9%DA%91%DB%8C%20%D9%88%D8%A7%D9%84%D8%A7.png";
-export const SHEIKH_GLASS_BANNER_URL = `${import.meta.env.BASE_URL}sheikh-glass-banner.png`;
+export const SHEIKH_GLASS_BANNER_URL = `${import.meta.env.BASE_URL}sheikh-glass-banner.webp`;
 
 // Direct Clean URLs (with ZERO empty gap and instant loading)
 export const GOLD_LIBRARY_URL = "https://naqshbandia.github.io/index.html/Gold%20file%20location.html";

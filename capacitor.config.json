@@ -2,6 +2,12 @@
   "appId": "com.khanqahdarulfalah.app",
   "appName": "Khanqah Darul Falah",
   "webDir": "dist",
+  "server": {
+    "allowNavigation": [
+      "naqshbandia.github.io",
+      "*.github.io"
+    ]
+  },
   "android": {
     "allowMixedContent": true
   }

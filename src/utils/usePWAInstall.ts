@@ -25,7 +25,15 @@ export function usePWAInstall() {
 
   useEffect(() => {
     // Detect standalone mode (already installed as PWA or running in APK webview)
+    const winWithAndroid = window as unknown as {
+      Android?: { isNativeAndroid?: () => boolean };
+    };
+    const isNativeBridge = Boolean(
+      typeof winWithAndroid.Android?.isNativeAndroid === 'function' &&
+        winWithAndroid.Android.isNativeAndroid()
+    );
     const isStandalone =
+      isNativeBridge ||
       window.matchMedia('(display-mode: standalone)').matches ||
       (window.navigator as unknown as { standalone?: boolean }).standalone === true;
     setIsInstalled(isStandalone);

@@ -412,14 +412,20 @@ export function useArchiveBayanat() {
         });
       }
 
-      // 2. Fetch audio files across all audio collections
+      // 2. Fetch audio files across audio collections in small batches of 4 to avoid mobile RAM/network spikes
       const audioEntries = Array.from(collectionsMap.entries()).filter(
         ([, meta]) => meta.mediatype === 'audio'
       );
 
-      const settled = await Promise.allSettled(
-        audioEntries.map(([id, meta]) => fetchCollectionMetadata(id, meta))
-      );
+      const settled: PromiseSettledResult<BayanItem[]>[] = [];
+      const batchSize = 4;
+      for (let i = 0; i < audioEntries.length; i += batchSize) {
+        const chunk = audioEntries.slice(i, i + batchSize);
+        const chunkResults = await Promise.allSettled(
+          chunk.map(([id, meta]) => fetchCollectionMetadata(id, meta))
+        );
+        settled.push(...chunkResults);
+      }
 
       const liveItems: BayanItem[] = [];
       const folderCounts = new Map<string, number>();
@@ -473,7 +479,10 @@ export function useArchiveBayanat() {
   }, []);
 
   useEffect(() => {
-    syncArchive();
+    const timer = window.setTimeout(() => {
+      syncArchive();
+    }, 180);
+    return () => window.clearTimeout(timer);
   }, [syncArchive]);
 
   return {
@@ -833,7 +842,10 @@ export function useArchiveBooks() {
   }, []);
 
   useEffect(() => {
-    syncBooks();
+    const timer = window.setTimeout(() => {
+      syncBooks();
+    }, 750);
+    return () => window.clearTimeout(timer);
   }, [syncBooks]);
 
   return {
@@ -1005,7 +1017,10 @@ export function useArchiveNewsPosters() {
   }, []);
 
   useEffect(() => {
-    syncPosters();
+    const timer = window.setTimeout(() => {
+      syncPosters();
+    }, 1150);
+    return () => window.clearTimeout(timer);
   }, [syncPosters]);
 
   return {

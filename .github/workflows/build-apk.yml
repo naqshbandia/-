@@ -56,6 +56,14 @@ jobs:
 
       - name: Generate and configure Native Android project
         run: |
+          OWNER="${GITHUB_REPOSITORY%%/*}"
+          REPO="${GITHUB_REPOSITORY#*/}"
+          if [ "$REPO" = "${OWNER}.github.io" ]; then
+            export KDF_LIVE_WEB_URL="https://${OWNER}.github.io/"
+          else
+            export KDF_LIVE_WEB_URL="https://${OWNER}.github.io/${REPO}/"
+          fi
+          echo "Configured OTA Live Web URL: $KDF_LIVE_WEB_URL"
           rm -rf android
           npx cap add android
           node scripts/setup-android-apk.mjs

@@ -3,14 +3,10 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, Suspense, lazy } from 'react';
 import { Header } from './components/Header';
 import { SmartSearchBar } from './components/SmartSearchBar';
 import { HamburgerDrawer } from './components/HamburgerDrawer';
-import { WebViewContainer } from './components/WebViewContainer';
-import { AudioLibraryView } from './components/AudioLibraryView';
-import { BooksLibraryView } from './components/BooksLibraryView';
-import { NewsUpdatesView } from './components/NewsUpdatesView';
 import { SmartDashboardHome } from './components/SmartDashboardHome';
 import { AudioPlayerBar } from './components/AudioPlayerBar';
 import {
@@ -24,9 +20,25 @@ import {
   DonationModal,
   ExitAppConfirmModal,
 } from './components/Modals';
-import { AutoSilentModal } from './components/AutoSilentModal';
+
+const WebViewContainer = lazy(() =>
+  import('./components/WebViewContainer').then((m) => ({ default: m.WebViewContainer }))
+);
+const AudioLibraryView = lazy(() =>
+  import('./components/AudioLibraryView').then((m) => ({ default: m.AudioLibraryView }))
+);
+const BooksLibraryView = lazy(() =>
+  import('./components/BooksLibraryView').then((m) => ({ default: m.BooksLibraryView }))
+);
+const NewsUpdatesView = lazy(() =>
+  import('./components/NewsUpdatesView').then((m) => ({ default: m.NewsUpdatesView }))
+);
+const AutoSilentModal = lazy(() =>
+  import('./components/AutoSilentModal').then((m) => ({ default: m.AutoSilentModal }))
+);
 import { loadCachedKhanqahSchedule } from './utils/khanqahScheduleService';
 import { PRAYER_CACHE_KEY, PrayerCache } from './utils/prayerEngine';
+import { syncAutoSilentFromAppBoot } from './utils/nativeAutoSilent';
 import { BayanItem } from './data/bayanatData';
 import { 
   GOLD_LIBRARY_URL, 
@@ -242,6 +254,25 @@ function AppContent() {
     [isAutoSilentOpen]
   );
 
+  // Automatically sync 6-prayer Auto-Silent schedules to native Android AlarmManager on boot & resume
+  useEffect(() => {
+    const syncNativeSchedule = () => {
+      syncAutoSilentFromAppBoot(cachedKhanqahSchedule, cachedPrayerData);
+    };
+    syncNativeSchedule();
+    window.addEventListener('kdf-native-resume', syncNativeSchedule);
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        syncNativeSchedule();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
+    return () => {
+      window.removeEventListener('kdf-native-resume', syncNativeSchedule);
+      document.removeEventListener('visibilitychange', handleVisibility);
+    };
+  }, [cachedKhanqahSchedule, cachedPrayerData]);
+
   // Audio player state
   const [currentBayan, setCurrentBayan] = useState<BayanItem | null>(null);
 
@@ -333,8 +364,25 @@ function AppContent() {
     }
   }, []);
 
-  // Ensure guard entry is armed whenever user navigates or interacts
+  // Ensure guard entry is armed whenever user navigates, opens UI, or runs standalone/native
   useEffect(() => {
+    const isEmbeddedIframe = (() => {
+      try {
+        return window.self !== window.top;
+      } catch {
+        return true;
+      }
+    })();
+    if (
+      isEmbeddedIframe &&
+      activeView === 'dashboard' &&
+      !hasAnyModalOpen &&
+      !isMenuOpen &&
+      !isSearchOpen &&
+      !isExitConfirmOpen
+    ) {
+      return;
+    }
     armBackGuard();
   }, [activeView, hasAnyModalOpen, isMenuOpen, isSearchOpen, isExitConfirmOpen, armBackGuard]);
 
@@ -346,80 +394,85 @@ function AppContent() {
     return () => window.removeEventListener('pointerdown', handleUserActivation);
   }, [armBackGuard]);
 
-  useEffect(() => {
-    const handlePopState = () => {
-      if (isExitingRef.current) return;
+  const handleBackNavigationStep = useCallback(() => {
+    if (isExitingRef.current) return;
 
-      const state = backNavStateRef.current;
+    const state = backNavStateRef.current;
 
-      // 1. If exit dialog is open, dismiss back to Home
-      if (state.isExitConfirmOpen) {
-        setIsExitConfirmOpen(false);
-        armBackGuard();
-        return;
-      }
-
-      // 2. If any info/donation/auto-silent modal is open, close it cleanly
-      if (state.hasAnyModalOpen) {
-        setIsIntroKhanqahOpen(false);
-        setIsIntroSheikhOpen(false);
-        setIsContactOpen(false);
-        setIsAboutOpen(false);
-        setIsWhatsAppGroupsOpen(false);
-        setIsTermsOpen(false);
-        setIsPrivacyOpen(false);
-        setIsDonationOpen(false);
-        setIsAutoSilentOpen(false);
-        armBackGuard();
-        return;
-      }
-
-      // 3. If drawer or search bar is open, close them
-      if (state.isMenuOpen || state.isSearchOpen) {
-        setIsMenuOpen(false);
-        setIsSearchOpen(false);
-        armBackGuard();
-        return;
-      }
-
-      // 4. Let nested views (e.g. open book PDF reader or fullscreen poster) handle back first
-      const backEvent = new CustomEvent('kdf-back-intercept', { cancelable: true });
-      const notCancelled = window.dispatchEvent(backEvent);
-      if (!notCancelled) {
-        armBackGuard();
-        return;
-      }
-
-      // 5. Inside any folder / sub-page -> return straight back to Home Page
-      if (state.activeView !== 'dashboard') {
-        setActiveView('dashboard');
-        armBackGuard();
-        return;
-      }
-
-      // 6. Already on Home Page -> require double Back press, then show Exit vs Home choice
-      const now = Date.now();
-      if (now - lastHomeBackPressRef.current <= 3500) {
-        lastHomeBackPressRef.current = 0;
-        setIsExitConfirmOpen(true);
-      } else {
-        lastHomeBackPressRef.current = now;
-        const hint =
-          state.lang === 'ps'
-            ? 'د وتلو لپاره د بېرته تلو (Back) تڼۍ یو ځل بیا فشار ورکړئ'
-            : state.lang === 'ar'
-            ? 'اضغط زر الرجوع مرة أخرى للخروج أو العودة للرئيسية'
-            : state.lang === 'en'
-            ? 'Press Back again to exit or confirm Home'
-            : 'ایپ سے باہر نکلنے کے لیے بیک بٹن دوبارہ دبائیں';
-        showNotification(hint);
-      }
+    // 1. If exit dialog is open, dismiss back to Home
+    if (state.isExitConfirmOpen) {
+      setIsExitConfirmOpen(false);
       armBackGuard();
-    };
+      return;
+    }
 
-    window.addEventListener('popstate', handlePopState);
-    return () => window.removeEventListener('popstate', handlePopState);
+    // 2. If any info/donation/auto-silent modal is open, close it cleanly
+    if (state.hasAnyModalOpen) {
+      setIsIntroKhanqahOpen(false);
+      setIsIntroSheikhOpen(false);
+      setIsContactOpen(false);
+      setIsAboutOpen(false);
+      setIsWhatsAppGroupsOpen(false);
+      setIsTermsOpen(false);
+      setIsPrivacyOpen(false);
+      setIsDonationOpen(false);
+      setIsAutoSilentOpen(false);
+      armBackGuard();
+      return;
+    }
+
+    // 3. If drawer or search bar is open, close them
+    if (state.isMenuOpen || state.isSearchOpen) {
+      setIsMenuOpen(false);
+      setIsSearchOpen(false);
+      armBackGuard();
+      return;
+    }
+
+    // 4. Let nested views (e.g. open book PDF reader or fullscreen poster) handle back first
+    const backEvent = new CustomEvent('kdf-back-intercept', { cancelable: true });
+    const notCancelled = window.dispatchEvent(backEvent);
+    if (!notCancelled) {
+      armBackGuard();
+      return;
+    }
+
+    // 5. Inside any folder / sub-page -> return straight back to Home Page
+    if (state.activeView !== 'dashboard') {
+      setActiveView('dashboard');
+      armBackGuard();
+      return;
+    }
+
+    // 6. Already on Home Page -> require double Back press, then show Exit vs Home choice
+    const now = Date.now();
+    if (now - lastHomeBackPressRef.current <= 3500) {
+      lastHomeBackPressRef.current = 0;
+      setIsExitConfirmOpen(true);
+    } else {
+      lastHomeBackPressRef.current = now;
+      const hint =
+        state.lang === 'ps'
+          ? 'د وتلو لپاره د بېرته تلو (Back) تڼۍ یو ځل بیا فشار ورکړئ'
+          : state.lang === 'ar'
+          ? 'اضغط زر الرجوع مرة أخرى للخروج أو العودة للرئيسية'
+          : state.lang === 'en'
+          ? 'Press Back again to exit or confirm Home'
+          : 'ایپ سے باہر نکلنے کے لیے بیک بٹن دوبارہ دبائیں';
+      showNotification(hint);
+    }
+    armBackGuard();
   }, [armBackGuard, showNotification]);
+
+  useEffect(() => {
+    const w = window as unknown as { __kdfHandleNativeBack?: () => void };
+    w.__kdfHandleNativeBack = handleBackNavigationStep;
+    window.addEventListener('popstate', handleBackNavigationStep);
+    return () => {
+      delete w.__kdfHandleNativeBack;
+      window.removeEventListener('popstate', handleBackNavigationStep);
+    };
+  }, [handleBackNavigationStep]);
 
   const handleStayHomeFromExit = () => {
     setIsExitConfirmOpen(false);
@@ -580,50 +633,60 @@ function AppContent() {
             currentPlayingBayanId={currentBayan?.id || null}
             installStats={installStats}
           />
-        ) : activeView === 'library' ? (
-          <AudioLibraryView
-            onPlayAudio={handlePlayAudio}
-            onPauseFloatingAudio={() => setCurrentBayan(null)}
-            onNotify={showNotification}
-            onNavigateUrl={handleNavigateUrl}
-            onSwitchToWebView={() => handleNavigateUrl(GOLD_LIBRARY_URL)}
-            isDark={isDark}
-            currentPlayingBayanId={currentBayan?.id || null}
-            bayanatList={bayanat}
-            archiveFolders={archiveFolders}
-            initialFolderId={selectedLibraryFolderId}
-            lang={lang}
-          />
-        ) : activeView === 'books' ? (
-          <BooksLibraryView
-            books={books}
-            isSyncing={isSyncingBooks}
-            onRefreshBooks={() => syncBooks(showNotification)}
-            onGoHome={() => setActiveView('dashboard')}
-            onNotify={showNotification}
-            isDark={isDark}
-            lang={lang}
-            initialBookId={initialReadingBookId}
-            onClearInitialBook={() => setInitialReadingBookId(null)}
-          />
-        ) : activeView === 'news' ? (
-          <NewsUpdatesView
-            posters={posters}
-            isSyncing={isSyncingPosters}
-            onRefreshPosters={() => syncPosters(showNotification)}
-            onGoHome={() => setActiveView('dashboard')}
-            onNotify={showNotification}
-            isDark={isDark}
-            lang={lang}
-          />
         ) : (
-          <WebViewContainer
-            currentUrl={currentUrl}
-            onUrlChange={setCurrentUrl}
-            onBackRequest={() => setIsAboutOpen(true)}
-            onGoHome={() => setActiveView('dashboard')}
-            isDark={isDark}
-          />
+          <Suspense
+            fallback={
+              <div className="flex-1 flex items-center justify-center p-6 text-xs font-bold text-[#064326] dark:text-[#d4af37]">
+                لوڈ ہو رہا ہے...
+              </div>
+            }
+          >
+            {activeView === 'library' ? (
+              <AudioLibraryView
+                onPlayAudio={handlePlayAudio}
+                onPauseFloatingAudio={() => setCurrentBayan(null)}
+                onNotify={showNotification}
+                onNavigateUrl={handleNavigateUrl}
+                onSwitchToWebView={() => handleNavigateUrl(GOLD_LIBRARY_URL)}
+                isDark={isDark}
+                currentPlayingBayanId={currentBayan?.id || null}
+                bayanatList={bayanat}
+                archiveFolders={archiveFolders}
+                initialFolderId={selectedLibraryFolderId}
+                lang={lang}
+              />
+            ) : activeView === 'books' ? (
+              <BooksLibraryView
+                books={books}
+                isSyncing={isSyncingBooks}
+                onRefreshBooks={() => syncBooks(showNotification)}
+                onGoHome={() => setActiveView('dashboard')}
+                onNotify={showNotification}
+                isDark={isDark}
+                lang={lang}
+                initialBookId={initialReadingBookId}
+                onClearInitialBook={() => setInitialReadingBookId(null)}
+              />
+            ) : activeView === 'news' ? (
+              <NewsUpdatesView
+                posters={posters}
+                isSyncing={isSyncingPosters}
+                onRefreshPosters={() => syncPosters(showNotification)}
+                onGoHome={() => setActiveView('dashboard')}
+                onNotify={showNotification}
+                isDark={isDark}
+                lang={lang}
+              />
+            ) : (
+              <WebViewContainer
+                currentUrl={currentUrl}
+                onUrlChange={setCurrentUrl}
+                onBackRequest={() => setIsAboutOpen(true)}
+                onGoHome={() => setActiveView('dashboard')}
+                isDark={isDark}
+              />
+            )}
+          </Suspense>
         )}
       </main>
 
@@ -741,15 +804,19 @@ function AppContent() {
         onNotify={showNotification}
       />
 
-      <AutoSilentModal
-        isOpen={isAutoSilentOpen}
-        onClose={() => setIsAutoSilentOpen(false)}
-        isDark={isDark}
-        lang={lang}
-        officialSchedule={cachedKhanqahSchedule}
-        prayerData={cachedPrayerData}
-        onNotify={showNotification}
-      />
+      {isAutoSilentOpen && (
+        <Suspense fallback={null}>
+          <AutoSilentModal
+            isOpen={isAutoSilentOpen}
+            onClose={() => setIsAutoSilentOpen(false)}
+            isDark={isDark}
+            lang={lang}
+            officialSchedule={cachedKhanqahSchedule}
+            prayerData={cachedPrayerData}
+            onNotify={showNotification}
+          />
+        </Suspense>
+      )}
 
       <ExitAppConfirmModal
         isOpen={isExitConfirmOpen}

@@ -121,7 +121,7 @@ interface Props {
 
 const NOTIFY_EMAIL_KEY = 'khanqah_live_notify_email_v1';
 
-const SlidingBayanTitle: React.FC<{ text: string }> = ({ text }) => {
+const SlidingBayanTitle: React.FC<{ text: string }> = React.memo(({ text }) => {
   const viewportRef = useRef<HTMLDivElement | null>(null);
   const spanRef = useRef<HTMLSpanElement | null>(null);
   const [shouldSlide, setShouldSlide] = useState(false);
@@ -134,10 +134,12 @@ const SlidingBayanTitle: React.FC<{ text: string }> = ({ text }) => {
       setShouldSlide(sp.scrollWidth > vp.clientWidth + 4);
     };
 
-    checkOverflow();
-    const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(checkOverflow) : null;
-    if (ro && viewportRef.current) ro.observe(viewportRef.current);
-    return () => ro?.disconnect();
+    const raf = window.requestAnimationFrame(checkOverflow);
+    window.addEventListener('resize', checkOverflow, { passive: true });
+    return () => {
+      window.cancelAnimationFrame(raf);
+      window.removeEventListener('resize', checkOverflow);
+    };
   }, [text]);
 
   const durationSec = Math.max(10, Math.min(28, Math.round(text.length * 0.22)));
@@ -159,7 +161,58 @@ const SlidingBayanTitle: React.FC<{ text: string }> = ({ text }) => {
       </span>
     </div>
   );
-};
+});
+
+const LiveClockCrystalBox: React.FC<{
+  hijriDate?: string;
+  hijriLoading: string;
+  lang: AppLanguage;
+}> = React.memo(({ hijriDate, hijriLoading, lang }) => {
+  const [now, setNow] = useState<Date>(() => new Date());
+
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      setNow(new Date());
+    }, 1000);
+    return () => window.clearInterval(timer);
+  }, []);
+
+  const formattedClock = now.toLocaleTimeString('en-US', {
+    hour12: true,
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+  });
+
+  return (
+    <div className="relative max-w-md mx-auto w-full mt-1 mb-2 -translate-y-1.5 overflow-hidden rounded-2xl bg-gradient-to-br from-[#38bdf8] via-[#0284c7] to-[#0369a1] border-2 border-[#d4af37] ring-1 ring-[#fef08a]/50 ring-inset px-4 py-3.5 sm:px-6 sm:py-4 text-center shadow-[0_0_20px_rgba(255,255,255,0.55),0_16px_28px_-8px_rgba(0,0,0,0.7)]">
+      {/* Subtle top glass shine */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-white/35 via-white/10 to-transparent"
+      />
+      <div className="relative z-10">
+        <div
+          className="text-3xl sm:text-4xl font-extrabold text-white tracking-wider tabular-nums font-sans leading-tight drop-shadow-[0_2px_6px_rgba(0,0,0,0.38)]"
+          dir="ltr"
+        >
+          {formattedClock}
+        </div>
+        <div className="text-sm sm:text-base font-bold text-[#fef08a] mt-1 drop-shadow-[0_1px_4px_rgba(0,0,0,0.45)]">
+          {hijriDate || hijriLoading}
+        </div>
+        <div className="text-[11.5px] sm:text-xs font-semibold text-sky-50 mt-0.5 tabular-nums drop-shadow-[0_1px_3px_rgba(0,0,0,0.35)]">
+          {now.toLocaleDateString(getDateLocale(lang), {
+            weekday: 'long',
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric',
+          })}
+        </div>
+      </div>
+    </div>
+  );
+});
 
 export const SmartDashboardHome: React.FC<Props> = ({
   isDark,
@@ -194,7 +247,7 @@ export const SmartDashboardHome: React.FC<Props> = ({
   const donationLabels = getDonationLabels(lang);
   const autoSilentLabels = getAutoSilentLabels(lang);
   const dir = getDir(lang);
-  const [now, setNow] = useState<Date>(() => new Date());
+  const [minuteNowMs, setMinuteNowMs] = useState<number>(() => Date.now());
   const [glassBannerError, setGlassBannerError] = useState(false);
   const [tickerMessage, setTickerMessage] = useState<string>(() => loadCachedTickerMessage());
 
@@ -273,12 +326,12 @@ export const SmartDashboardHome: React.FC<Props> = ({
     return () => document.removeEventListener('visibilitychange', handleVisible);
   }, []);
 
-  // Live Clock (ticks every second)
+  // Refresh prayer highlights & 7-day NEW window only once per minute (avoids re-rendering full dashboard every second)
   useEffect(() => {
-    const timer = setInterval(() => {
-      setNow(new Date());
-    }, 1000);
-    return () => clearInterval(timer);
+    const timer = window.setInterval(() => {
+      setMinuteNowMs(Date.now());
+    }, 60 * 1000);
+    return () => window.clearInterval(timer);
   }, []);
 
   // Fetch Bannu Prayer Timings (Aladhan Hanafi)
@@ -321,19 +374,12 @@ export const SmartDashboardHome: React.FC<Props> = ({
     });
   }, [khanqahOfficialSchedule, prayerData]);
 
-  const formattedClock = now.toLocaleTimeString('en-US', {
-    hour12: true,
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-  });
+  const currentMinuteBucket = Math.floor(minuteNowMs / 60000);
 
   const nextPrayerKey = useMemo(
-    () => (prayerData ? getNextFarzKey(prayerData.prayers, now) : null),
-    [prayerData, now]
+    () => (prayerData ? getNextFarzKey(prayerData.prayers, new Date(currentMinuteBucket * 60000)) : null),
+    [prayerData, currentMinuteBucket]
   );
-
-  const currentMinuteBucket = Math.floor(now.getTime() / 60000);
 
   // Only show newly uploaded bayanat, books & posters within the last 7 days (disappear automatically after 7 days)
   const latestUploadedItems = useMemo(() => {
@@ -617,37 +663,12 @@ export const SmartDashboardHome: React.FC<Props> = ({
 
         {/* 3. Standalone Smart Clock & Prayer Timings Display Box */}
         <section className="islamic-panel-pattern border-2 border-[#d4af37] rounded-3xl p-4 sm:p-5 text-white shadow-xl space-y-4">
-          {/* Elevated Floating Sky-Blue Crystal Box: Live Clock, Hijri Date & Weekday */}
-          <div className="relative max-w-md mx-auto w-full mt-1 mb-2 -translate-y-1.5 overflow-hidden rounded-2xl bg-gradient-to-br from-[#38bdf8] via-[#0284c7] to-[#0369a1] border-2 border-[#d4af37] ring-1 ring-[#fef08a]/50 ring-inset px-4 py-3.5 sm:px-6 sm:py-4 text-center shadow-[0_0_24px_rgba(255,255,255,0.68),0_0_48px_rgba(255,255,255,0.32),0_20px_32px_-8px_rgba(0,0,0,0.75)]">
-            {/* Subtle top glass shine & sparkle */}
-            <div
-              aria-hidden="true"
-              className="pointer-events-none absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-white/35 via-white/10 to-transparent"
-            />
-            <div
-              aria-hidden="true"
-              className="pointer-events-none absolute -top-10 -right-10 w-32 h-32 rounded-full bg-white/25 blur-2xl"
-            />
-            <div className="relative z-10">
-              <div
-                className="text-3xl sm:text-4xl font-extrabold text-white tracking-wider tabular-nums font-sans leading-tight drop-shadow-[0_2px_8px_rgba(0,0,0,0.4)]"
-                dir="ltr"
-              >
-                {formattedClock}
-              </div>
-              <div className="text-sm sm:text-base font-bold text-[#fef08a] mt-1 drop-shadow-[0_1px_4px_rgba(0,0,0,0.45)]">
-                {prayerData?.hijriDate || t.hijriLoading}
-              </div>
-              <div className="text-[11.5px] sm:text-xs font-semibold text-sky-50 mt-0.5 tabular-nums drop-shadow-[0_1px_3px_rgba(0,0,0,0.35)]">
-                {now.toLocaleDateString(getDateLocale(lang), {
-                  weekday: 'long',
-                  year: 'numeric',
-                  month: 'long',
-                  day: 'numeric',
-                })}
-              </div>
-            </div>
-          </div>
+          {/* Elevated Floating Sky-Blue Crystal Box: Isolated 1-second Clock, Hijri Date & Weekday */}
+          <LiveClockCrystalBox
+            hijriDate={prayerData?.hijriDate}
+            hijriLoading={t.hijriLoading}
+            lang={lang}
+          />
 
           {/* 3 Tab Buttons Right Above Prayer Cards */}
           <div className="pt-2.5 border-t border-[#d4af37]/20 space-y-3">

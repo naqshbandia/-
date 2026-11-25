@@ -71,12 +71,25 @@ export default defineConfig(() => {
     },
   };
 
+  const pruneAiStudioAttachmentsPlugin: Plugin = {
+    name: 'kdf-prune-aistudio-attachments',
+    apply: 'build',
+    async closeBundle() {
+      const fs = await import('node:fs');
+      const aistudioOut = path.resolve('dist', 'assets', 'aistudio');
+      if (fs.existsSync(aistudioOut)) {
+        fs.rmSync(aistudioOut, { recursive: true, force: true });
+      }
+    },
+  };
+
   return {
     base,
     plugins: [
       react(),
       tailwindcss(),
       devManifestPlugin,
+      pruneAiStudioAttachmentsPlugin,
       VitePWA({
         registerType: 'autoUpdate',
         useCredentials: true,
@@ -94,7 +107,7 @@ export default defineConfig(() => {
           'app-icon-512.png',
           'app-icon-maskable.png',
           'app-logo.webp',
-          'sheikh-glass-banner.png',
+          'sheikh-glass-banner.webp',
           'khanqah-theme.html',
           'khanqah-auto-silent.html',
           'khanqah-jamaat.html',
@@ -105,7 +118,7 @@ export default defineConfig(() => {
           clientsClaim: true,
           skipWaiting: true,
           globPatterns: ['**/*.{js,css,html,ico,png,svg,webp,woff,woff2}'],
-          globIgnores: ['**/assets/aistudio/**'],
+          globIgnores: ['**/assets/aistudio/**', '**/sheikh-glass-banner.png'],
           maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
         },
         devOptions: {
