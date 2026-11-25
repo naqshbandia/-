@@ -249,7 +249,7 @@ export const HamburgerDrawer: React.FC<Props> = ({
               {/* Direct Official APK Download Button */}
               <a
                 href={OFFICIAL_APK_URL}
-                download="khanqah-Darul-falah.apk"
+                download="Khanqah-Darul-Falah.apk"
                 onClick={() => recordApkDownloadClick()}
                 className="w-full flex items-center justify-between p-2.5 rounded-xl bg-[var(--kdf-primary,#064326)] hover:opacity-95 text-white font-lalezar text-xs border border-[var(--kdf-accent,#d4af37)]/60 shadow-sm active:scale-95 transition-all"
               >

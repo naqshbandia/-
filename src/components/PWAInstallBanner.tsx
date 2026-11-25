@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Download, X, Check, Share, Smartphone } from 'lucide-react';
 import { usePWAInstall } from '../utils/usePWAInstall';
-import { GITHUB_LATEST_APK_URL } from '../data/appConfig';
+import { OFFICIAL_APK_URL } from '../data/appConfig';
 import { recordApkDownloadClick, recordPwaInstalledEvent } from '../utils/installStatsService';
 import {
   AppLanguage,
@@ -109,9 +109,9 @@ export const PWAInstallBanner: React.FC<Props> = ({
               </button>
             )}
 
-            {/* Direct Latest GitHub Release APK Download Link */}
+            {/* Direct Archive.org APK Download Link */}
             <a
-              href={GITHUB_LATEST_APK_URL}
+              href={OFFICIAL_APK_URL}
               download="Khanqah-Darul-Falah.apk"
               onClick={handleAPKDownload}
               className={`px-2.5 py-1.5 font-bold rounded-lg shadow-xs flex items-center gap-1 active:scale-95 transition-all text-xs whitespace-nowrap ${
@@ -191,7 +191,7 @@ export const PWAInstallBanner: React.FC<Props> = ({
 
             <div className="flex items-center gap-2">
               <a
-                href={GITHUB_LATEST_APK_URL}
+                href={OFFICIAL_APK_URL}
                 download="Khanqah-Darul-Falah.apk"
                 onClick={handleAPKDownload}
                 className="flex-1 py-2 bg-[#064326] hover:bg-[#095c34] text-white font-lalezar text-xs rounded-xl shadow-md text-center font-bold"

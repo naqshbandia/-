@@ -237,7 +237,15 @@ function AppContent() {
   const [isTermsOpen, setIsTermsOpen] = useState(false);
   const [isPrivacyOpen, setIsPrivacyOpen] = useState(false);
   const [isDonationOpen, setIsDonationOpen] = useState(false);
-  const [isAutoSilentOpen, setIsAutoSilentOpen] = useState(false);
+  const [isAutoSilentOpen, setIsAutoSilentOpen] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    try {
+      const params = new URLSearchParams(window.location.search);
+      return params.get('open') === 'auto-silent' || window.location.hash === '#auto-silent';
+    } catch {
+      return false;
+    }
+  });
   const [isExitConfirmOpen, setIsExitConfirmOpen] = useState(false);
 
   const cachedPrayerData = React.useMemo<PrayerCache | null>(() => {

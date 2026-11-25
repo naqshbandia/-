@@ -1,15 +1,10 @@
-import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import {
-  BellOff,
-  ChevronLeft,
-  ChevronRight,
   Check,
   MessageCircle,
   Share2,
   FileDown,
   Image as ImageIcon,
-  Play,
-  Pause,
   Printer,
   Settings,
   Copy,
@@ -19,6 +14,7 @@ import {
   Volume2,
   VolumeX,
 } from 'lucide-react';
+import { OFFICIAL_APK_URL } from '../data/appConfig';
 import { BaseModal } from './Modals';
 import {
   downloadAutoSilentGuideJpg,
@@ -67,18 +63,15 @@ export const AutoSilentModal: React.FC<Props> = ({
   onNotify,
 }) => {
   const dir = getDir(lang);
-  const [currentSlide, setCurrentSlide] = useState(0);
-  const [isAutoPlaying, setIsAutoPlaying] = useState(true);
   const [isExportingJpg, setIsExportingJpg] = useState(false);
   const [isExportingPdf, setIsExportingPdf] = useState(false);
   const [showDndSettingsTip, setShowDndSettingsTip] = useState(false);
   const [copiedSchedule, setCopiedSchedule] = useState(false);
+  const [copiedInvite, setCopiedInvite] = useState(false);
   const [isTestingSilent, setIsTestingSilent] = useState<boolean>(() =>
     getNativeAutoSilentStatus().currentlySilent
   );
   const [showScheduleEditor, setShowScheduleEditor] = useState(true);
-  const touchStartX = useRef<number | null>(null);
-  const totalSlides = 4;
 
   const [config, setConfig] = useState(() =>
     loadAutoSilentConfig(officialSchedule, prayerData)
@@ -128,15 +121,6 @@ export const AutoSilentModal: React.FC<Props> = ({
       document.removeEventListener('visibilitychange', handleVisibility);
     };
   }, [isOpen, officialSchedule, prayerData, refreshNativeAndSync]);
-
-  // Automatic smooth slide transition (pauses when modal closes or user pauses)
-  useEffect(() => {
-    if (!isOpen || !isAutoPlaying) return;
-    const timer = window.setInterval(() => {
-      setCurrentSlide((prev) => (prev + 1) % totalSlides);
-    }, 4000);
-    return () => window.clearInterval(timer);
-  }, [isOpen, isAutoPlaying]);
 
   const slots = config.slots;
 
@@ -283,30 +267,61 @@ export const AutoSilentModal: React.FC<Props> = ({
     }
   };
 
-  const whatsappShareUrl = useMemo(() => {
-    const lines = [
-      '🔕 *نماز آٹو سائلنٹ موڈ — صدقۂ جاریہ*',
+  const appShareMessage = useMemo(() => {
+    return [
+      '🔕 *نماز آٹو سائلنٹ موڈ — خانقاہ دارالفلاح ایپ (صدقۂ جاریہ)*',
       '',
-      'مسجد میں نماز کے دوران موبائل کی گھنٹی بجنے سے بچنے کے لیے درج ذیل اوقات پر موبائل آٹو سائلنٹ سیٹ کر لیں:',
+      'مسجد میں نماز کے دوران موبائل کی گھنٹی سے بچنے کے لیے نیچے دیے گئے لنک سے خانقاہ دارالفلاح ایپ انسٹال کریں، اور ایپ کھول کر *"آٹو سائلنٹ موڈ"* میں اپنی نمازوں کا وقت آن کر لیں — موبائل خودکار خاموش ہو کر وقت پر خود کھل جائے گا:',
       '',
-      ...slots
-        .filter((s) => s.enabled)
-        .map((s) => `• ${s.labelUrdu}: ${formatTo12Hour(s.start)} تا ${formatTo12Hour(s.end)}`),
+      '📲 *ایپ ڈاؤنلوڈ لنک (APK):*',
+      OFFICIAL_APK_URL,
       '',
-      '📌 *اہم نوٹ:* اگر آپ کی مسجد کے امام صاحب کسی نماز کی جماعت کا وقت تبدیل فرمائیں، تو آپ بھی اپنے شیڈول میں اس نماز کا وقت ضرور تبدیل کر لیں۔',
-      '',
-      '🤲 خانقاہ دارالفلاح اینڈرائڈ ایپ انسٹال کریں اور صرف ایک کلک پر نمازوں میں خودکار سائلنٹ موڈ آن کریں۔',
+      '📌 *نوٹ:* اگر مسجد کے امام صاحب وقتِ جماعت تبدیل کریں تو آپ بھی ایپ میں وقت اپڈیٹ کر لیں۔',
+      '🤲 ثواب کی نیت سے اپنے دوست احباب کے ساتھ ضرور شیئر کریں!',
     ].join('\n');
-    return `https://wa.me/?text=${encodeURIComponent(lines)}`;
-  }, [slots]);
+  }, []);
 
-  const goPrev = () => {
-    setIsAutoPlaying(false);
-    setCurrentSlide((s) => (s === 0 ? totalSlides - 1 : s - 1));
+  const whatsappShareUrl = useMemo(
+    () => `https://wa.me/?text=${encodeURIComponent(appShareMessage)}`,
+    [appShareMessage]
+  );
+
+  const triggerWhatsAppShare = () => {
+    const a = document.createElement('a');
+    a.href = whatsappShareUrl;
+    a.target = '_blank';
+    a.rel = 'noreferrer';
+    a.style.display = 'none';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
   };
-  const goNext = () => {
-    setIsAutoPlaying(false);
-    setCurrentSlide((s) => (s + 1) % totalSlides);
+
+  const handleNativeShareWithFriends = async () => {
+    if (typeof navigator !== 'undefined' && typeof navigator.share === 'function') {
+      try {
+        await navigator.share({
+          title: 'خانقاہ دارالفلاح — نماز آٹو سائلنٹ موڈ',
+          text: appShareMessage,
+          url: OFFICIAL_APK_URL,
+        });
+        return;
+      } catch (err) {
+        if ((err as Error)?.name === 'AbortError') return;
+      }
+    }
+    triggerWhatsAppShare();
+  };
+
+  const handleCopyInviteMessage = async () => {
+    try {
+      await navigator.clipboard.writeText(appShareMessage);
+      setCopiedInvite(true);
+      window.setTimeout(() => setCopiedInvite(false), 3000);
+      onNotify?.('دوستوں کو شیئر کرنے کا پیغام اور لنک کاپی ہو گیا!');
+    } catch {
+      triggerWhatsAppShare();
+    }
   };
 
   const buildSchedulePlainText = () =>
@@ -578,44 +593,44 @@ export const AutoSilentModal: React.FC<Props> = ({
           )}
         </div>
 
-        {/* 6-Prayer Customizable Auto-Silent Schedule Table */}
+        {/* 6-Prayer Customizable Auto-Silent Schedule Table (Larger & Clearer) */}
         {showScheduleEditor && (
           <div
-            className={`p-2.5 rounded-2xl border border-[#d4af37]/45 space-y-2 ${
+            className={`p-3.5 rounded-2xl border-2 border-[#d4af37]/55 space-y-3 shadow-sm ${
               isDark ? 'bg-[#08180f] text-emerald-50' : 'bg-white text-[#11261b]'
             }`}
           >
-            <div className="flex items-center justify-between gap-2">
-              <span className="font-bold text-[11.5px] text-[#064326] dark:text-[#d4af37]">
+            <div className="flex items-center justify-between gap-2 pb-1 border-b border-[#d4af37]/25">
+              <span className="font-extrabold text-sm text-[#064326] dark:text-[#d4af37]">
                 🕌 تمام 6 نمازوں کے خودکار سائلنٹ اوقات
               </span>
               <button
                 type="button"
                 onClick={handleResetDefaultSlots}
-                className="inline-flex items-center gap-1 text-[10px] font-bold text-[#8c6514] dark:text-[#f7e7a9] hover:underline cursor-pointer"
+                className="inline-flex items-center gap-1 text-[11px] font-bold text-[#8c6514] dark:text-[#f7e7a9] hover:underline cursor-pointer shrink-0"
               >
-                <RotateCcw className="w-3 h-3" />
+                <RotateCcw className="w-3.5 h-3.5" />
                 <span>مسجد اوقات ری سیٹ</span>
               </button>
             </div>
 
-            <div className="space-y-1.5">
+            <div className="space-y-2">
               {slots.map((slot) => (
                 <div
                   key={slot.key}
-                  className={`p-2 rounded-xl border flex flex-wrap items-center justify-between gap-1.5 transition-opacity ${
+                  className={`p-3 rounded-2xl border flex flex-wrap items-center justify-between gap-2 transition-opacity ${
                     slot.enabled ? 'opacity-100' : 'opacity-50'
                   } ${
                     isDark
-                      ? 'bg-[#0c2317] border-[#d4af37]/25'
+                      ? 'bg-[#0c2317] border-[#d4af37]/30'
                       : 'bg-[#f6faf7] border-emerald-900/15'
                   }`}
                 >
-                  <div className="flex items-center gap-2 min-w-[115px]">
+                  <div className="flex items-center gap-2.5 min-w-[130px]">
                     <button
                       type="button"
                       onClick={() => handleToggleSlot(slot.key)}
-                      className={`px-2 py-0.5 rounded-full text-[9.5px] font-extrabold cursor-pointer ${
+                      className={`px-2.5 py-1 rounded-full text-[11px] font-extrabold cursor-pointer shadow-xs ${
                         slot.enabled
                           ? 'bg-[#00c853] text-[#042110]'
                           : 'bg-slate-500 text-white'
@@ -623,29 +638,29 @@ export const AutoSilentModal: React.FC<Props> = ({
                     >
                       {slot.enabled ? 'ON' : 'OFF'}
                     </button>
-                    <span className="font-bold text-[11px]">{slot.labelUrdu}</span>
+                    <span className="font-extrabold text-xs sm:text-sm">{slot.labelUrdu}</span>
                   </div>
 
-                  <div className="flex items-center gap-1 text-[10.5px]" dir="ltr">
+                  <div className="flex items-center gap-1.5 text-xs sm:text-sm" dir="ltr">
                     <input
                       type="time"
                       value={slot.start}
                       onChange={(e) => handleChangeSlotTime(slot.key, 'start', e.target.value)}
-                      className={`px-1.5 py-0.5 rounded-lg border text-[10.5px] font-bold tabular-nums ${
+                      className={`px-2.5 py-1.5 rounded-xl border text-xs sm:text-[13px] font-extrabold tabular-nums ${
                         isDark
-                          ? 'bg-[#06140c] border-[#d4af37]/40 text-emerald-100'
-                          : 'bg-white border-emerald-900/20 text-[#064326]'
+                          ? 'bg-[#06140c] border-[#d4af37]/45 text-emerald-100'
+                          : 'bg-white border-emerald-900/25 text-[#064326]'
                       }`}
                     />
-                    <span className="opacity-65">→</span>
+                    <span className="opacity-70 font-bold">→</span>
                     <input
                       type="time"
                       value={slot.end}
                       onChange={(e) => handleChangeSlotTime(slot.key, 'end', e.target.value)}
-                      className={`px-1.5 py-0.5 rounded-lg border text-[10.5px] font-bold tabular-nums ${
+                      className={`px-2.5 py-1.5 rounded-xl border text-xs sm:text-[13px] font-extrabold tabular-nums ${
                         isDark
-                          ? 'bg-[#06140c] border-[#d4af37]/40 text-emerald-100'
-                          : 'bg-white border-emerald-900/20 text-[#064326]'
+                          ? 'bg-[#06140c] border-[#d4af37]/45 text-emerald-100'
+                          : 'bg-white border-emerald-900/25 text-[#064326]'
                       }`}
                     />
                   </div>
@@ -656,386 +671,123 @@ export const AutoSilentModal: React.FC<Props> = ({
             <button
               type="button"
               onClick={handleSaveCustomSlots}
-              className="w-full py-2 px-3 rounded-xl bg-[#064326] hover:bg-[#095c34] text-white font-extrabold text-[11.5px] border border-[#d4af37] shadow-xs active:scale-95 transition-all cursor-pointer"
+              className="w-full py-2.5 px-3 rounded-xl bg-[#064326] hover:bg-[#095c34] text-white font-extrabold text-xs sm:text-sm border border-[#d4af37] shadow-sm active:scale-95 transition-all cursor-pointer"
             >
               ✓ شیڈول محفوظ اور خودکار سائلنٹ اپڈیٹ کریں
             </button>
           </div>
         )}
 
-        {/* Step Number Pills (1, 2, 3, 4) */}
-        <div className="grid grid-cols-4 gap-1.5">
-          {[
-            { idx: 0, label: '1️⃣ سیٹنگز' },
-            { idx: 1, label: '2️⃣ شیڈول' },
-            { idx: 2, label: '3️⃣ 6 نمازیں' },
-            { idx: 3, label: '4️⃣ محفوظ' },
-          ].map((step) => (
-            <button
-              key={step.idx}
-              type="button"
-              onClick={() => {
-                setIsAutoPlaying(false);
-                setCurrentSlide(step.idx);
-              }}
-              className={`py-1.5 px-1 rounded-xl text-[11px] font-bold border transition-all cursor-pointer ${
-                currentSlide === step.idx
-                  ? 'bg-[#d4af37] text-[#051a0f] border-white shadow-sm'
-                  : isDark
-                  ? 'bg-[#08180f] text-emerald-100 border-[#d4af37]/30 hover:border-[#d4af37]'
-                  : 'bg-white text-[#064326] border-emerald-900/15 hover:bg-emerald-50'
-              }`}
-            >
-              {step.label}
-            </button>
-          ))}
-        </div>
-
-        {/* Swipeable / Sliding Visual Phone Screenshot Carousel */}
+        {/* Important Imam Namaz Time Update Note — Directly Below Schedule */}
         <div
-          className={`rounded-2xl border border-[#d4af37]/50 overflow-hidden ${
-            isDark ? 'bg-[#06130c]' : 'bg-[#eef4f0]'
+          className={`p-3 rounded-2xl border-2 text-center space-y-1.5 ${
+            isDark
+              ? 'bg-[#1a1608] border-[#d4af37]/75 text-amber-100'
+              : 'bg-amber-50 border-[#d4af37] text-[#11261b]'
           }`}
-          onTouchStart={(e) => {
-            touchStartX.current = e.changedTouches[0].screenX;
-          }}
-          onTouchEnd={(e) => {
-            if (touchStartX.current === null) return;
-            const diff = e.changedTouches[0].screenX - touchStartX.current;
-            touchStartX.current = null;
-            if (diff < -40) goNext();
-            else if (diff > 40) goPrev();
-          }}
         >
-          <div className="overflow-hidden" dir="ltr">
-            <div
-              className="flex transition-transform duration-300 ease-out"
-              style={{ transform: `translateX(-${currentSlide * 100}%)` }}
-            >
-              {/* Slide 1: Settings -> Sound -> Do Not Disturb */}
-              <div className="w-full shrink-0 p-3 space-y-2.5" dir={dir}>
-                <div className="flex items-center justify-between">
-                  <h4 className="font-bold text-[#064326] dark:text-[#d4af37] text-xs sm:text-sm">
-                    مرحلہ 1: Do Not Disturb کھولیں
-                  </h4>
-                  <span className="px-2 py-0.5 rounded-md bg-[#d4af37] text-[#051a0f] font-extrabold text-[10.5px]">
-                    تصویر 1 / 4
-                  </span>
-                </div>
-
-                <div
-                  className="max-w-[280px] mx-auto rounded-2xl bg-[#0f172a] border-2 border-slate-600 p-2.5 text-slate-100 shadow-lg font-sans"
-                  dir="ltr"
-                >
-                  <div className="w-14 h-1 bg-slate-600 rounded-full mx-auto mb-2" />
-                  <div className="flex justify-between text-[9.5px] text-slate-400 border-b border-white/10 pb-1 mb-2">
-                    <span>05:30 AM</span>
-                    <span>⚙ Settings › Sound</span>
-                  </div>
-                  <div className="space-y-1.5 text-[11px]">
-                    <div className="px-2.5 py-1.5 rounded-lg bg-slate-800/80 flex justify-between items-center">
-                      <span>🔊 Volume &amp; Ringtone</span>
-                      <span className="opacity-50">›</span>
-                    </div>
-                    <div className="px-2.5 py-2 rounded-lg bg-[#064326] border border-[#d4af37] flex justify-between items-center shadow-md">
-                      <div>
-                        <div className="font-bold text-white">🌙 Do Not Disturb</div>
-                        <div className="text-[9.5px] text-emerald-200">خاموشی اور اوقاتِ کار سیٹنگ</div>
-                      </div>
-                      <span className="text-[#d4af37] font-bold">👈</span>
-                    </div>
-                    <div className="px-2.5 py-1.5 rounded-lg bg-slate-800/80 flex justify-between items-center">
-                      <span>📅 Schedules / Auto Start</span>
-                      <span className="opacity-50">›</span>
-                    </div>
-                  </div>
-                </div>
-
-                <p className="text-[11px] leading-relaxed px-2.5 py-1.5 rounded-lg border-r-3 border-[#d4af37] bg-black/5 dark:bg-white/5">
-                  موبائل کی <strong>Settings</strong> میں جا کر <strong>Sound &amp; Vibration</strong> کھولیں اور <strong>Do Not Disturb</strong> (یا Samsung میں Modes &amp; Routines) پر کلک کریں۔
-                </p>
-              </div>
-
-              {/* Slide 2: Add Schedule & Auto Start / Start-End */}
-              <div className="w-full shrink-0 p-3 space-y-2.5" dir={dir}>
-                <div className="flex items-center justify-between">
-                  <h4 className="font-bold text-[#064326] dark:text-[#d4af37] text-xs sm:text-sm">
-                    مرحلہ 2: Start اور End ٹائم بنائیں
-                  </h4>
-                  <span className="px-2 py-0.5 rounded-md bg-[#d4af37] text-[#051a0f] font-extrabold text-[10.5px]">
-                    تصویر 2 / 4
-                  </span>
-                </div>
-
-                <div
-                  className="max-w-[280px] mx-auto rounded-2xl bg-[#0f172a] border-2 border-slate-600 p-2.5 text-slate-100 shadow-lg font-sans"
-                  dir="ltr"
-                >
-                  <div className="w-14 h-1 bg-slate-600 rounded-full mx-auto mb-2" />
-                  <div className="flex justify-between text-[9.5px] text-slate-400 border-b border-white/10 pb-1 mb-2">
-                    <span>Schedules</span>
-                    <span className="text-[#00ff99]">Auto Start ✓</span>
-                  </div>
-                  <div className="space-y-1.5 text-[11px]">
-                    <div className="px-2.5 py-1.5 rounded-lg bg-[#064326] border border-[#d4af37] flex justify-between items-center">
-                      <div>
-                        <div className="font-bold">🕌 Fajr Prayer (فجر)</div>
-                        <div className="text-[9.5px] text-emerald-200">
-                          Start: {formatTo12Hour(slots[0]?.start || '05:50')} · End: {formatTo12Hour(slots[0]?.end || '06:20')}
-                        </div>
-                      </div>
-                      <span className="px-2 py-0.5 rounded-full bg-[#00e676] text-[#051a0f] font-bold text-[9px]">ON</span>
-                    </div>
-                    <div className="flex justify-center gap-1 py-1">
-                      {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((d, i) => (
-                        <span
-                          key={i}
-                          className="w-5 h-5 rounded-full bg-[#064326] border border-[#d4af37] text-[9px] font-bold flex items-center justify-center"
-                        >
-                          {d}
-                        </span>
-                      ))}
-                    </div>
-                    <div className="py-1.5 rounded-lg bg-[#064326] border border-[#d4af37] text-center font-bold text-[10.5px]">
-                      ✓ Save Schedule (روزانہ خودکار آن)
-                    </div>
-                  </div>
-                </div>
-
-                <p className="text-[11px] leading-relaxed px-2.5 py-1.5 rounded-lg border-r-3 border-[#d4af37] bg-black/5 dark:bg-white/5">
-                  <strong>+ Add Schedule</strong> دبا کر نماز کا نام لکھیں، <strong>Start Time</strong> اور <strong>End Time</strong> منتخب کر کے ہفتے کے ساتوں دن آن کریں اور <strong>Save</strong> کریں۔
-                </p>
-              </div>
-
-              {/* Slide 3: All 6 Prayer Schedules Preview */}
-              <div className="w-full shrink-0 p-3 space-y-2.5" dir={dir}>
-                <div className="flex items-center justify-between">
-                  <h4 className="font-bold text-[#064326] dark:text-[#d4af37] text-xs sm:text-sm">
-                    مرحلہ 3: پانچ نمازوں و جمعہ کے 6 شیڈول
-                  </h4>
-                  <span className="px-2 py-0.5 rounded-md bg-[#d4af37] text-[#051a0f] font-extrabold text-[10.5px]">
-                    تصویر 3 / 4
-                  </span>
-                </div>
-
-                <div
-                  className="max-w-[290px] mx-auto rounded-2xl bg-[#0f172a] border-2 border-slate-600 p-2 text-slate-100 shadow-lg font-sans"
-                  dir="ltr"
-                >
-                  <div className="flex justify-between text-[9px] text-slate-400 border-b border-white/10 pb-1 mb-1.5">
-                    <span>Prayer Auto-Silent List</span>
-                    <span className="text-[#00ff99]">{slots.filter((s) => s.enabled).length} / 6 Active</span>
-                  </div>
-                  <div className="space-y-1">
-                    {slots.map((s) => (
-                      <div
-                        key={s.key}
-                        className={`px-2 py-1 rounded-lg bg-slate-800/90 flex items-center justify-between text-[10px] ${
-                          s.enabled ? 'opacity-100' : 'opacity-45'
-                        }`}
-                      >
-                        <div className="min-w-0">
-                          <div className="font-bold truncate">{s.labelUrdu}</div>
-                          <div className="text-[9px] text-emerald-300 tabular-nums">
-                            {formatTo12Hour(s.start)} → {formatTo12Hour(s.end)}
-                          </div>
-                        </div>
-                        <span
-                          className={`px-2 py-0.5 rounded-full text-[8.5px] font-bold ${
-                            s.enabled ? 'bg-[#00e676] text-[#051a0f]' : 'bg-slate-600 text-slate-200'
-                          }`}
-                        >
-                          {s.enabled ? 'ON' : 'OFF'}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                <p className="text-[11px] leading-relaxed px-2.5 py-1.5 rounded-lg border-r-3 border-[#d4af37] bg-black/5 dark:bg-white/5">
-                  اسی طرح فجر، ظہر، عصر، مغرب، عشاء (روزانہ) اور جمعہ (صرف جمعہ کے دن) کے <strong>6 شیڈول</strong> خودکار طور پر آپ کے موبائل میں چلیں گے۔
-                </p>
-              </div>
-
-              {/* Slide 4: Calls Mute & Final Confirmation */}
-              <div className="w-full shrink-0 p-3 space-y-2.5" dir={dir}>
-                <div className="flex items-center justify-between">
-                  <h4 className="font-bold text-[#064326] dark:text-[#d4af37] text-xs sm:text-sm">
-                    مرحلہ 4: کالز بند رکھیں اور محفوظ کریں
-                  </h4>
-                  <span className="px-2 py-0.5 rounded-md bg-[#d4af37] text-[#051a0f] font-extrabold text-[10.5px]">
-                    تصویر 4 / 4
-                  </span>
-                </div>
-
-                <div
-                  className="max-w-[280px] mx-auto rounded-2xl bg-[#0f172a] border-2 border-slate-600 p-2.5 text-slate-100 shadow-lg font-sans"
-                  dir="ltr"
-                >
-                  <div className="w-14 h-1 bg-slate-600 rounded-full mx-auto mb-2" />
-                  <div className="space-y-1.5 text-[11px]">
-                    <div className="px-2.5 py-2 rounded-lg bg-[#064326] border border-[#d4af37] flex justify-between items-center">
-                      <div>
-                        <div className="font-bold">📵 Calls &amp; Messages</div>
-                        <div className="text-[9.5px] text-emerald-200">Allow None (نماز میں گھنٹی بند)</div>
-                      </div>
-                      <Check className="w-4 h-4 text-[#00ff99]" />
-                    </div>
-                    <div className="px-2.5 py-1.5 rounded-lg bg-slate-800/80 flex justify-between items-center">
-                      <div>
-                        <div className="font-bold">🔔 Notifications &amp; Media</div>
-                        <div className="text-[9.5px] text-slate-300">Muted automatically</div>
-                      </div>
-                      <Check className="w-4 h-4 text-[#00ff99]" />
-                    </div>
-                    <div className="py-1.5 rounded-lg bg-[#d4af37] text-[#051a0f] text-center font-extrabold text-[10.5px]">
-                      ✨ سیٹنگ مکمل! اب نماز سکون سے ادا کریں
-                    </div>
-                  </div>
-                </div>
-
-                <p className="text-[11px] leading-relaxed px-2.5 py-1.5 rounded-lg border-r-3 border-[#d4af37] bg-black/5 dark:bg-white/5">
-                  نماز کے دوران تمام کالز اور نوٹیفیکیشن خاموش رہیں گے اور نماز کے بعد موبائل خود بخود واپس نارمل آواز پر آ جائے گا۔
-                </p>
-              </div>
-            </div>
+          <div className="font-extrabold text-[#92400e] dark:text-[#fde68a] text-xs sm:text-[13px]">
+            📌 اہم نوٹ: مسجد کے امام صاحب کے وقت کی تبدیلی کا خیال رکھیں
           </div>
-
-          {/* Slider Controls with Auto-Play Toggle */}
-          <div
-            className={`px-3 py-2 flex items-center justify-between gap-2 border-t border-[#d4af37]/30 ${
-              isDark ? 'bg-[#08180f]' : 'bg-white'
-            }`}
-          >
-            <button
-              type="button"
-              onClick={goPrev}
-              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[#064326] text-white text-[11px] font-bold border border-[#d4af37]/50 cursor-pointer"
-            >
-              <ChevronRight className="w-3.5 h-3.5" />
-              <span>پچھلا</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setIsAutoPlaying((p) => !p)}
-              className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg border text-[10.5px] font-bold cursor-pointer transition-colors ${
-                isAutoPlaying
-                  ? 'bg-[#d4af37] text-[#051a0f] border-[#d4af37]'
-                  : isDark
-                  ? 'bg-white/10 text-emerald-100 border-[#d4af37]/40'
-                  : 'bg-emerald-50 text-[#064326] border-emerald-800/25'
-              }`}
-              title={isAutoPlaying ? 'خودکار سلائیڈ روکیں' : 'خودکار سلائیڈ چلائیں'}
-            >
-              {isAutoPlaying ? (
-                <>
-                  <Pause className="w-3 h-3" />
-                  <span>خودکار ({currentSlide + 1}/{totalSlides})</span>
-                </>
-              ) : (
-                <>
-                  <Play className="w-3 h-3" />
-                  <span>چلائیں ({currentSlide + 1}/{totalSlides})</span>
-                </>
-              )}
-            </button>
-
-            <button
-              type="button"
-              onClick={goNext}
-              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[#064326] text-white text-[11px] font-bold border border-[#d4af37]/50 cursor-pointer"
-            >
-              <span>اگلا</span>
-              <ChevronLeft className="w-3.5 h-3.5" />
-            </button>
-          </div>
+          <p className="text-[11.5px] sm:text-xs leading-relaxed opacity-95">
+            اگر آپ کی مسجد کے امام صاحب کسی نماز کی جماعت کا وقت تبدیل فرمائیں، تو آپ بھی اپنے موبائل میں اس نماز کا وقت ضرور تبدیل کر لیں تاکہ ہر نماز میں موبائل بروقت خاموش رہے۔
+          </p>
         </div>
 
-        {/* Action Buttons: WhatsApp Share + A4 JPG, A4 PDF & HTML Download */}
+        {/* Sadaqah Jariyah: Share App & Auto-Silent Mode with Friends */}
         <div
-          className={`p-3 rounded-2xl border border-[#d4af37]/45 space-y-2 ${
+          className={`p-3 rounded-2xl border-2 border-[#d4af37]/50 space-y-2.5 ${
             isDark ? 'bg-[#08180f]' : 'bg-[#f8fbf9]'
           }`}
         >
+          <div className="text-center space-y-0.5">
+            <p className="font-extrabold text-xs sm:text-[13px] text-[#064326] dark:text-[#d4af37]">
+              🤲 دوستوں کے ساتھ شیئر کریں — صدقۂ جاریہ
+            </p>
+            <p className="text-[11px] opacity-85 leading-relaxed">
+              اپنے دوست احباب کو یہ ایپ شیئر کریں؛ وہ ایپ انسٹال کر کے اس آٹو سائلنٹ موڈ میں نماز کا وقت سیٹ کریں گے تو آپ کو بھی ثواب ملے گا۔
+            </p>
+          </div>
+
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             <a
               href={whatsappShareUrl}
               target="_blank"
               rel="noreferrer"
-              className="sm:col-span-2 py-2 px-3 rounded-xl bg-[#25D366] hover:bg-[#1faa4e] text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm active:scale-95 transition-all"
+              className="py-2.5 px-3 rounded-xl bg-[#25D366] hover:bg-[#1faa4e] text-white font-extrabold text-xs flex items-center justify-center gap-1.5 shadow-sm active:scale-95 transition-all"
             >
-              <MessageCircle className="w-3.5 h-3.5 fill-white" />
-              <span>واٹس ایپ صدقۂ جاریہ شیئر</span>
-              <Share2 className="w-3 h-3" />
+              <MessageCircle className="w-4 h-4 fill-white shrink-0" />
+              <span>واٹس ایپ پر شیئر کریں</span>
             </a>
 
             <button
               type="button"
+              onClick={handleNativeShareWithFriends}
+              className="py-2.5 px-3 rounded-xl bg-[#064326] hover:bg-[#095c34] text-white font-extrabold text-xs border border-[#d4af37]/70 flex items-center justify-center gap-1.5 shadow-sm active:scale-95 transition-all cursor-pointer"
+            >
+              <Share2 className="w-4 h-4 text-[#d4af37] shrink-0" />
+              <span>دوستوں کو ایپ شیئر کریں</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={handleCopyInviteMessage}
+              className={`sm:col-span-2 py-2 px-3 rounded-xl border font-bold text-[11.5px] flex items-center justify-center gap-1.5 active:scale-95 transition-all cursor-pointer ${
+                copiedInvite
+                  ? 'bg-[#d4af37] text-[#051a0f] border-[#d4af37]'
+                  : isDark
+                  ? 'bg-[#0d281a] hover:bg-[#133825] text-[#f3d97d] border-[#d4af37]/40'
+                  : 'bg-white hover:bg-emerald-50 text-[#064326] border-[#064326]/25'
+              }`}
+            >
+              {copiedInvite ? (
+                <>
+                  <Check className="w-3.5 h-3.5 shrink-0" />
+                  <span>ایپ لنک اور پیغام کاپی ہو گیا ✓</span>
+                </>
+              ) : (
+                <>
+                  <Copy className="w-3.5 h-3.5 shrink-0" />
+                  <span>ایپ ڈاؤنلوڈ لنک و پیغام کاپی کریں</span>
+                </>
+              )}
+            </button>
+          </div>
+
+          <div className="pt-1 border-t border-[#d4af37]/20 grid grid-cols-3 gap-1.5">
+            <button
+              type="button"
               onClick={handleDownloadJpgGuide}
               disabled={isExportingJpg}
-              className="py-2 px-3 rounded-xl bg-[#0b4f2e] hover:bg-[#0e663b] text-white border border-[#d4af37]/60 font-bold text-xs flex items-center justify-center gap-1.5 cursor-pointer active:scale-95 transition-all disabled:opacity-60"
+              className="py-1.5 px-2 rounded-lg bg-[#0b4f2e] hover:bg-[#0e663b] text-white border border-[#d4af37]/50 font-bold text-[10.5px] flex items-center justify-center gap-1 cursor-pointer active:scale-95 transition-all disabled:opacity-60"
             >
-              <ImageIcon className="w-3.5 h-3.5 text-[#d4af37]" />
-              <span>{isExportingJpg ? 'JPG بن رہی ہے...' : 'A4 پرنٹ JPG ڈاؤنلوڈ'}</span>
+              <ImageIcon className="w-3 h-3 text-[#d4af37] shrink-0" />
+              <span>{isExportingJpg ? '...' : 'A4 JPG'}</span>
             </button>
 
             <button
               type="button"
               onClick={handleDownloadPdfGuide}
               disabled={isExportingPdf}
-              className="py-2 px-3 rounded-xl bg-[#d4af37] hover:bg-[#c5a028] text-[#051a0f] border border-[#d4af37] font-bold text-xs flex items-center justify-center gap-1.5 cursor-pointer active:scale-95 transition-all disabled:opacity-60"
+              className="py-1.5 px-2 rounded-lg bg-[#d4af37] hover:bg-[#c5a028] text-[#051a0f] font-bold text-[10.5px] flex items-center justify-center gap-1 cursor-pointer active:scale-95 transition-all disabled:opacity-60"
             >
-              <Printer className="w-3.5 h-3.5" />
-              <span>{isExportingPdf ? 'PDF بن رہی ہے...' : 'مسجد پرنٹ A4 PDF'}</span>
+              <Printer className="w-3 h-3 shrink-0" />
+              <span>{isExportingPdf ? '...' : 'A4 PDF'}</span>
             </button>
 
             <button
               type="button"
               onClick={handleDownloadHtmlGuide}
-              className={`sm:col-span-2 py-2 px-3 rounded-xl border font-bold text-xs flex items-center justify-center gap-1.5 cursor-pointer active:scale-95 transition-all ${
+              className={`py-1.5 px-2 rounded-lg border font-bold text-[10.5px] flex items-center justify-center gap-1 cursor-pointer active:scale-95 transition-all ${
                 isDark
                   ? 'bg-white/10 hover:bg-white/15 border-[#d4af37]/40 text-[#d4af37]'
                   : 'bg-white hover:bg-emerald-50 border-[#064326]/25 text-[#064326]'
               }`}
             >
-              <FileDown className="w-3.5 h-3.5" />
-              <span>HTML گائیڈ ڈاؤنلوڈ کریں</span>
+              <FileDown className="w-3 h-3 shrink-0" />
+              <span>HTML</span>
             </button>
           </div>
-        </div>
-
-        {/* Android Brand Quick Tips */}
-        <div
-          className={`p-2.5 rounded-xl border text-[10.5px] leading-relaxed ${
-            isDark
-              ? 'bg-[#08150e] border-[#d4af37]/25 text-emerald-100/85'
-              : 'bg-amber-50/70 border-[#d4af37]/35 text-[#11261b]'
-          }`}
-        >
-          <div className="font-bold text-[#8c6514] dark:text-[#d4af37] mb-0.5 flex items-center gap-1">
-            <BellOff className="w-3 h-3" />
-            <span>مختلف موبائلز میں سیٹنگ کا نام:</span>
-          </div>
-          <div>• <b>Samsung:</b> Settings → Modes &amp; Routines / Do Not Disturb</div>
-          <div>• <b>Xiaomi / Redmi / Poco:</b> Settings → Sound → Do Not Disturb → Schedule</div>
-          <div>• <b>Oppo / Vivo / Infinix / Tecno:</b> Settings → Sound → Do Not Disturb → Schedules</div>
-        </div>
-
-        {/* Important Imam Namaz Time Update Note */}
-        <div
-          className={`p-2.5 rounded-xl border-2 text-center space-y-1 ${
-            isDark
-              ? 'bg-[#1a1608] border-[#d4af37]/70 text-amber-100'
-              : 'bg-amber-50 border-[#d4af37] text-[#11261b]'
-          }`}
-        >
-          <div className="font-bold text-[#92400e] dark:text-[#fde68a] text-[11.5px]">
-            📌 اہم نوٹ: مسجد کے اوقاتِ نماز کی تبدیلی کا خیال رکھیں
-          </div>
-          <p className="text-[10.5px] leading-relaxed opacity-95">
-            اگر آپ کی مسجد کے امام صاحب کسی نماز کی جماعت کا وقت تبدیل فرمائیں، تو آپ بھی اپنے موبائل کے آٹو سائلنٹ شیڈول میں اس نماز کا وقت ضرور تبدیل کر لیں تاکہ ہر نماز میں موبائل بروقت خاموش رہے۔
-          </p>
         </div>
       </div>
     </BaseModal>
