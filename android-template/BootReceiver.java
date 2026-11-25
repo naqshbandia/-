@@ -16,6 +16,8 @@ public class BootReceiver extends BroadcastReceiver {
             || Intent.ACTION_TIME_CHANGED.equals(action)
             || Intent.ACTION_TIMEZONE_CHANGED.equals(action)) {
             PrayerSilentScheduler.reconcileAndScheduleAll(context, false);
+            KhanqahNotificationHelper.ensureChannels(context);
+            KhanqahNotificationHelper.schedulePeriodicChecks(context);
         }
     }
 }

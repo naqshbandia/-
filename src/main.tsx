@@ -3,8 +3,16 @@ import { registerSW } from 'virtual:pwa-register';
 import App from './App.tsx';
 import './index.css';
 
-// Register VitePWA Service Worker in production; in dev preview clean up any stale SW so module loading stays fresh
-if (import.meta.env.PROD) {
+const winBridge =
+  typeof window !== 'undefined'
+    ? (window as unknown as { Android?: { isNativeAndroid?: () => boolean } }).Android
+    : undefined;
+const isNativeAndroidApk = Boolean(
+  typeof winBridge?.isNativeAndroid === 'function' && winBridge.isNativeAndroid()
+);
+
+// Register VitePWA Service Worker ONLY on Web/PWA; in Native APK or dev preview clean up any stale SW so OTA updates load fresh immediately
+if (import.meta.env.PROD && !isNativeAndroidApk) {
   try {
     registerSW({
       immediate: true,
@@ -24,6 +32,12 @@ if (import.meta.env.PROD) {
       });
     })
     .catch(() => {});
+  if (isNativeAndroidApk && typeof window !== 'undefined' && 'caches' in window) {
+    window.caches
+      .keys()
+      .then((keys) => Promise.all(keys.map((k) => window.caches.delete(k))))
+      .catch(() => {});
+  }
 }
 
 createRoot(document.getElementById('root')!).render(<App />);

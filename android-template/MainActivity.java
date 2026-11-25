@@ -42,9 +42,15 @@ public class MainActivity extends BridgeActivity {
     private volatile long lastOtaCheckAtMs = 0L;
     private volatile boolean otaCheckInFlight = false;
 
+    private static final int REQ_CODE_POST_NOTIFICATIONS = 7001;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
+        KhanqahNotificationHelper.ensureChannels(this);
+        requestNotificationPermissionIfNeeded();
+        KhanqahNotificationHelper.schedulePeriodicChecks(this);
 
         if (this.bridge != null && this.bridge.getWebView() != null) {
             WebView webView = this.bridge.getWebView();
@@ -125,8 +131,15 @@ public class MainActivity extends BridgeActivity {
                 }
             });
 
-            // Immediately sync latest live updates from GitHub Pages (falls back cleanly to offline bundle)
-            checkAndLoadLiveUpdate(true);
+            // Live update check runs in onStart() right after Capacitor initializes local bridge
+        }
+    }
+
+    @Override
+    public void onStart() {
+        super.onStart();
+        if (this.bridge != null && this.bridge.getWebView() != null) {
+            this.bridge.getWebView().postDelayed(() -> checkAndLoadLiveUpdate(true), 350L);
         }
     }
 
@@ -135,13 +148,44 @@ public class MainActivity extends BridgeActivity {
         super.onResume();
         // Reconcile DND state (auto-exit if prayer ended while asleep) & re-arm alarms
         PrayerSilentScheduler.reconcileAndScheduleAll(this, false);
-        if (this.bridge != null && this.bridge.getWebView() != null) {
-            this.bridge.getWebView().evaluateJavascript(
+        WebView wv = this.bridge != null ? this.bridge.getWebView() : null;
+        if (wv != null) {
+            wv.evaluateJavascript(
                 "window.dispatchEvent(new CustomEvent('kdf-native-resume'));",
                 null
             );
+            String curUrl = wv.getUrl();
+            boolean onLive = curUrl != null && curUrl.startsWith(getLiveWebUrl());
+            checkAndLoadLiveUpdate(!onLive);
+        } else {
+            checkAndLoadLiveUpdate(false);
         }
-        checkAndLoadLiveUpdate(false);
+        KhanqahNotificationHelper.checkRemoteUpdatesAsync(this);
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode == REQ_CODE_POST_NOTIFICATIONS) {
+            if (this.bridge != null && this.bridge.getWebView() != null) {
+                this.bridge.getWebView().evaluateJavascript(
+                    "window.dispatchEvent(new CustomEvent('kdf-native-resume'));",
+                    null
+                );
+            }
+        }
+    }
+
+    private void requestNotificationPermissionIfNeeded() {
+        if (Build.VERSION.SDK_INT >= 33) {
+            if (checkSelfPermission("android.permission.POST_NOTIFICATIONS")
+                != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+                requestPermissions(
+                    new String[]{"android.permission.POST_NOTIFICATIONS"},
+                    REQ_CODE_POST_NOTIFICATIONS
+                );
+            }
+        }
     }
 
     @Override
@@ -256,12 +300,8 @@ public class MainActivity extends BridgeActivity {
                         boolean alreadyOnLive = currentUrl != null && currentUrl.startsWith(liveUrl);
 
                         if (!alreadyOnLive || hasNewVersion) {
-                            if (hasNewVersion) {
-                                wv.clearCache(true);
-                                wv.loadUrl(liveUrl + "?_kdf_ota=" + now);
-                            } else {
-                                wv.loadUrl(liveUrl);
-                            }
+                            wv.clearCache(true);
+                            wv.loadUrl(liveUrl + "?_kdf_ota=" + now);
                         }
                     });
                 }
@@ -315,6 +355,80 @@ public class MainActivity extends BridgeActivity {
                 }
             });
             checkAndLoadLiveUpdate(true);
+        }
+
+        @JavascriptInterface
+        public boolean hasNotificationPermission() {
+            return KhanqahNotificationHelper.hasNotificationPermission(MainActivity.this);
+        }
+
+        @JavascriptInterface
+        public void requestNotificationPermission() {
+            runOnUiThread(() -> {
+                if (Build.VERSION.SDK_INT >= 33) {
+                    if (checkSelfPermission("android.permission.POST_NOTIFICATIONS")
+                        != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+                        requestPermissions(
+                            new String[]{"android.permission.POST_NOTIFICATIONS"},
+                            REQ_CODE_POST_NOTIFICATIONS
+                        );
+                        return;
+                    }
+                }
+                openNotificationSettings();
+            });
+        }
+
+        @JavascriptInterface
+        public void openNotificationSettings() {
+            runOnUiThread(() -> {
+                try {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                        Intent intent = new Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS);
+                        intent.putExtra(Settings.EXTRA_APP_PACKAGE, getPackageName());
+                        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                        startActivity(intent);
+                        return;
+                    }
+                    Intent intent = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
+                    intent.setData(Uri.parse("package:" + getPackageName()));
+                    intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                    startActivity(intent);
+                } catch (Exception e) {
+                    try {
+                        launchSettingsIntent(Settings.ACTION_SETTINGS);
+                    } catch (Exception ignored) {
+                    }
+                }
+            });
+        }
+
+        @JavascriptInterface
+        public boolean sendTestNotification() {
+            KhanqahNotificationHelper.ensureChannels(MainActivity.this);
+            if (!KhanqahNotificationHelper.hasNotificationPermission(MainActivity.this)) {
+                requestNotificationPermission();
+                return false;
+            }
+            KhanqahNotificationHelper.showStyledNotification(
+                MainActivity.this,
+                "🕌 خانقاہ دارالفلاح — نوٹیفکیشن فعال ہے",
+                "ماشاءاللہ! اب جب بھی کوئی نیا اصلاحی بیان، کتاب یا پیغام اپلوڈ ہوگا تو آپ کو خوبصورت اطلاع ملے گی۔",
+                "فوری ٹیسٹ کامیاب ✓",
+                5099
+            );
+            return true;
+        }
+
+        @JavascriptInterface
+        public void showUpdateNotification(String title, String body, String subText) {
+            KhanqahNotificationHelper.showStyledNotification(
+                MainActivity.this,
+                title != null ? title : "خانقاہ دارالفلاح",
+                body != null ? body : "",
+                subText != null ? subText : "نئی اپڈیٹ",
+                (int) (System.currentTimeMillis() % 100000L) + 5100
+            );
         }
 
         @JavascriptInterface

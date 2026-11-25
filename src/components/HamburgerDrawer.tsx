@@ -45,6 +45,11 @@ import {
   getDonationLabels,
   getAutoSilentLabels,
 } from '../data/translations';
+import {
+  getAndroidBridge,
+  getNativeNotificationGranted,
+  isRunningInNativeApk,
+} from '../utils/nativeAutoSilent';
 import { ISLAMIC_THEMES, IslamicThemePalette } from '../utils/themeService';
 import { DisplayModePreference } from '../utils/displayModeService';
 import { recordApkDownloadClick } from '../utils/installStatsService';
@@ -115,6 +120,8 @@ export const HamburgerDrawer: React.FC<Props> = ({
   const donationLabels = getDonationLabels(lang);
   const autoSilentLabels = getAutoSilentLabels(lang);
   const dir = getDir(lang);
+  const inNativeApk = isRunningInNativeApk();
+  const notifGranted = inNativeApk ? getNativeNotificationGranted() : false;
 
   const rowClass = `w-full flex items-center justify-between px-3 py-2.5 rounded-xl transition-all group cursor-pointer ${
     dir === 'ltr' ? 'text-left' : 'text-right'
@@ -261,6 +268,60 @@ export const HamburgerDrawer: React.FC<Props> = ({
                   APK
                 </span>
               </a>
+
+              {/* Native Notification Permission & Live Update Alert Control */}
+              {inNativeApk && (
+                <div
+                  className={`p-2.5 rounded-xl border space-y-1.5 ${
+                    isDark
+                      ? 'bg-[#0b2316] border-[#d4af37]/40 text-emerald-50'
+                      : 'bg-[#f4f7f6] border-emerald-900/15 text-[#11261b]'
+                  }`}
+                >
+                  <div className="flex items-center justify-between gap-2 text-[11px] font-bold">
+                    <span className="flex items-center gap-1.5 text-[#064326] dark:text-[#d4af37]">
+                      <Bell className="w-3.5 h-3.5 shrink-0" />
+                      <span>نئے بیانات و کتب نوٹیفکیشن</span>
+                    </span>
+                    <span
+                      className={`px-2 py-0.5 rounded-full text-[9.5px] font-extrabold ${
+                        notifGranted
+                          ? 'bg-[#00c853] text-[#042110]'
+                          : 'bg-amber-500 text-[#111]'
+                      }`}
+                    >
+                      {notifGranted ? 'آن ہے ✅' : 'اجازت دیں'}
+                    </span>
+                  </div>
+
+                  {notifGranted ? (
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => getAndroidBridge()?.sendTestNotification?.()}
+                        className="flex-1 py-1.5 px-2 rounded-lg bg-[#064326] hover:bg-[#095c34] text-white text-[10.5px] font-bold border border-[#d4af37]/50 cursor-pointer active:scale-95 transition-all"
+                      >
+                        🔔 ٹیسٹ پیغام بھیجیں
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => getAndroidBridge()?.openNotificationSettings?.()}
+                        className="py-1.5 px-2.5 rounded-lg border border-[#d4af37]/40 text-[10.5px] font-bold cursor-pointer hover:bg-black/10"
+                      >
+                        سیٹنگز
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => getAndroidBridge()?.requestNotificationPermission?.()}
+                      className="w-full py-1.5 px-2.5 rounded-lg bg-[#d4af37] hover:bg-[#c5a028] text-[#051a0f] text-[11px] font-extrabold cursor-pointer active:scale-95 transition-all"
+                    >
+                      🔔 1 کلک میں نوٹیفکیشن آن کریں
+                    </button>
+                  )}
+                </div>
+              )}
 
               {/* Islamic Background Color Style Selector */}
               {onChangeThemeOverride && (

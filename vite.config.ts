@@ -91,6 +91,7 @@ export default defineConfig(() => {
       devManifestPlugin,
       pruneAiStudioAttachmentsPlugin,
       VitePWA({
+        selfDestroying: isCapacitorBuild,
         registerType: 'autoUpdate',
         useCredentials: true,
         includeAssets: [
@@ -117,9 +118,24 @@ export default defineConfig(() => {
           cleanupOutdatedCaches: true,
           clientsClaim: true,
           skipWaiting: true,
-          globPatterns: ['**/*.{js,css,html,ico,png,svg,webp,woff,woff2}'],
+          ignoreURLParametersMatching: [/^_kdf_/],
+          globPatterns: ['**/*.{js,css,ico,png,svg,webp,woff,woff2}'],
           globIgnores: ['**/assets/aistudio/**', '**/sheikh-glass-banner.png'],
           maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
+          runtimeCaching: [
+            {
+              urlPattern: ({ request }) => request.mode === 'navigate',
+              handler: 'NetworkFirst',
+              options: {
+                cacheName: 'kdf-pages-cache',
+                networkTimeoutSeconds: 4,
+                expiration: {
+                  maxEntries: 10,
+                  maxAgeSeconds: 24 * 60 * 60,
+                },
+              },
+            },
+          ],
         },
         devOptions: {
           enabled: false,

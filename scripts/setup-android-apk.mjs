@@ -29,6 +29,8 @@ for (const javaFile of [
   'PrayerSilentScheduler.java',
   'PrayerSilentReceiver.java',
   'BootReceiver.java',
+  'KhanqahNotificationHelper.java',
+  'UpdateCheckReceiver.java',
 ]) {
   const srcPath = path.join(rootDir, 'android-template', javaFile);
   if (fs.existsSync(srcPath)) {
@@ -45,6 +47,7 @@ if (fs.existsSync(manifestPath)) {
   const requiredPermissions = [
     'android.permission.ACCESS_NETWORK_STATE',
     'android.permission.ACCESS_NOTIFICATION_POLICY',
+    'android.permission.POST_NOTIFICATIONS',
     'android.permission.RECEIVE_BOOT_COMPLETED',
     'android.permission.SCHEDULE_EXACT_ALARM',
     'android.permission.USE_EXACT_ALARM',
@@ -77,6 +80,11 @@ if (fs.existsSync(manifestPath)) {
             android:exported="false" />
 
         <receiver
+            android:name=".UpdateCheckReceiver"
+            android:enabled="true"
+            android:exported="false" />
+
+        <receiver
             android:name=".BootReceiver"
             android:enabled="true"
             android:exported="true">
@@ -90,6 +98,11 @@ if (fs.existsSync(manifestPath)) {
         </receiver>
     </application>`;
     manifest = manifest.replace('</application>', receiversXml);
+  } else if (!manifest.includes('UpdateCheckReceiver')) {
+    manifest = manifest.replace(
+      '</application>',
+      `\n        <receiver\n            android:name=".UpdateCheckReceiver"\n            android:enabled="true"\n            android:exported="false" />\n    </application>`
+    );
   }
 
   fs.writeFileSync(manifestPath, manifest, 'utf8');

@@ -281,6 +281,78 @@ function AppContent() {
     };
   }, [cachedKhanqahSchedule, cachedPrayerData]);
 
+  // Trigger beautiful native notification whenever a strictly new Bayan, Book, or Poster is uploaded
+  useEffect(() => {
+    const bridge = getAndroidBridge();
+    if (!bridge || typeof bridge.showUpdateNotification !== 'function') return;
+
+    const BASELINE_KEY = 'kdf_upload_notif_baseline_v1';
+    try {
+      const raw = localStorage.getItem(BASELINE_KEY);
+      const latestBayan = bayanat[0]?.id || '';
+      const latestBook = books[0]?.id || '';
+      const latestPoster = posters[0]?.id || '';
+
+      if (!raw) {
+        if (latestBayan || latestBook || latestPoster) {
+          localStorage.setItem(
+            BASELINE_KEY,
+            JSON.stringify({ bayan: latestBayan, book: latestBook, poster: latestPoster })
+          );
+        }
+        return;
+      }
+
+      const prev = JSON.parse(raw) as { bayan?: string; book?: string; poster?: string };
+      let changed = false;
+
+      if (latestBayan && prev.bayan && latestBayan !== prev.bayan) {
+        bridge.showUpdateNotification(
+          '🎙️ نیا اصلاحی بیان اپلوڈ ہو گیا',
+          bayanat[0]?.urduTitle || bayanat[0]?.title || 'نیا بیان سننے کے لیے ایپ کھولیں',
+          'آڈیو بیان لائبریری'
+        );
+        prev.bayan = latestBayan;
+        changed = true;
+      } else if (latestBayan && !prev.bayan) {
+        prev.bayan = latestBayan;
+        changed = true;
+      }
+
+      if (latestBook && prev.book && latestBook !== prev.book) {
+        bridge.showUpdateNotification(
+          '📚 نئی اسلامی کتاب اپلوڈ ہو گئی',
+          books[0]?.urduTitle || books[0]?.title || 'نئی کتاب پڑھنے کے لیے ایپ کھولیں',
+          'اردو کتب خانہ'
+        );
+        prev.book = latestBook;
+        changed = true;
+      } else if (latestBook && !prev.book) {
+        prev.book = latestBook;
+        changed = true;
+      }
+
+      if (latestPoster && prev.poster && latestPoster !== prev.poster) {
+        bridge.showUpdateNotification(
+          '🖼️ نیا اشتہار / اعلان شامل ہو گیا',
+          posters[0]?.title || 'تازہ ترین پیغام دیکھنے کے لیے ایپ کھولیں',
+          'خبریں و اعلانات'
+        );
+        prev.poster = latestPoster;
+        changed = true;
+      } else if (latestPoster && !prev.poster) {
+        prev.poster = latestPoster;
+        changed = true;
+      }
+
+      if (changed) {
+        localStorage.setItem(BASELINE_KEY, JSON.stringify(prev));
+      }
+    } catch {
+      // Ignore storage/notification errors
+    }
+  }, [bayanat, books, posters]);
+
   // Audio player state
   const [currentBayan, setCurrentBayan] = useState<BayanItem | null>(null);
 

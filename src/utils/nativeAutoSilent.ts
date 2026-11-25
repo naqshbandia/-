@@ -38,6 +38,11 @@ interface AndroidBridge {
   requestDndPermission?: () => void;
   hasExactAlarmPermission?: () => boolean;
   requestExactAlarmPermission?: () => void;
+  hasNotificationPermission?: () => boolean;
+  requestNotificationPermission?: () => void;
+  openNotificationSettings?: () => void;
+  sendTestNotification?: () => boolean;
+  showUpdateNotification?: (title: string, body: string, subText: string) => void;
   saveAutoSilentSchedule?: (jsonConfig: string) => string;
   getAutoSilentStatus?: () => string;
   setSilentNow?: (silent: boolean) => boolean;
@@ -52,6 +57,19 @@ export function getAndroidBridge(): AndroidBridge | null {
   if (typeof window === 'undefined') return null;
   const w = window as unknown as { Android?: AndroidBridge };
   return w.Android || null;
+}
+
+export function getNativeNotificationGranted(): boolean {
+  const bridge = getAndroidBridge();
+  if (!bridge) return false;
+  try {
+    if (typeof bridge.hasNotificationPermission === 'function') {
+      return Boolean(bridge.hasNotificationPermission());
+    }
+  } catch {
+    // Ignore bridge lookup errors
+  }
+  return false;
 }
 
 export function isRunningInNativeApk(): boolean {
