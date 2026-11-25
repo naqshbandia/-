@@ -25,6 +25,7 @@ export interface NativeAutoSilentStatus {
   exactAlarmGranted: boolean;
   enabled: boolean;
   activeCount: number;
+  currentlySilent: boolean;
 }
 
 export const AUTO_SILENT_STORAGE_KEY = 'khanqah_auto_silent_user_config_v1';
@@ -38,6 +39,7 @@ interface AndroidBridge {
   saveAutoSilentSchedule?: (jsonConfig: string) => string;
   getAutoSilentStatus?: () => string;
   setSilentNow?: (silent: boolean) => boolean;
+  openAppBatterySettings?: () => void;
   openDndSettings?: () => void;
   openAutoSilentSettings?: () => void;
   openSoundSettings?: () => void;
@@ -71,6 +73,7 @@ export function getNativeAutoSilentStatus(): NativeAutoSilentStatus {
     exactAlarmGranted: true,
     enabled: false,
     activeCount: 0,
+    currentlySilent: false,
   };
   if (!bridge) return defaultStatus;
   try {
@@ -82,6 +85,7 @@ export function getNativeAutoSilentStatus(): NativeAutoSilentStatus {
         exactAlarmGranted: Boolean(parsed?.exactAlarmGranted ?? true),
         enabled: Boolean(parsed?.enabled),
         activeCount: Number(parsed?.activeCount || 0),
+        currentlySilent: Boolean(parsed?.currentlySilent),
       };
     }
     if (typeof bridge.isDndPermissionGranted === 'function') {

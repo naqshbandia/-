@@ -133,8 +133,8 @@ public class MainActivity extends BridgeActivity {
     @Override
     public void onResume() {
         super.onResume();
-        // Re-arm alarms whenever user returns from Android Settings after granting DND permission
-        PrayerSilentScheduler.scheduleAll(this);
+        // Reconcile DND state (auto-exit if prayer ended while asleep) & re-arm alarms
+        PrayerSilentScheduler.reconcileAndScheduleAll(this, false);
         if (this.bridge != null && this.bridge.getWebView() != null) {
             this.bridge.getWebView().evaluateJavascript(
                 "window.dispatchEvent(new CustomEvent('kdf-native-resume'));",
@@ -361,15 +361,33 @@ public class MainActivity extends BridgeActivity {
                 obj.put("exactAlarmGranted", PrayerSilentScheduler.hasExactAlarmPermission(MainActivity.this));
                 obj.put("enabled", PrayerSilentScheduler.isMasterEnabled(MainActivity.this));
                 obj.put("activeCount", PrayerSilentScheduler.getActiveScheduledCount(MainActivity.this));
+                obj.put("currentlySilent", PrayerSilentScheduler.isCurrentlySilent(MainActivity.this));
                 return obj.toString();
             } catch (Exception e) {
-                return "{\"isNative\":true,\"dndGranted\":false,\"exactAlarmGranted\":true,\"enabled\":false,\"activeCount\":0}";
+                return "{\"isNative\":true,\"dndGranted\":false,\"exactAlarmGranted\":true,\"enabled\":false,\"activeCount\":0,\"currentlySilent\":false}";
             }
         }
 
         @JavascriptInterface
         public boolean setSilentNow(boolean silent) {
             return PrayerSilentScheduler.applySilentState(MainActivity.this, silent);
+        }
+
+        @JavascriptInterface
+        public void openAppBatterySettings() {
+            runOnUiThread(() -> {
+                try {
+                    Intent intent = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
+                    intent.setData(Uri.parse("package:" + getPackageName()));
+                    intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                    startActivity(intent);
+                } catch (Exception e) {
+                    try {
+                        launchSettingsIntent(Settings.ACTION_SETTINGS);
+                    } catch (Exception ignored) {
+                    }
+                }
+            });
         }
 
         @JavascriptInterface

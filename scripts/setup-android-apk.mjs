@@ -48,6 +48,7 @@ if (fs.existsSync(manifestPath)) {
     'android.permission.RECEIVE_BOOT_COMPLETED',
     'android.permission.SCHEDULE_EXACT_ALARM',
     'android.permission.USE_EXACT_ALARM',
+    'android.permission.WAKE_LOCK',
   ];
 
   const missingPerms = requiredPermissions.filter((perm) => !manifest.includes(perm));

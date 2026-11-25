@@ -73,7 +73,9 @@ export const AutoSilentModal: React.FC<Props> = ({
   const [isExportingPdf, setIsExportingPdf] = useState(false);
   const [showDndSettingsTip, setShowDndSettingsTip] = useState(false);
   const [copiedSchedule, setCopiedSchedule] = useState(false);
-  const [isTestingSilent, setIsTestingSilent] = useState(false);
+  const [isTestingSilent, setIsTestingSilent] = useState<boolean>(() =>
+    getNativeAutoSilentStatus().currentlySilent
+  );
   const [showScheduleEditor, setShowScheduleEditor] = useState(true);
   const touchStartX = useRef<number | null>(null);
   const totalSlides = 4;
@@ -88,11 +90,14 @@ export const AutoSilentModal: React.FC<Props> = ({
   const refreshNativeAndSync = useCallback(() => {
     const status = getNativeAutoSilentStatus();
     setNativeStatus(status);
+    setIsTestingSilent(status.currentlySilent);
     if (status.isNative && status.dndGranted) {
       const latest = loadAutoSilentConfig(officialSchedule, prayerData);
       setConfig(latest);
       saveAndSyncAutoSilentConfig(latest);
-      setNativeStatus(getNativeAutoSilentStatus());
+      const updated = getNativeAutoSilentStatus();
+      setNativeStatus(updated);
+      setIsTestingSilent(updated.currentlySilent);
     }
   }, [officialSchedule, prayerData]);
 
@@ -102,7 +107,9 @@ export const AutoSilentModal: React.FC<Props> = ({
     const latest = loadAutoSilentConfig(officialSchedule, prayerData);
     setConfig(latest);
     saveAndSyncAutoSilentConfig(latest);
-    setNativeStatus(getNativeAutoSilentStatus());
+    const updated = getNativeAutoSilentStatus();
+    setNativeStatus(updated);
+    setIsTestingSilent(updated.currentlySilent);
 
     const handleResume = () => {
       refreshNativeAndSync();
@@ -213,14 +220,20 @@ export const AutoSilentModal: React.FC<Props> = ({
   const handleTestSilentToggle = () => {
     const bridge = getAndroidBridge();
     if (!bridge || typeof bridge.setSilentNow !== 'function') return;
-    const nextSilent = !isTestingSilent;
+    const status = getNativeAutoSilentStatus();
+    const nextSilent = !status.currentlySilent;
     const ok = bridge.setSilentNow(nextSilent);
     if (ok) {
+      window.setTimeout(() => {
+        const refreshed = getNativeAutoSilentStatus();
+        setNativeStatus(refreshed);
+        setIsTestingSilent(refreshed.currentlySilent);
+      }, 280);
       setIsTestingSilent(nextSilent);
       onNotify?.(
         nextSilent
           ? 'ٹیسٹ: آپ کا موبائل اس وقت سائلنٹ (DND) کر دیا گیا ہے!'
-          : 'ٹیسٹ: موبائل واپس نارمل موڈ پر بحال کر دیا گیا ہے!'
+          : 'موبائل واپس نارمل موڈ (DND بند) پر بحال کر دیا گیا ہے!'
       );
     } else {
       handleAllowDndPermission();
@@ -478,6 +491,22 @@ export const AutoSilentModal: React.FC<Props> = ({
                       <span>{showScheduleEditor ? 'اوقات چھپائیں' : 'اوقات تبدیل کریں'}</span>
                     </button>
                   </div>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      getAndroidBridge()?.openAppBatterySettings?.();
+                      onNotify?.("Battery Saver کو 'No restrictions' پر رکھیں تاکہ وقتِ ختم پر DND خودکار کھل جائے۔");
+                    }}
+                    className={`w-full py-1.5 px-2.5 rounded-xl border text-[10.5px] font-bold flex items-center justify-center gap-1.5 cursor-pointer transition-colors ${
+                      isDark
+                        ? 'bg-black/25 border-[#d4af37]/30 text-emerald-100/90 hover:border-[#d4af37]'
+                        : 'bg-white border-[#064326]/20 text-[#064326] hover:bg-emerald-50'
+                    }`}
+                  >
+                    <Settings className="w-3.5 h-3.5 text-[#d4af37] shrink-0" />
+                    <span>بیٹری سیور / بیک گراؤنڈ اجازت (No Restrictions)</span>
+                  </button>
                 </div>
               )}
             </>

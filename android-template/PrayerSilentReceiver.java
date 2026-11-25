@@ -3,6 +3,10 @@ package com.khanqahdarulfalah.app;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
+import android.os.Handler;
+import android.os.Looper;
+import android.os.PowerManager;
 
 public class PrayerSilentReceiver extends BroadcastReceiver {
 
@@ -10,14 +14,96 @@ public class PrayerSilentReceiver extends BroadcastReceiver {
     public void onReceive(Context context, Intent intent) {
         if (context == null || intent == null) return;
 
-        String eventType = intent.getStringExtra(PrayerSilentScheduler.EXTRA_EVENT_TYPE);
-        if ("START".equals(eventType)) {
-            PrayerSilentScheduler.applySilentState(context, true);
-        } else if ("END".equals(eventType)) {
-            PrayerSilentScheduler.applySilentState(context, false);
+        final Context appCtx = context.getApplicationContext();
+        final PendingResult pendingResult = goAsync();
+        PowerManager pm = (PowerManager) appCtx.getSystemService(Context.POWER_SERVICE);
+        final PowerManager.WakeLock wakeLock = pm != null
+            ? pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "KhanqahDarulFalah:PrayerSilentLock")
+            : null;
+
+        if (wakeLock != null) {
+            try {
+                wakeLock.acquire(4500L);
+            } catch (Exception ignored) {
+            }
         }
 
-        // Immediately schedule tomorrow's (or next Friday's) occurrence
-        PrayerSilentScheduler.scheduleAll(context);
+        boolean needsDelayedFinish = false;
+
+        try {
+            String eventType = intent.getStringExtra(PrayerSilentScheduler.EXTRA_EVENT_TYPE);
+            String windowId = intent.getStringExtra(PrayerSilentScheduler.EXTRA_WINDOW_ID);
+            long endMillis = intent.getLongExtra(PrayerSilentScheduler.EXTRA_END_MILLIS, 0L);
+
+            if ("START".equals(eventType)) {
+                SharedPreferences prefs = appCtx.getSharedPreferences(
+                    PrayerSilentScheduler.PREFS_NAME,
+                    Context.MODE_PRIVATE
+                );
+                if (PrayerSilentScheduler.isMasterEnabled(appCtx)) {
+                    SharedPreferences.Editor editor = prefs.edit();
+                    if (windowId != null && !windowId.isEmpty()) {
+                        editor.putString(PrayerSilentScheduler.KEY_LAST_ENTERED_WINDOW_ID, windowId);
+                    }
+                    if (endMillis > System.currentTimeMillis()) {
+                        editor.putLong(PrayerSilentScheduler.KEY_SILENCED_UNTIL_MS, endMillis);
+                    }
+                    editor.apply();
+                    PrayerSilentScheduler.applySilentState(appCtx, true);
+                }
+                PrayerSilentScheduler.scheduleAll(appCtx);
+            } else if ("END".equals(eventType) || "SAFETY_END".equals(eventType)) {
+                long now = System.currentTimeMillis();
+                // Check if another overlapping prayer window (e.g. Friday Jummah continuing past Dhuhr) is still active
+                PrayerSilentScheduler.ActiveWindowInfo activeInfo =
+                    PrayerSilentScheduler.getActiveWindowInfo(appCtx, now);
+
+                if (activeInfo.active && activeInfo.endMillis > now + 5000L) {
+                    // Stay silently inside the overlapping prayer until that window ends
+                    SharedPreferences prefs = appCtx.getSharedPreferences(
+                        PrayerSilentScheduler.PREFS_NAME,
+                        Context.MODE_PRIVATE
+                    );
+                    prefs.edit()
+                        .putLong(PrayerSilentScheduler.KEY_SILENCED_UNTIL_MS, activeInfo.endMillis)
+                        .apply();
+                    PrayerSilentScheduler.scheduleAll(appCtx);
+                } else {
+                    // Always restore Normal sound & exit DND cleanly
+                    PrayerSilentScheduler.applySilentState(appCtx, false);
+                    PrayerSilentScheduler.scheduleAll(appCtx);
+                    needsDelayedFinish = true;
+                }
+            } else {
+                PrayerSilentScheduler.reconcileAndScheduleAll(appCtx, false);
+            }
+        } finally {
+            if (needsDelayedFinish) {
+                // Keep WakeLock & BroadcastReceiver alive ~900ms so OEM DND-clearing verification checks complete
+                new Handler(Looper.getMainLooper()).postDelayed(() -> {
+                    try {
+                        if (wakeLock != null && wakeLock.isHeld()) {
+                            wakeLock.release();
+                        }
+                    } catch (Exception ignored) {
+                    }
+                    try {
+                        pendingResult.finish();
+                    } catch (Exception ignored) {
+                    }
+                }, 900L);
+            } else {
+                try {
+                    if (wakeLock != null && wakeLock.isHeld()) {
+                        wakeLock.release();
+                    }
+                } catch (Exception ignored) {
+                }
+                try {
+                    pendingResult.finish();
+                } catch (Exception ignored) {
+                }
+            }
+        }
     }
 }
