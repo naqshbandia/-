@@ -1,11 +1,14 @@
 package com.khanqahdarulfalah.app;
 
 import android.app.DownloadManager;
+import android.content.ClipData;
+import android.content.ClipboardManager;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.net.ConnectivityManager;
+import android.net.LinkProperties;
 import android.net.Network;
 import android.net.NetworkCapabilities;
 import android.net.NetworkInfo;
@@ -583,12 +586,99 @@ public class MainActivity extends BridgeActivity {
                 obj.put("dndGranted", PrayerSilentScheduler.hasDndPermission(MainActivity.this));
                 obj.put("exactAlarmGranted", PrayerSilentScheduler.hasExactAlarmPermission(MainActivity.this));
                 obj.put("enabled", PrayerSilentScheduler.isMasterEnabled(MainActivity.this));
+                obj.put("silentMode", PrayerSilentScheduler.getSilentMode(MainActivity.this));
                 obj.put("activeCount", PrayerSilentScheduler.getActiveScheduledCount(MainActivity.this));
                 obj.put("currentlySilent", PrayerSilentScheduler.isCurrentlySilent(MainActivity.this));
                 return obj.toString();
             } catch (Exception e) {
-                return "{\"isNative\":true,\"dndGranted\":false,\"exactAlarmGranted\":true,\"enabled\":false,\"activeCount\":0,\"currentlySilent\":false}";
+                return "{\"isNative\":true,\"dndGranted\":false,\"exactAlarmGranted\":true,\"enabled\":false,\"silentMode\":\"silent\",\"activeCount\":0,\"currentlySilent\":false}";
             }
+        }
+
+        @JavascriptInterface
+        public String getSafeMobileStatus() {
+            JSONObject obj = new JSONObject();
+            try {
+                obj.put("isNative", true);
+                obj.put("sdkInt", Build.VERSION.SDK_INT);
+                boolean supported = Build.VERSION.SDK_INT >= Build.VERSION_CODES.P;
+                obj.put("privateDnsSupported", supported);
+                boolean active = false;
+                String serverName = "";
+                if (supported) {
+                    ConnectivityManager cm =
+                        (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
+                    if (cm != null) {
+                        Network net = cm.getActiveNetwork();
+                        if (net != null) {
+                            LinkProperties lp = cm.getLinkProperties(net);
+                            if (lp != null) {
+                                active = lp.isPrivateDnsActive();
+                                String host = lp.getPrivateDnsServerName();
+                                if (host != null) {
+                                    serverName = host;
+                                }
+                            }
+                        }
+                    }
+                }
+                obj.put("privateDnsActive", active);
+                obj.put("privateDnsServer", serverName);
+            } catch (Exception ignored) {
+            }
+            return obj.toString();
+        }
+
+        @JavascriptInterface
+        public void openPrivateDnsSettings(String hostname) {
+            final String dnsHost = (hostname != null && !hostname.trim().isEmpty())
+                ? hostname.trim()
+                : "family.adguard-dns.com";
+            runOnUiThread(() -> {
+                try {
+                    ClipboardManager cm =
+                        (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
+                    if (cm != null) {
+                        cm.setPrimaryClip(ClipData.newPlainText("Khanqah Safe DNS", dnsHost));
+                    }
+                    Toast.makeText(
+                        MainActivity.this,
+                        dnsHost + " کاپی ہو گیا! اب Private DNS میں جا کر پیسٹ اور Save کریں",
+                        Toast.LENGTH_LONG
+                    ).show();
+                } catch (Exception ignored) {
+                }
+
+                try {
+                    launchSettingsIntent(Settings.ACTION_WIRELESS_SETTINGS);
+                    return;
+                } catch (Exception ignored) {
+                }
+                try {
+                    launchSettingsIntent(Settings.ACTION_WIFI_SETTINGS);
+                    return;
+                } catch (Exception ignored) {
+                }
+                try {
+                    launchSettingsIntent(Settings.ACTION_SETTINGS);
+                } catch (Exception ignored) {
+                }
+            });
+        }
+
+        @JavascriptInterface
+        public void openExternalUrl(String targetUrl) {
+            if (targetUrl == null || (!targetUrl.startsWith("https://") && !targetUrl.startsWith("http://"))) {
+                return;
+            }
+            runOnUiThread(() -> {
+                try {
+                    Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(targetUrl));
+                    intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                    startActivity(intent);
+                } catch (Exception ignored) {
+                }
+            });
         }
 
         @JavascriptInterface

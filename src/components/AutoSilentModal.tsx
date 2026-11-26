@@ -13,6 +13,7 @@ import {
   RotateCcw,
   Volume2,
   VolumeX,
+  Vibrate,
 } from 'lucide-react';
 import { OFFICIAL_APK_URL } from '../data/appConfig';
 import { BaseModal } from './Modals';
@@ -34,6 +35,7 @@ import {
 import {
   AutoSilentSlot,
   NativeAutoSilentStatus,
+  PrayerSilentMode,
   buildDefaultAutoSilentSlots,
   getAndroidBridge,
   getNativeAutoSilentStatus,
@@ -178,11 +180,27 @@ export const AutoSilentModal: React.FC<Props> = ({
     }
   };
 
+  const handleSelectSilentMode = (mode: PrayerSilentMode) => {
+    const next = {
+      ...config,
+      silentMode: mode,
+    };
+    setConfig(next);
+    saveAndSyncAutoSilentConfig(next);
+    setNativeStatus(getNativeAutoSilentStatus());
+    onNotify?.(
+      mode === 'vibrate'
+        ? 'وائبریشن موڈ منتخب ہو گیا — نماز کے وقت موبائل صرف وائبریٹ کرے گا اور بعد میں خودکار نارمل ہو جائے گا!'
+        : 'مکمل سائلنٹ (DND) منتخب ہو گیا — نماز کے وقت فون بالکل خاموش ہو کر بعد میں نارمل ہو جائے گا!'
+    );
+  };
+
   const handleResetDefaultSlots = () => {
     const defaults = buildDefaultAutoSilentSlots(officialSchedule, prayerData);
     const next = {
       masterEnabled: true,
       customized: false,
+      silentMode: config.silentMode || 'silent',
       slots: defaults,
     };
     setConfig(next);
@@ -216,8 +234,10 @@ export const AutoSilentModal: React.FC<Props> = ({
       setIsTestingSilent(nextSilent);
       onNotify?.(
         nextSilent
-          ? 'ٹیسٹ: آپ کا موبائل اس وقت سائلنٹ (DND) کر دیا گیا ہے!'
-          : 'موبائل واپس نارمل موڈ (DND بند) پر بحال کر دیا گیا ہے!'
+          ? config.silentMode === 'vibrate'
+            ? 'ٹیسٹ: آپ کا موبائل اس وقت وائبریشن موڈ پر کر دیا گیا ہے!'
+            : 'ٹیسٹ: آپ کا موبائل اس وقت سائلنٹ (DND) کر دیا گیا ہے!'
+          : 'موبائل واپس نارمل موڈ پر بحال کر دیا گیا ہے!'
       );
     } else {
       handleAllowDndPermission();
@@ -457,8 +477,41 @@ export const AutoSilentModal: React.FC<Props> = ({
               ) : (
                 <div className="space-y-2">
                   <p className="text-[11px] leading-relaxed opacity-90">
-                    ہر نماز کے وقت آپ کا موبائل خودکار طور پر خاموش ہو جائے گا اور نماز کے بعد خودکار نارمل (آواز والی) حالت پر واپس آ جائے گا۔
+                    ہر نماز کے وقت موبائل خودکار طور پر آپ کے منتخب کردہ موڈ (سائلنٹ یا وائبریشن) پر چلا جائے گا اور نماز کے بعد خودکار واپس <strong>🔊 نارمل موڈ</strong> پر آ جائے گا۔
                   </p>
+
+                  {/* Mode Selector: Total Silent (DND) vs Vibrate Mode -> Normal */}
+                  <div className="grid grid-cols-2 gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => handleSelectSilentMode('silent')}
+                      className={`py-2 px-2 rounded-xl border text-[11px] font-extrabold flex items-center justify-center gap-1.5 cursor-pointer transition-all ${
+                        (config.silentMode || 'silent') === 'silent'
+                          ? 'bg-[#064326] text-white border-[#d4af37] shadow-xs'
+                          : isDark
+                          ? 'bg-black/25 text-emerald-100/80 border-[#d4af37]/25 hover:border-[#d4af37]/60'
+                          : 'bg-white text-[#064326] border-emerald-900/20 hover:bg-emerald-50'
+                      }`}
+                    >
+                      <VolumeX className="w-3.5 h-3.5 shrink-0 text-[#d4af37]" />
+                      <span>مکمل سائلنٹ (DND)</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => handleSelectSilentMode('vibrate')}
+                      className={`py-2 px-2 rounded-xl border text-[11px] font-extrabold flex items-center justify-center gap-1.5 cursor-pointer transition-all ${
+                        config.silentMode === 'vibrate'
+                          ? 'bg-[#064326] text-white border-[#d4af37] shadow-xs'
+                          : isDark
+                          ? 'bg-black/25 text-emerald-100/80 border-[#d4af37]/25 hover:border-[#d4af37]/60'
+                          : 'bg-white text-[#064326] border-emerald-900/20 hover:bg-emerald-50'
+                      }`}
+                    >
+                      <Vibrate className="w-3.5 h-3.5 shrink-0 text-[#00ff99]" />
+                      <span>وائبریشن موڈ (Vibrate)</span>
+                    </button>
+                  </div>
 
                   {!nativeStatus.exactAlarmGranted && (
                     <button
@@ -484,6 +537,11 @@ export const AutoSilentModal: React.FC<Props> = ({
                         <>
                           <Volume2 className="w-3.5 h-3.5 shrink-0" />
                           <span>واپس نارمل کریں</span>
+                        </>
+                      ) : config.silentMode === 'vibrate' ? (
+                        <>
+                          <Vibrate className="w-3.5 h-3.5 text-[#00ff99] shrink-0" />
+                          <span>فوری ٹیسٹ (وائبریشن)</span>
                         </>
                       ) : (
                         <>

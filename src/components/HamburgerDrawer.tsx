@@ -68,6 +68,7 @@ interface Props {
   onOpenWhatsAppGroups?: () => void;
   onOpenDonations?: () => void;
   onOpenAutoSilent?: () => void;
+  onOpenSafeMobile?: () => void;
   onOpenContact: () => void;
   onOpenWebsite: () => void;
   onOpenTerms?: () => void;
@@ -99,6 +100,7 @@ export const HamburgerDrawer: React.FC<Props> = ({
   onOpenWhatsAppGroups,
   onOpenDonations,
   onOpenAutoSilent,
+  onOpenSafeMobile,
   onOpenContact,
   onOpenWebsite,
   onOpenTerms,
@@ -524,6 +526,22 @@ export const HamburgerDrawer: React.FC<Props> = ({
                     <div className="flex items-center gap-2.5 min-w-0">
                       <span className={iconBoxClass}><BellOff className="w-4 h-4 text-[#00c975] dark:text-[#00ff99]" /></span>
                       <span className="font-bold truncate">{autoSilentLabels.drawerLabel}</span>
+                    </div>
+                    <ChevronLeft className={`w-4 h-4 opacity-40 group-hover:opacity-100 shrink-0 ${dir === 'ltr' ? 'rotate-180' : ''}`} />
+                  </button>
+                )}
+
+                {onOpenSafeMobile && (
+                  <button
+                    onClick={() => {
+                      onClose();
+                      onOpenSafeMobile();
+                    }}
+                    className={rowClass}
+                  >
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <span className={iconBoxClass}><ShieldCheck className="w-4 h-4 text-[#d4af37]" /></span>
+                      <span className="font-bold truncate">پاک موبائل سیفٹی (گندے ایڈز و فحش بلاک)</span>
                     </div>
                     <ChevronLeft className={`w-4 h-4 opacity-40 group-hover:opacity-100 shrink-0 ${dir === 'ltr' ? 'rotate-180' : ''}`} />
                   </button>

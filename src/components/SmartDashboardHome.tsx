@@ -108,6 +108,7 @@ interface Props {
   onOpenWhatsAppGroups: () => void;
   onOpenDonations: () => void;
   onOpenAutoSilent?: () => void;
+  onOpenSafeMobile?: () => void;
   onOpenIntroKhanqah: () => void;
   onOpenIntroSheikh: () => void;
   onOpenContact: () => void;
@@ -233,6 +234,7 @@ export const SmartDashboardHome: React.FC<Props> = ({
   onOpenWhatsAppGroups,
   onOpenDonations,
   onOpenAutoSilent,
+  onOpenSafeMobile,
   onOpenIntroKhanqah,
   onOpenIntroSheikh,
   onOpenContact,
@@ -509,6 +511,18 @@ export const SmartDashboardHome: React.FC<Props> = ({
             },
           ]
         : []),
+      ...(onOpenSafeMobile
+        ? [
+            {
+              id: 'safe-mobile-guard',
+              label: 'پاک موبائل سیفٹی',
+              subLabel: 'فحاشی، گندے ایڈز و ویڈیوز بلاک کریں',
+              icon: ShieldCheck,
+              accent: 'text-emerald-700 dark:text-[#d4af37]',
+              onClick: onOpenSafeMobile,
+            },
+          ]
+        : []),
     ],
     [
       bayanatList.length,
@@ -520,6 +534,7 @@ export const SmartDashboardHome: React.FC<Props> = ({
       onOpenWhatsAppGroups,
       onOpenDonations,
       onOpenAutoSilent,
+      onOpenSafeMobile,
       t.audioLibraryTitle,
       t.audioLibrarySubSuffix,
       t.whatsappGroupsTitle,

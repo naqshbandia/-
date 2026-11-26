@@ -36,6 +36,9 @@ const NewsUpdatesView = lazy(() =>
 const AutoSilentModal = lazy(() =>
   import('./components/AutoSilentModal').then((m) => ({ default: m.AutoSilentModal }))
 );
+const SafeMobileModal = lazy(() =>
+  import('./components/SafeMobileModal').then((m) => ({ default: m.SafeMobileModal }))
+);
 import { loadCachedKhanqahSchedule } from './utils/khanqahScheduleService';
 import { PRAYER_CACHE_KEY, PrayerCache } from './utils/prayerEngine';
 import { getAndroidBridge, syncAutoSilentFromAppBoot } from './utils/nativeAutoSilent';
@@ -246,6 +249,15 @@ function AppContent() {
       return false;
     }
   });
+  const [isSafeMobileOpen, setIsSafeMobileOpen] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    try {
+      const params = new URLSearchParams(window.location.search);
+      return params.get('open') === 'safe-mobile' || window.location.hash === '#safe-mobile';
+    } catch {
+      return false;
+    }
+  });
   const [isExitConfirmOpen, setIsExitConfirmOpen] = useState(false);
 
   const cachedPrayerData = React.useMemo<PrayerCache | null>(() => {
@@ -422,7 +434,8 @@ function AppContent() {
     isTermsOpen ||
     isPrivacyOpen ||
     isDonationOpen ||
-    isAutoSilentOpen;
+    isAutoSilentOpen ||
+    isSafeMobileOpen;
 
   backNavStateRef.current = {
     activeView,
@@ -497,6 +510,7 @@ function AppContent() {
       setIsPrivacyOpen(false);
       setIsDonationOpen(false);
       setIsAutoSilentOpen(false);
+      setIsSafeMobileOpen(false);
       armBackGuard();
       return;
     }
@@ -737,6 +751,7 @@ function AppContent() {
             onOpenWhatsAppGroups={() => setIsWhatsAppGroupsOpen(true)}
             onOpenDonations={() => setIsDonationOpen(true)}
             onOpenAutoSilent={() => setIsAutoSilentOpen(true)}
+            onOpenSafeMobile={() => setIsSafeMobileOpen(true)}
             onOpenIntroKhanqah={() => setIsIntroKhanqahOpen(true)}
             onOpenIntroSheikh={() => setIsIntroSheikhOpen(true)}
             onOpenContact={() => setIsContactOpen(true)}
@@ -819,6 +834,7 @@ function AppContent() {
         onOpenWhatsAppGroups={() => setIsWhatsAppGroupsOpen(true)}
         onOpenDonations={() => setIsDonationOpen(true)}
         onOpenAutoSilent={() => setIsAutoSilentOpen(true)}
+        onOpenSafeMobile={() => setIsSafeMobileOpen(true)}
         onOpenContact={() => setIsContactOpen(true)}
         onOpenWebsite={() => {
           handleNavigateUrl(BLOGGER_HOME_URL);
@@ -927,6 +943,18 @@ function AppContent() {
             lang={lang}
             officialSchedule={cachedKhanqahSchedule}
             prayerData={cachedPrayerData}
+            onNotify={showNotification}
+          />
+        </Suspense>
+      )}
+
+      {isSafeMobileOpen && (
+        <Suspense fallback={null}>
+          <SafeMobileModal
+            isOpen={isSafeMobileOpen}
+            onClose={() => setIsSafeMobileOpen(false)}
+            isDark={isDark}
+            lang={lang}
             onNotify={showNotification}
           />
         </Suspense>

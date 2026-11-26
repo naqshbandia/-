@@ -13,9 +13,12 @@ export interface AutoSilentSlot {
   enabled: boolean;
 }
 
+export type PrayerSilentMode = 'silent' | 'vibrate';
+
 export interface StoredAutoSilentConfig {
   masterEnabled: boolean;
   customized: boolean;
+  silentMode: PrayerSilentMode;
   slots: AutoSilentSlot[];
 }
 
@@ -24,8 +27,17 @@ export interface NativeAutoSilentStatus {
   dndGranted: boolean;
   exactAlarmGranted: boolean;
   enabled: boolean;
+  silentMode: PrayerSilentMode;
   activeCount: number;
   currentlySilent: boolean;
+}
+
+export interface SafeMobileStatus {
+  isNative: boolean;
+  sdkInt: number;
+  privateDnsSupported: boolean;
+  privateDnsActive: boolean;
+  privateDnsServer: string;
 }
 
 export const AUTO_SILENT_STORAGE_KEY = 'khanqah_auto_silent_user_config_v1';
@@ -50,6 +62,9 @@ interface AndroidBridge {
   openDndSettings?: () => void;
   openAutoSilentSettings?: () => void;
   openSoundSettings?: () => void;
+  getSafeMobileStatus?: () => string;
+  openPrivateDnsSettings?: (hostname: string) => void;
+  openExternalUrl?: (url: string) => void;
   exitApp?: () => void;
 }
 
@@ -57,6 +72,32 @@ export function getAndroidBridge(): AndroidBridge | null {
   if (typeof window === 'undefined') return null;
   const w = window as unknown as { Android?: AndroidBridge };
   return w.Android || null;
+}
+
+export function getNativeSafeMobileStatus(): SafeMobileStatus {
+  const bridge = getAndroidBridge();
+  const fallback: SafeMobileStatus = {
+    isNative: isRunningInNativeApk(),
+    sdkInt: 0,
+    privateDnsSupported: true,
+    privateDnsActive: false,
+    privateDnsServer: '',
+  };
+  if (!bridge || typeof bridge.getSafeMobileStatus !== 'function') {
+    return fallback;
+  }
+  try {
+    const parsed = JSON.parse(bridge.getSafeMobileStatus());
+    return {
+      isNative: Boolean(parsed?.isNative ?? true),
+      sdkInt: Number(parsed?.sdkInt || 0),
+      privateDnsSupported: Boolean(parsed?.privateDnsSupported ?? true),
+      privateDnsActive: Boolean(parsed?.privateDnsActive),
+      privateDnsServer: String(parsed?.privateDnsServer || ''),
+    };
+  } catch {
+    return fallback;
+  }
 }
 
 export function getNativeNotificationGranted(): boolean {
@@ -92,6 +133,7 @@ export function getNativeAutoSilentStatus(): NativeAutoSilentStatus {
     dndGranted: false,
     exactAlarmGranted: true,
     enabled: false,
+    silentMode: 'silent',
     activeCount: 0,
     currentlySilent: false,
   };
@@ -99,11 +141,14 @@ export function getNativeAutoSilentStatus(): NativeAutoSilentStatus {
   try {
     if (typeof bridge.getAutoSilentStatus === 'function') {
       const parsed = JSON.parse(bridge.getAutoSilentStatus());
+      const silentMode: PrayerSilentMode =
+        parsed?.silentMode === 'vibrate' ? 'vibrate' : 'silent';
       return {
         isNative: Boolean(parsed?.isNative ?? true),
         dndGranted: Boolean(parsed?.dndGranted),
         exactAlarmGranted: Boolean(parsed?.exactAlarmGranted ?? true),
         enabled: Boolean(parsed?.enabled),
+        silentMode,
         activeCount: Number(parsed?.activeCount || 0),
         currentlySilent: Boolean(parsed?.currentlySilent),
       };
@@ -178,16 +223,20 @@ export function loadAutoSilentConfig(
       return {
         masterEnabled: true,
         customized: false,
+        silentMode: 'silent',
         slots: defaults,
       };
     }
     const parsed = JSON.parse(raw) as Partial<StoredAutoSilentConfig>;
     const masterEnabled = parsed.masterEnabled !== false;
     const customized = Boolean(parsed.customized);
+    const silentMode: PrayerSilentMode =
+      parsed.silentMode === 'vibrate' ? 'vibrate' : 'silent';
     if (!customized || !Array.isArray(parsed.slots) || parsed.slots.length === 0) {
       return {
         masterEnabled,
         customized: false,
+        silentMode,
         slots: defaults,
       };
     }
@@ -210,12 +259,14 @@ export function loadAutoSilentConfig(
     return {
       masterEnabled,
       customized: true,
+      silentMode,
       slots: mergedSlots,
     };
   } catch {
     return {
       masterEnabled: true,
       customized: false,
+      silentMode: 'silent',
       slots: defaults,
     };
   }
@@ -238,6 +289,7 @@ export function saveAndSyncAutoSilentConfig(
   try {
     const payload = JSON.stringify({
       enabled: config.masterEnabled,
+      silentMode: config.silentMode || 'silent',
       slots: config.slots,
     });
     const res = bridge.saveAutoSilentSchedule(payload) || 'OK';

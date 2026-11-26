@@ -28,6 +28,7 @@ public class PrayerSilentScheduler {
     public static final String KEY_PREV_FILTER = "prev_interruption_filter";
     public static final String KEY_PREV_RINGER = "prev_ringer_mode";
     public static final String KEY_PENDING_END_VERIFY = "pending_end_verify";
+    public static final String KEY_SILENT_MODE = "silent_mode"; // "silent" | "vibrate"
 
     public static final String ACTION_SILENT_TRIGGER = "com.khanqahdarulfalah.app.ACTION_PRAYER_SILENT";
     public static final String EXTRA_EVENT_TYPE = "event_type"; // "START" | "END" | "SAFETY_END"
@@ -69,7 +70,14 @@ public class PrayerSilentScheduler {
         return true;
     }
 
+    public static String getSilentMode(Context context) {
+        SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+        String mode = prefs.getString(KEY_SILENT_MODE, "silent");
+        return "vibrate".equalsIgnoreCase(mode) ? "vibrate" : "silent";
+    }
+
     public static boolean isCurrentlySilent(Context context) {
+        SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
         try {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
                 NotificationManager nm =
@@ -83,12 +91,17 @@ public class PrayerSilentScheduler {
                 }
             }
             AudioManager am = (AudioManager) context.getSystemService(Context.AUDIO_SERVICE);
-            if (am != null && am.getRingerMode() == AudioManager.RINGER_MODE_SILENT) {
-                return true;
+            if (am != null) {
+                int ringer = am.getRingerMode();
+                if (ringer == AudioManager.RINGER_MODE_SILENT) {
+                    return true;
+                }
+                if (ringer == AudioManager.RINGER_MODE_VIBRATE && prefs.getBoolean(KEY_IS_SILENCED, false)) {
+                    return true;
+                }
             }
         } catch (Exception ignored) {
         }
-        SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
         return prefs.getBoolean(KEY_IS_SILENCED, false);
     }
 
@@ -97,11 +110,15 @@ public class PrayerSilentScheduler {
         try {
             JSONObject obj = new JSONObject(jsonConfig);
             boolean enabled = obj.optBoolean("enabled", true);
+            String silentMode = "vibrate".equalsIgnoreCase(obj.optString("silentMode", "silent"))
+                ? "vibrate"
+                : "silent";
             JSONArray slots = obj.optJSONArray("slots");
             String nextSlotsJson = slots != null ? slots.toString() : null;
             String prevSlotsJson = prefs.getString(KEY_SLOTS_JSON, "");
             SharedPreferences.Editor editor = prefs.edit();
             editor.putBoolean(KEY_ENABLED, enabled);
+            editor.putString(KEY_SILENT_MODE, silentMode);
             if (nextSlotsJson != null) {
                 editor.putString(KEY_SLOTS_JSON, nextSlotsJson);
                 if (!nextSlotsJson.equals(prevSlotsJson)) {
@@ -645,11 +662,14 @@ public class PrayerSilentScheduler {
 
         try {
             if (enableSilent) {
+                boolean useVibrateMode = "vibrate".equals(getSilentMode(context));
+
                 if (!prefs.getBoolean(KEY_IS_SILENCED, false)) {
                     int currentRinger = am != null
                         ? am.getRingerMode()
                         : AudioManager.RINGER_MODE_NORMAL;
-                    if (currentRinger == AudioManager.RINGER_MODE_SILENT) {
+                    if (currentRinger == AudioManager.RINGER_MODE_SILENT
+                        || (useVibrateMode && currentRinger == AudioManager.RINGER_MODE_VIBRATE)) {
                         currentRinger = AudioManager.RINGER_MODE_NORMAL;
                     }
                     prefs.edit()
@@ -662,14 +682,26 @@ public class PrayerSilentScheduler {
                     prefs.edit().putBoolean(KEY_PENDING_END_VERIFY, false).commit();
                 }
 
-                if (am != null) {
-                    try {
-                        am.setRingerMode(AudioManager.RINGER_MODE_SILENT);
-                    } catch (SecurityException ignored) {
+                if (useVibrateMode) {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                        nm.setInterruptionFilter(NotificationManager.INTERRUPTION_FILTER_ALL);
                     }
-                }
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                    nm.setInterruptionFilter(NotificationManager.INTERRUPTION_FILTER_ALARMS);
+                    if (am != null) {
+                        try {
+                            am.setRingerMode(AudioManager.RINGER_MODE_VIBRATE);
+                        } catch (SecurityException ignored) {
+                        }
+                    }
+                } else {
+                    if (am != null) {
+                        try {
+                            am.setRingerMode(AudioManager.RINGER_MODE_SILENT);
+                        } catch (SecurityException ignored) {
+                        }
+                    }
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                        nm.setInterruptionFilter(NotificationManager.INTERRUPTION_FILTER_ALARMS);
+                    }
                 }
             } else {
                 forceRestoreNormalDnd(context);
