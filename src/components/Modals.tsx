@@ -1,8 +1,8 @@
 import React from 'react';
-import { X, MessageCircle, Youtube, Facebook, ExternalLink, Sparkles, ShieldCheck, FileText, HeartHandshake, Copy, Check, Globe, Upload, Send, ArrowRight, CheckCircle2, AlertCircle, FileImage, FileDown, Share2 } from 'lucide-react';
-import { OFFICIAL_WHATSAPP_LINKS, WHATSAPP_DIRECT_CHAT_URL, BLOGGER_HOME_URL, SHEIKH_GLASS_BANNER_URL, getAppGiftWhatsAppShareUrl } from '../data/appConfig';
+import { X, MessageCircle, Youtube, Facebook, ExternalLink, Sparkles, ShieldCheck, FileText, HeartHandshake, Copy, Check, Globe, Upload, Send, ArrowRight, CheckCircle2, AlertCircle, FileImage, FileDown, Share2, Download } from 'lucide-react';
+import { OFFICIAL_WHATSAPP_LINKS, WHATSAPP_DIRECT_CHAT_URL, BLOGGER_HOME_URL, SHEIKH_GLASS_BANNER_URL, OFFICIAL_APK_URL, getAppGiftWhatsAppShareUrl } from '../data/appConfig';
 import khanqahLuxuryLogoImg from '../assets/images/khanqah_luxury_logo_1795501565146.jpg';
-import { CombinedInstallStats } from '../utils/installStatsService';
+import { CombinedInstallStats, recordApkDownloadClick } from '../utils/installStatsService';
 import { exportReceiptFile, shareOrDownloadReceiptFile } from '../utils/donationReceipt';
 import {
   AppLanguage,
@@ -1243,16 +1243,28 @@ export const AboutAppModal: React.FC<{
             </div>
           </div>
 
-          <a
-            href={getAppGiftWhatsAppShareUrl()}
-            target="_blank"
-            rel="noreferrer"
-            className="w-full py-2.5 px-4 rounded-xl bg-[#25D366] hover:bg-[#1faa4e] text-white text-xs sm:text-sm font-bold flex items-center justify-center gap-2 shadow-md transition-all active:scale-95"
-          >
-            <MessageCircle className="w-4 h-4 fill-white shrink-0" />
-            <span>{t.giftShareAppBtn}</span>
-            <Share2 className="w-3.5 h-3.5 shrink-0" />
-          </a>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <a
+              href={getAppGiftWhatsAppShareUrl()}
+              target="_blank"
+              rel="noreferrer"
+              className="w-full py-2.5 px-4 rounded-xl bg-[#25D366] hover:bg-[#1faa4e] text-white text-xs sm:text-sm font-bold flex items-center justify-center gap-2 shadow-md transition-all active:scale-95"
+            >
+              <MessageCircle className="w-4 h-4 fill-white shrink-0" />
+              <span>{t.giftShareAppBtn}</span>
+              <Share2 className="w-3.5 h-3.5 shrink-0" />
+            </a>
+
+            <a
+              href={OFFICIAL_APK_URL}
+              download="Khanqah-Darul-Falah.apk"
+              onClick={() => recordApkDownloadClick()}
+              className="w-full py-2.5 px-4 rounded-xl bg-[#064326] hover:bg-[#095c34] text-white border border-[#d4af37]/70 text-xs sm:text-sm font-bold flex items-center justify-center gap-2 shadow-md transition-all active:scale-95"
+            >
+              <Download className="w-4 h-4 text-[#d4af37] shrink-0" />
+              <span>{t.drawerDownloadApk}</span>
+            </a>
+          </div>
         </div>
 
         {/* Clean Download & Install Counts Only */}
