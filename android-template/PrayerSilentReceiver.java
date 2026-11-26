@@ -31,56 +31,74 @@ public class PrayerSilentReceiver extends BroadcastReceiver {
         boolean needsDelayedFinish = false;
 
         try {
-            String eventType = intent.getStringExtra(PrayerSilentScheduler.EXTRA_EVENT_TYPE);
-            String windowId = intent.getStringExtra(PrayerSilentScheduler.EXTRA_WINDOW_ID);
-            long endMillis = intent.getLongExtra(PrayerSilentScheduler.EXTRA_END_MILLIS, 0L);
-
-            if ("START".equals(eventType)) {
-                SharedPreferences prefs = appCtx.getSharedPreferences(
-                    PrayerSilentScheduler.PREFS_NAME,
-                    Context.MODE_PRIVATE
-                );
-                if (PrayerSilentScheduler.isMasterEnabled(appCtx)) {
-                    SharedPreferences.Editor editor = prefs.edit();
-                    if (windowId != null && !windowId.isEmpty()) {
-                        editor.putString(PrayerSilentScheduler.KEY_LAST_ENTERED_WINDOW_ID, windowId);
-                    }
-                    if (endMillis > System.currentTimeMillis()) {
-                        editor.putLong(PrayerSilentScheduler.KEY_SILENCED_UNTIL_MS, endMillis);
-                    }
-                    editor.putBoolean(PrayerSilentScheduler.KEY_PENDING_END_VERIFY, false);
-                    editor.commit();
-                    PrayerSilentScheduler.applySilentState(appCtx, true);
-                }
+            if (PrayerSilentScheduler.ACTION_MANUAL_EXIT_SILENT.equals(intent.getAction())) {
+                PrayerSilentScheduler.applySilentState(appCtx, false);
                 PrayerSilentScheduler.scheduleAll(appCtx);
-            } else if ("END".equals(eventType) || "SAFETY_END".equals(eventType)) {
-                long now = System.currentTimeMillis();
-                // Check if another overlapping prayer window (e.g. Friday Jummah continuing past Dhuhr) is still active
-                PrayerSilentScheduler.ActiveWindowInfo activeInfo =
-                    PrayerSilentScheduler.getActiveWindowInfo(appCtx, now);
+                needsDelayedFinish = true;
+            } else {
+                String eventType = intent.getStringExtra(PrayerSilentScheduler.EXTRA_EVENT_TYPE);
+                String slotKey = intent.getStringExtra(PrayerSilentScheduler.EXTRA_SLOT_KEY);
+                String slotLabel = intent.getStringExtra(PrayerSilentScheduler.EXTRA_SLOT_LABEL);
+                String windowId = intent.getStringExtra(PrayerSilentScheduler.EXTRA_WINDOW_ID);
+                long endMillis = intent.getLongExtra(PrayerSilentScheduler.EXTRA_END_MILLIS, 0L);
 
-                if (activeInfo.active && activeInfo.endMillis > now + 5000L) {
-                    // Stay silently inside the overlapping prayer until that window ends
+                if ("START".equals(eventType)) {
                     SharedPreferences prefs = appCtx.getSharedPreferences(
                         PrayerSilentScheduler.PREFS_NAME,
                         Context.MODE_PRIVATE
                     );
-                    prefs.edit()
-                        .putLong(PrayerSilentScheduler.KEY_SILENCED_UNTIL_MS, activeInfo.endMillis)
-                        .commit();
+                    if (PrayerSilentScheduler.isMasterEnabled(appCtx)) {
+                        SharedPreferences.Editor editor = prefs.edit();
+                        if (windowId != null && !windowId.isEmpty()) {
+                            editor.putString(PrayerSilentScheduler.KEY_LAST_ENTERED_WINDOW_ID, windowId);
+                        }
+                        if (endMillis > System.currentTimeMillis()) {
+                            editor.putLong(PrayerSilentScheduler.KEY_SILENCED_UNTIL_MS, endMillis);
+                        }
+                        editor.putBoolean(PrayerSilentScheduler.KEY_PENDING_END_VERIFY, false);
+                        editor.commit();
+                        PrayerSilentScheduler.applySilentState(appCtx, true);
+                        PrayerSilentScheduler.startSilentMonitorService(appCtx, endMillis, slotKey, slotLabel);
+                    }
                     PrayerSilentScheduler.scheduleAll(appCtx);
-                } else if ("SAFETY_END".equals(eventType)) {
-                    // Final +30s safety pass: ensure DND & silent mode are 100% cleared, then clear pending flag
-                    PrayerSilentScheduler.completePendingEndVerification(appCtx);
-                    PrayerSilentScheduler.scheduleAll(appCtx);
+                } else if ("END".equals(eventType) || "SAFETY_END".equals(eventType)) {
+                    long now = System.currentTimeMillis();
+                    // Only stay silent if a DIFFERENT prayer slot (e.g. Friday Jummah past Dhuhr) extends >60s beyond this end time
+                    PrayerSilentScheduler.ActiveWindowInfo otherActive =
+                        PrayerSilentScheduler.getOverlappingActiveWindowExcluding(
+                            appCtx,
+                            now,
+                            slotKey,
+                            endMillis
+                        );
+
+                    if (otherActive.active && otherActive.endMillis > Math.max(now, endMillis) + 60_000L) {
+                        SharedPreferences prefs = appCtx.getSharedPreferences(
+                            PrayerSilentScheduler.PREFS_NAME,
+                            Context.MODE_PRIVATE
+                        );
+                        prefs.edit()
+                            .putLong(PrayerSilentScheduler.KEY_SILENCED_UNTIL_MS, otherActive.endMillis)
+                            .commit();
+                        PrayerSilentScheduler.startSilentMonitorService(
+                            appCtx,
+                            otherActive.endMillis,
+                            otherActive.slotKey,
+                            otherActive.slotLabel
+                        );
+                        PrayerSilentScheduler.scheduleAll(appCtx);
+                    } else if ("SAFETY_END".equals(eventType)) {
+                        PrayerSilentScheduler.completePendingEndVerification(appCtx);
+                        PrayerSilentScheduler.scheduleAll(appCtx);
+                    } else {
+                        // Primary END trigger: stop foreground guard, restore Normal sound, schedule verification & safety backups
+                        PrayerSilentScheduler.applySilentState(appCtx, false);
+                        PrayerSilentScheduler.scheduleAll(appCtx);
+                        needsDelayedFinish = true;
+                    }
                 } else {
-                    // Primary END trigger: restore Normal sound, schedule verification checks & +30s SAFETY_END
-                    PrayerSilentScheduler.applySilentState(appCtx, false);
-                    PrayerSilentScheduler.scheduleAll(appCtx);
-                    needsDelayedFinish = true;
+                    PrayerSilentScheduler.reconcileAndScheduleAll(appCtx, false);
                 }
-            } else {
-                PrayerSilentScheduler.reconcileAndScheduleAll(appCtx, false);
             }
         } finally {
             if (needsDelayedFinish) {

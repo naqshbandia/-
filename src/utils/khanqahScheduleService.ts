@@ -289,6 +289,21 @@ export async function fetchKhanqahTickerMessage(): Promise<string | null> {
     }
   } catch {}
 
+  // 3. Tertiary: Bundled local public/khanqah-message.html (works 100% offline inside APK/PWA)
+  try {
+    const localRes = await fetch(`${import.meta.env.BASE_URL}khanqah-message.html?_t=${Date.now()}`, {
+      cache: 'no-store',
+    });
+    if (localRes.ok) {
+      const html = await localRes.text();
+      const parsed = parseTickerMessageHtml(html);
+      if (parsed) {
+        saveCachedTickerMessage(parsed);
+        return parsed;
+      }
+    }
+  } catch {}
+
   return null;
 }
 

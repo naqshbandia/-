@@ -119,8 +119,9 @@ export default defineConfig(() => {
           clientsClaim: true,
           skipWaiting: true,
           ignoreURLParametersMatching: [/^_kdf_/],
-          globPatterns: ['**/*.{js,css,ico,png,svg,webp,woff,woff2}'],
+          globPatterns: ['**/*.{js,css,html,ico,png,svg,webp,woff,woff2}'],
           globIgnores: ['**/assets/aistudio/**', '**/sheikh-glass-banner.png'],
+          navigateFallback: isCapacitorBuild ? undefined : `${base}index.html`,
           maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
           runtimeCaching: [
             {
@@ -128,10 +129,10 @@ export default defineConfig(() => {
               handler: 'NetworkFirst',
               options: {
                 cacheName: 'kdf-pages-cache',
-                networkTimeoutSeconds: 4,
+                networkTimeoutSeconds: 3,
                 expiration: {
                   maxEntries: 10,
-                  maxAgeSeconds: 24 * 60 * 60,
+                  maxAgeSeconds: 7 * 24 * 60 * 60,
                 },
               },
             },

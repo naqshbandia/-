@@ -26,6 +26,7 @@ export interface NativeAutoSilentStatus {
   isNative: boolean;
   dndGranted: boolean;
   exactAlarmGranted: boolean;
+  batteryOptIgnored: boolean;
   enabled: boolean;
   silentMode: PrayerSilentMode;
   activeCount: number;
@@ -58,6 +59,8 @@ interface AndroidBridge {
   saveAutoSilentSchedule?: (jsonConfig: string) => string;
   getAutoSilentStatus?: () => string;
   setSilentNow?: (silent: boolean) => boolean;
+  isIgnoringBatteryOptimizations?: () => boolean;
+  requestBatteryOptimizationExemption?: () => void;
   openAppBatterySettings?: () => void;
   openDndSettings?: () => void;
   openAutoSilentSettings?: () => void;
@@ -132,6 +135,7 @@ export function getNativeAutoSilentStatus(): NativeAutoSilentStatus {
     isNative: isRunningInNativeApk(),
     dndGranted: false,
     exactAlarmGranted: true,
+    batteryOptIgnored: true,
     enabled: false,
     silentMode: 'silent',
     activeCount: 0,
@@ -147,6 +151,7 @@ export function getNativeAutoSilentStatus(): NativeAutoSilentStatus {
         isNative: Boolean(parsed?.isNative ?? true),
         dndGranted: Boolean(parsed?.dndGranted),
         exactAlarmGranted: Boolean(parsed?.exactAlarmGranted ?? true),
+        batteryOptIgnored: Boolean(parsed?.batteryOptIgnored ?? true),
         enabled: Boolean(parsed?.enabled),
         silentMode,
         activeCount: Number(parsed?.activeCount || 0),

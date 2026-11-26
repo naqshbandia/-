@@ -4,7 +4,10 @@ import {
   ARCHIVE_COLLECTIONS,
   ArchiveFolderSummary,
 } from '../utils/archiveService';
-import { generateFolderWidgetHtml } from '../utils/folderHtmlGenerator';
+import {
+  FallbackFolderTrack,
+  generateFolderWidgetHtml,
+} from '../utils/folderHtmlGenerator';
 import { AppLanguage, DEFAULT_LANGUAGE, getDir } from '../data/translations';
 
 interface Props {
@@ -34,6 +37,7 @@ interface FolderHtmlFrameProps {
   isSingleFocus: boolean;
   registerIframeRef: (folderId: string, el: HTMLIFrameElement | null) => void;
   iframeHeight: number;
+  fallbackTracks: FallbackFolderTrack[];
 }
 
 const FolderHtmlWidgetFrame: React.FC<FolderHtmlFrameProps> = ({
@@ -41,6 +45,7 @@ const FolderHtmlWidgetFrame: React.FC<FolderHtmlFrameProps> = ({
   isSingleFocus,
   registerIframeRef,
   iframeHeight,
+  fallbackTracks,
 }) => {
   const hostRef = useRef<HTMLDivElement | null>(null);
   const [shouldRenderFrame, setShouldRenderFrame] = useState<boolean>(isSingleFocus);
@@ -72,8 +77,9 @@ const FolderHtmlWidgetFrame: React.FC<FolderHtmlFrameProps> = ({
       title: folder.urdu,
       itemsPerPage: isSingleFocus ? 10 : 6,
       embedId: folder.id,
+      fallbackTracks,
     });
-  }, [folder.id, folder.urdu, isSingleFocus, shouldRenderFrame]);
+  }, [folder.id, folder.urdu, isSingleFocus, shouldRenderFrame, fallbackTracks]);
 
   const setRef = useCallback(
     (el: HTMLIFrameElement | null) => {
@@ -241,6 +247,21 @@ export const AudioLibraryView: React.FC<Props> = ({
     return Array.from(map.values());
   }, [bayanatList, archiveFolders]);
 
+  const tracksByFolder = useMemo(() => {
+    const map = new Map<string, FallbackFolderTrack[]>();
+    for (const b of bayanatList) {
+      const list = map.get(b.collectionId) || [];
+      list.push({
+        name: b.filename,
+        title: b.urduTitle || b.title,
+        size: b.size,
+        mtime: b.mtime,
+      });
+      map.set(b.collectionId, list);
+    }
+    return map;
+  }, [bayanatList]);
+
   const displayedFolders = useMemo(() => {
     if (selectedFolderId === 'all') return folderGroups;
     return folderGroups.filter((f) => f.id === selectedFolderId);
@@ -259,6 +280,7 @@ export const AudioLibraryView: React.FC<Props> = ({
             isSingleFocus={displayedFolders.length === 1}
             registerIframeRef={registerIframeRef}
             iframeHeight={iframeHeights[folder.id] || 420}
+            fallbackTracks={tracksByFolder.get(folder.id) || []}
           />
         ))}
       </div>

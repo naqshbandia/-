@@ -31,6 +31,7 @@ public class PrayerSilentScheduler {
     public static final String KEY_SILENT_MODE = "silent_mode"; // "silent" | "vibrate"
 
     public static final String ACTION_SILENT_TRIGGER = "com.khanqahdarulfalah.app.ACTION_PRAYER_SILENT";
+    public static final String ACTION_MANUAL_EXIT_SILENT = "com.khanqahdarulfalah.app.ACTION_MANUAL_EXIT_SILENT";
     public static final String EXTRA_EVENT_TYPE = "event_type"; // "START" | "END" | "SAFETY_END"
     public static final String EXTRA_SLOT_KEY = "slot_key";
     public static final String EXTRA_SLOT_LABEL = "slot_label";
@@ -39,17 +40,28 @@ public class PrayerSilentScheduler {
 
     private static final int BASE_REQUEST_CODE = 2000;
     private static final int SAFETY_END_REQUEST_CODE = 2999;
+    private static final int SAFETY_END_2_REQUEST_CODE = 2998;
     private static final int MAX_SLOTS = 8;
 
     public static class ActiveWindowInfo {
         public final boolean active;
         public final long endMillis;
         public final String windowId;
+        public final String slotKey;
+        public final String slotLabel;
 
-        public ActiveWindowInfo(boolean active, long endMillis, String windowId) {
+        public ActiveWindowInfo(
+            boolean active,
+            long endMillis,
+            String windowId,
+            String slotKey,
+            String slotLabel
+        ) {
             this.active = active;
             this.endMillis = endMillis;
             this.windowId = windowId;
+            this.slotKey = slotKey;
+            this.slotLabel = slotLabel;
         }
     }
 
@@ -168,6 +180,7 @@ public class PrayerSilentScheduler {
             cancelAlarm(context, am, BASE_REQUEST_CODE + (i * 2) + 1, "END", i);
         }
         cancelAlarm(context, am, SAFETY_END_REQUEST_CODE, "SAFETY_END", 99);
+        cancelAlarm(context, am, SAFETY_END_2_REQUEST_CODE, "SAFETY_END", 98);
 
         SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
         boolean enabled = prefs.getBoolean(KEY_ENABLED, false);
@@ -176,6 +189,8 @@ public class PrayerSilentScheduler {
             // If Auto-Silent was turned OFF while currently silenced by the app, exit DND immediately
             if (!enabled && prefs.getBoolean(KEY_IS_SILENCED, false)) {
                 applySilentState(context, false);
+            } else {
+                stopSilentMonitorService(context);
             }
             return;
         }
@@ -200,6 +215,8 @@ public class PrayerSilentScheduler {
                 applySilentState(context, true);
                 currentlyMarkedSilenced = true;
             }
+        } else if (activeNow.active && currentlyMarkedSilenced) {
+            startSilentMonitorService(context, activeNow.endMillis, activeNow.slotKey, activeNow.slotLabel);
         }
 
         String raw = prefs.getString(KEY_SLOTS_JSON, "[]");
@@ -264,13 +281,13 @@ public class PrayerSilentScheduler {
                 }
             }
 
-            // Always arm a safety verification END alarm +30s after active window ends OR if end verification is still pending
+            // Always arm two safety verification END alarms (+30s & +120s) so Doze/OEM never leaves DND stuck
             boolean stillSilencedOrPending =
                 prefs.getBoolean(KEY_IS_SILENCED, false) || prefs.getBoolean(KEY_PENDING_END_VERIFY, false);
             if (activeNow.active || stillSilencedOrPending) {
-                long safetyTarget = activeNow.active
-                    ? (activeNow.endMillis + 30_000L)
-                    : (now + 30_000L);
+                long baseEnd = activeNow.active ? activeNow.endMillis : now;
+                long safetyTarget = baseEnd + 30_000L;
+                long safetyTarget2 = baseEnd + 120_000L;
                 if (safetyTarget > now) {
                     armAlarm(
                         context,
@@ -285,20 +302,45 @@ public class PrayerSilentScheduler {
                         true
                     );
                 }
+                if (safetyTarget2 > now) {
+                    armAlarm(
+                        context,
+                        am,
+                        SAFETY_END_2_REQUEST_CODE,
+                        safetyTarget2,
+                        "SAFETY_END",
+                        "SafetyEnd2",
+                        "واپس نارمل موڈ",
+                        98,
+                        safetyTarget2,
+                        true
+                    );
+                }
             }
         } catch (Exception ignored) {
         }
     }
 
     public static ActiveWindowInfo getActiveWindowInfo(Context context, long nowMillis) {
+        return getOverlappingActiveWindowExcluding(context, nowMillis, null, 0L);
+    }
+
+    public static ActiveWindowInfo getOverlappingActiveWindowExcluding(
+        Context context,
+        long nowMillis,
+        String excludeSlotKey,
+        long excludeEndMillis
+    ) {
         SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
         if (!prefs.getBoolean(KEY_ENABLED, false)) {
-            return new ActiveWindowInfo(false, 0L, "");
+            return new ActiveWindowInfo(false, 0L, "", "", "");
         }
         String raw = prefs.getString(KEY_SLOTS_JSON, "[]");
         boolean anyActive = false;
         long maxEndMillis = 0L;
         String activeWindowId = "";
+        String activeSlotKey = "";
+        String activeSlotLabel = "";
 
         try {
             JSONArray arr = new JSONArray(raw);
@@ -308,6 +350,10 @@ public class PrayerSilentScheduler {
                 if (slot == null || !slot.optBoolean("enabled", true)) continue;
 
                 String key = slot.optString("key", "Prayer" + i);
+                String label = slot.optString("labelUrdu", key);
+                if (excludeSlotKey != null && !excludeSlotKey.isEmpty() && excludeSlotKey.equals(key)) {
+                    continue;
+                }
                 boolean isFridayOnly = "Jummah".equalsIgnoreCase(key);
                 int[] startParts = parseTimeParts(slot.optString("start", ""));
                 int[] endParts = parseTimeParts(slot.optString("end", ""));
@@ -315,17 +361,22 @@ public class PrayerSilentScheduler {
 
                 long slotEnd = findActiveSlotEndMillis(startParts, endParts, isFridayOnly, nowMillis);
                 if (slotEnd > 0 && nowMillis < slotEnd) {
+                    if (excludeEndMillis > 0L && slotEnd <= excludeEndMillis + 60_000L) {
+                        continue;
+                    }
                     anyActive = true;
                     if (slotEnd > maxEndMillis) {
                         maxEndMillis = slotEnd;
                         activeWindowId = key + "_" + slotEnd;
+                        activeSlotKey = key;
+                        activeSlotLabel = label;
                     }
                 }
             }
         } catch (Exception ignored) {
         }
 
-        return new ActiveWindowInfo(anyActive, maxEndMillis, activeWindowId);
+        return new ActiveWindowInfo(anyActive, maxEndMillis, activeWindowId, activeSlotKey, activeSlotLabel);
     }
 
     private static int[] parseTimeParts(String hhmm) {
@@ -551,7 +602,42 @@ public class PrayerSilentScheduler {
         }
     }
 
+    public static void startSilentMonitorService(
+        Context context,
+        long endMillis,
+        String slotKey,
+        String slotLabel
+    ) {
+        try {
+            Intent svc = new Intent(context, PrayerSilentService.class);
+            if (endMillis > 0L) {
+                svc.putExtra(PrayerSilentService.EXTRA_END_MILLIS, endMillis);
+            }
+            if (slotKey != null) {
+                svc.putExtra(PrayerSilentService.EXTRA_SLOT_KEY, slotKey);
+            }
+            if (slotLabel != null) {
+                svc.putExtra(PrayerSilentService.EXTRA_SLOT_LABEL, slotLabel);
+            }
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                context.startForegroundService(svc);
+            } else {
+                context.startService(svc);
+            }
+        } catch (Throwable ignored) {
+        }
+    }
+
+    public static void stopSilentMonitorService(Context context) {
+        try {
+            Intent svc = new Intent(context, PrayerSilentService.class);
+            context.stopService(svc);
+        } catch (Throwable ignored) {
+        }
+    }
+
     public static void forceRestoreNormalDnd(Context context) {
+        stopSilentMonitorService(context);
         if (!hasDndPermission(context)) return;
 
         SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
@@ -568,7 +654,7 @@ public class PrayerSilentScheduler {
 
         applyNormalSoundPass(context, targetRinger);
 
-        // OEM (Xiaomi MIUI / HyperOS & Samsung OneUI) race verification:
+        // OEM (Transsion HiOS/XOS, Xiaomi MIUI / HyperOS & Samsung OneUI) race verification:
         // Some OEMs reset or delay DND change right after ringer mode transition; enforce ALL again cleanly.
         final Context appCtx = context.getApplicationContext();
         Handler mainHandler = new Handler(Looper.getMainLooper());
@@ -598,7 +684,7 @@ public class PrayerSilentScheduler {
         } catch (Exception ignored) {
         }
 
-        // Second pass on NotificationManager immediately after setRingerMode (MIUI/HyperOS sync)
+        // Second pass on NotificationManager immediately after setRingerMode (HiOS/MIUI sync)
         try {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && nm != null) {
                 if (nm.getCurrentInterruptionFilter() != NotificationManager.INTERRUPTION_FILTER_ALL) {
@@ -633,6 +719,7 @@ public class PrayerSilentScheduler {
     }
 
     public static void completePendingEndVerification(Context context) {
+        stopSilentMonitorService(context);
         SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
         if (!prefs.getBoolean(KEY_PENDING_END_VERIFY, false) && !prefs.getBoolean(KEY_IS_SILENCED, false)) {
             return;
@@ -702,6 +789,11 @@ public class PrayerSilentScheduler {
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
                         nm.setInterruptionFilter(NotificationManager.INTERRUPTION_FILTER_ALARMS);
                     }
+                }
+
+                ActiveWindowInfo active = getActiveWindowInfo(context, System.currentTimeMillis());
+                if (active.active) {
+                    startSilentMonitorService(context, active.endMillis, active.slotKey, active.slotLabel);
                 }
             } else {
                 forceRestoreNormalDnd(context);

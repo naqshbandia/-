@@ -590,6 +590,13 @@ function getRamzanStyleCss(isEmbedded = false, isCombined = false): string {
  * Generates an exact copy of the user's .category-box widget block (Ramzan ul Mubarak ki Aham Masail.html)
  * that can be embedded in the app or exported as standalone / combined HTML files.
  */
+export interface FallbackFolderTrack {
+  name: string;
+  title?: string;
+  size?: string;
+  mtime?: string;
+}
+
 export function generateCategoryBoxBlockHtml(config: {
   archiveId: string;
   title: string;
@@ -597,6 +604,7 @@ export function generateCategoryBoxBlockHtml(config: {
   defaultMaqam?: string;
   includeFolderNameInFile?: boolean;
   embedId?: string;
+  fallbackTracks?: FallbackFolderTrack[];
 }): string {
   const jsArchiveId = escapeJsString(config.archiveId);
   const jsTitle = escapeJsString(config.title);
@@ -604,6 +612,7 @@ export function generateCategoryBoxBlockHtml(config: {
   const jsMaqam = escapeJsString(config.defaultMaqam || 'پاکستان');
   const includeFolderName = config.includeFolderNameInFile ?? true;
   const jsEmbedId = escapeJsString(config.embedId || '');
+  const jsFallbackTracks = JSON.stringify(config.fallbackTracks || []).replace(/<\/script>/gi, '<\\/script>');
 
   return `    <div class="category-box">
 
@@ -649,6 +658,7 @@ export function generateCategoryBoxBlockHtml(config: {
                 // ==========================================================
 
                 const EMBED_ID = ${jsEmbedId};
+                const FALLBACK_TRACKS = ${jsFallbackTracks};
                 const root = document.currentScript.closest('.category-box');
                 const titleEl = root.querySelector('.cat-title');
                 const countEl = root.querySelector('.cat-count');
@@ -748,9 +758,19 @@ export function generateCategoryBoxBlockHtml(config: {
                             notifyParentHeight();
                         }
                     } catch (e) {
-                        listContainer.innerHTML = \`<div class="empty-msg" style="color:#c00;">ڈیٹا لوڈ نہیں ہو سکا۔ براہ کرم Archive ID چیک کریں۔</div>\`;
-                        paginationBar.style.display = 'none';
-                        notifyParentHeight();
+                        if (Array.isArray(FALLBACK_TRACKS) && FALLBACK_TRACKS.length > 0) {
+                            bayanFiles = [...FALLBACK_TRACKS];
+                            bayanFiles.sort((a, b) => (Number(b.mtime) || 0) - (Number(a.mtime) || 0));
+                            filteredFiles = [...bayanFiles];
+                            countEl.textContent = bayanFiles.length;
+                            countEl.style.display = 'inline-flex';
+                            currentPage = 1;
+                            updateView();
+                        } else {
+                            listContainer.innerHTML = \`<div class="empty-msg">آف لائن موڈ — تازہ بیانات دیکھنے کے لیے انٹرنیٹ آن کر کے ریفریش کریں۔</div>\`;
+                            paginationBar.style.display = 'none';
+                            notifyParentHeight();
+                        }
                     }
                 }
 
@@ -1043,6 +1063,7 @@ export function generateFolderWidgetHtml(config: {
   itemsPerPage?: number;
   defaultMaqam?: string;
   embedId?: string;
+  fallbackTracks?: FallbackFolderTrack[];
 }): string {
   const safeTitle = escapeHtmlAttr(config.title);
   const isEmbedded = Boolean(config.embedId);

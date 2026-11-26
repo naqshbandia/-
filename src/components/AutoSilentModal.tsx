@@ -568,17 +568,29 @@ export const AutoSilentModal: React.FC<Props> = ({
                   <button
                     type="button"
                     onClick={() => {
-                      getAndroidBridge()?.openAppBatterySettings?.();
-                      onNotify?.("Battery Saver کو 'No restrictions' پر رکھیں تاکہ وقتِ ختم پر DND خودکار کھل جائے۔");
+                      const bridge = getAndroidBridge();
+                      if (!nativeStatus.batteryOptIgnored && bridge?.requestBatteryOptimizationExemption) {
+                        bridge.requestBatteryOptimizationExemption();
+                        onNotify?.("کھلنے والے ڈائیلاگ میں 'Allow' دبائیں تاکہ آف لائن بھی وقت پر DND خودکار کھل جائے۔");
+                      } else {
+                        bridge?.openAppBatterySettings?.();
+                        onNotify?.("Battery Saver کو 'No restrictions / Unrestricted' پر رکھیں تاکہ وقتِ ختم پر DND خودکار کھل جائے۔");
+                      }
                     }}
                     className={`w-full py-1.5 px-2.5 rounded-xl border text-[10.5px] font-bold flex items-center justify-center gap-1.5 cursor-pointer transition-colors ${
-                      isDark
+                      !nativeStatus.batteryOptIgnored
+                        ? 'bg-amber-500/20 border-[#d4af37] text-[#8c6514] dark:text-[#f7e7a9]'
+                        : isDark
                         ? 'bg-black/25 border-[#d4af37]/30 text-emerald-100/90 hover:border-[#d4af37]'
                         : 'bg-white border-[#064326]/20 text-[#064326] hover:bg-emerald-50'
                     }`}
                   >
                     <Settings className="w-3.5 h-3.5 text-[#d4af37] shrink-0" />
-                    <span>بیٹری سیور / بیک گراؤنڈ اجازت (No Restrictions)</span>
+                    <span>
+                      {!nativeStatus.batteryOptIgnored
+                        ? '⚡ بیک گراؤنڈ بیٹری رکاوٹ ختم کریں (آف لائن DND کے لیے لازمی)'
+                        : 'بیک گراؤنڈ بیٹری اجازت فعال ہے ✓ (سیٹنگز دیکھیں)'}
+                    </span>
                   </button>
                 </div>
               )}

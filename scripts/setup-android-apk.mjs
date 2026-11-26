@@ -28,6 +28,7 @@ for (const javaFile of [
   'MainActivity.java',
   'PrayerSilentScheduler.java',
   'PrayerSilentReceiver.java',
+  'PrayerSilentService.java',
   'BootReceiver.java',
   'KhanqahNotificationHelper.java',
   'UpdateCheckReceiver.java',
@@ -39,7 +40,7 @@ for (const javaFile of [
   }
 }
 
-// 2. Patch AndroidManifest.xml with permissions, cleartext traffic & PrayerSilent receivers
+// 2. Patch AndroidManifest.xml with permissions, cleartext traffic & PrayerSilent receivers/service
 const manifestPath = path.join(appDir, 'src', 'main', 'AndroidManifest.xml');
 if (fs.existsSync(manifestPath)) {
   let manifest = fs.readFileSync(manifestPath, 'utf8');
@@ -47,8 +48,11 @@ if (fs.existsSync(manifestPath)) {
   const requiredPermissions = [
     'android.permission.ACCESS_NETWORK_STATE',
     'android.permission.ACCESS_NOTIFICATION_POLICY',
+    'android.permission.FOREGROUND_SERVICE',
+    'android.permission.FOREGROUND_SERVICE_SPECIAL_USE',
     'android.permission.POST_NOTIFICATIONS',
     'android.permission.RECEIVE_BOOT_COMPLETED',
+    'android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS',
     'android.permission.SCHEDULE_EXACT_ALARM',
     'android.permission.USE_EXACT_ALARM',
     'android.permission.WAKE_LOCK',
@@ -74,6 +78,16 @@ if (fs.existsSync(manifestPath)) {
 
   if (!manifest.includes('PrayerSilentReceiver')) {
     const receiversXml = `
+        <service
+            android:name=".PrayerSilentService"
+            android:enabled="true"
+            android:exported="false"
+            android:foregroundServiceType="specialUse">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="prayer_auto_silent_timer" />
+        </service>
+
         <receiver
             android:name=".PrayerSilentReceiver"
             android:enabled="true"
@@ -98,15 +112,23 @@ if (fs.existsSync(manifestPath)) {
         </receiver>
     </application>`;
     manifest = manifest.replace('</application>', receiversXml);
-  } else if (!manifest.includes('UpdateCheckReceiver')) {
-    manifest = manifest.replace(
-      '</application>',
-      `\n        <receiver\n            android:name=".UpdateCheckReceiver"\n            android:enabled="true"\n            android:exported="false" />\n    </application>`
-    );
+  } else {
+    if (!manifest.includes('UpdateCheckReceiver')) {
+      manifest = manifest.replace(
+        '</application>',
+        `\n        <receiver\n            android:name=".UpdateCheckReceiver"\n            android:enabled="true"\n            android:exported="false" />\n    </application>`
+      );
+    }
+    if (!manifest.includes('PrayerSilentService')) {
+      manifest = manifest.replace(
+        '</application>',
+        `\n        <service\n            android:name=".PrayerSilentService"\n            android:enabled="true"\n            android:exported="false"\n            android:foregroundServiceType="specialUse">\n            <property\n                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"\n                android:value="prayer_auto_silent_timer" />\n        </service>\n    </application>`
+      );
+    }
   }
 
   fs.writeFileSync(manifestPath, manifest, 'utf8');
-  console.log('✓ Updated AndroidManifest.xml with DND, Exact Alarm & Boot receivers');
+  console.log('✓ Updated AndroidManifest.xml with DND, Foreground Service, Exact Alarm & Boot receivers');
 }
 
 // 3. Configure Live Over-The-Air (OTA) GitHub Pages URL for automatic customer updates inside APK

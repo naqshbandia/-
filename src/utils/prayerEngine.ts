@@ -248,3 +248,102 @@ export function getNextFarzKey(prayers: FarzTiming[], now: Date): FarzKey | null
   }
   return 'Fajr';
 }
+
+// Monthly Bannu (32.99° N, 70.60° E, Hanafi) offline astronomical baseline [Fajr, Sunrise, Dhuhr, Asr, Maghrib, Isha]
+const BANNU_MONTHLY_OFFLINE_TIMINGS: [string, string, string, string, string, string][] = [
+  ['05:44', '07:10', '12:26', '15:52', '17:38', '19:03'], // Jan
+  ['05:27', '06:51', '12:31', '16:15', '18:06', '19:29'], // Feb
+  ['04:55', '06:18', '12:25', '16:33', '18:28', '19:50'], // Mar
+  ['04:12', '05:39', '12:17', '16:45', '18:51', '20:18'], // Apr
+  ['03:36', '05:10', '12:14', '16:54', '19:13', '20:47'], // May
+  ['03:20', '05:01', '12:18', '17:02', '19:28', '21:08'], // Jun
+  ['03:33', '05:11', '12:23', '17:04', '19:25', '21:03'], // Jul
+  ['04:01', '05:31', '12:21', '16:52', '19:03', '20:32'], // Aug
+  ['04:29', '05:51', '12:12', '16:30', '18:28', '19:50'], // Sep
+  ['04:52', '06:13', '12:03', '16:04', '17:52', '19:13'], // Oct
+  ['05:17', '06:40', '12:02', '15:43', '17:27', '18:50'], // Nov
+  ['05:39', '07:05', '12:14', '15:40', '17:23', '18:49'], // Dec
+];
+
+function computeOfflineHijriDate(now: Date): string {
+  try {
+    const formatted = new Intl.DateTimeFormat('ar-SA-u-ca-islamic-umalqura', {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
+    }).format(now);
+    if (formatted && formatted.trim().length > 0) {
+      return formatted.replace(/هـ/g, 'ھ');
+    }
+  } catch {
+    // Fallback below if Intl islamic calendar is unavailable
+  }
+  return now.toLocaleDateString('ur-PK', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+  });
+}
+
+export function computeOfflineFallbackPrayerCache(now = new Date()): PrayerCache {
+  const monthIdx = Math.max(0, Math.min(11, now.getMonth()));
+  const [fajr, sunrise, dhuhr, asr, maghrib, isha] =
+    BANNU_MONTHLY_OFFLINE_TIMINGS[monthIdx];
+  const sunset = maghrib;
+  const lastthird = addMinutesTo24h(fajr, -90);
+  const midnight = addMinutesTo24h(maghrib, Math.round(((time24ToMinutes(fajr) + 1440 - time24ToMinutes(maghrib)) % 1440) / 2));
+
+  const prayers: FarzTiming[] = [
+    {
+      key: 'Fajr',
+      name: 'فجر',
+      start24: fajr,
+      start12: formatTo12Hour(fajr),
+      end24: sunrise,
+      end12: formatTo12Hour(sunrise),
+    },
+    {
+      key: 'Dhuhr',
+      name: 'ظہر',
+      start24: dhuhr,
+      start12: formatTo12Hour(dhuhr),
+      end24: asr,
+      end12: formatTo12Hour(asr),
+    },
+    {
+      key: 'Asr',
+      name: 'عصر',
+      start24: asr,
+      start12: formatTo12Hour(asr),
+      end24: sunset,
+      end12: formatTo12Hour(sunset),
+    },
+    {
+      key: 'Maghrib',
+      name: 'مغرب',
+      start24: maghrib,
+      start12: formatTo12Hour(maghrib),
+      end24: isha,
+      end12: formatTo12Hour(isha),
+    },
+    {
+      key: 'Isha',
+      name: 'عشاء',
+      start24: isha,
+      start12: formatTo12Hour(isha),
+      end24: fajr,
+      end12: formatTo12Hour(fajr),
+    },
+  ];
+
+  return {
+    hijriDate: computeOfflineHijriDate(now),
+    gregorianDate: now.toLocaleDateString('en-GB'),
+    sunrise24: sunrise,
+    sunset24: sunset,
+    lastthird24: lastthird,
+    midnight24: midnight,
+    prayers,
+    fetchedDateKey: now.toDateString(),
+  };
+}

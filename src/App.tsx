@@ -634,7 +634,12 @@ function AppContent() {
   };
 
   const handleHeaderRefresh = async () => {
-    showNotification('ایپ اور تازہ ترین اپڈیٹ ریفریش ہو رہا ہے...');
+    const isOnline = typeof navigator === 'undefined' ? true : navigator.onLine;
+    if (!isOnline) {
+      showNotification('انٹرنیٹ بند ہے — ایپ آف لائن محفوظ ڈیٹا پر چل رہی ہے ✓');
+    } else {
+      showNotification('ایپ اور تازہ ترین اپڈیٹ ریفریش ہو رہا ہے...');
+    }
     handleManualRefresh();
 
     const bridge = getAndroidBridge();
@@ -646,7 +651,7 @@ function AppContent() {
       bridge.checkLiveUpdate();
     }
 
-    if (typeof navigator !== 'undefined' && navigator.onLine) {
+    if (isOnline) {
       try {
         if ('serviceWorker' in navigator) {
           const regs = await navigator.serviceWorker.getRegistrations();

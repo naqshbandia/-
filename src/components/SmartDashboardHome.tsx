@@ -66,6 +66,7 @@ import {
   PRAYER_CACHE_KEY,
   parseAladhanPayload,
   computeNawafilTimings,
+  computeOfflineFallbackPrayerCache,
   resolveJamaatTime24,
   getNextFarzKey,
   formatTo12Hour,
@@ -256,14 +257,15 @@ export const SmartDashboardHome: React.FC<Props> = ({
   // Active Prayer Section Tab: Farz | Nawafil | Jama'at
   const [prayerTab, setPrayerTab] = useState<'farz' | 'nawafil' | 'jamaat'>('farz');
 
-  // Prayer Cache State
+  // Prayer Cache State (uses cached live data or instant Bannu seasonal offline fallback)
   const [prayerData, setPrayerData] = useState<PrayerCache | null>(() => {
     try {
       const saved = localStorage.getItem(PRAYER_CACHE_KEY);
-      return saved ? JSON.parse(saved) : null;
+      if (saved) return JSON.parse(saved);
     } catch {
-      return null;
+      // Ignore parse error
     }
+    return computeOfflineFallbackPrayerCache();
   });
 
   // Khanqah Darul Falah Official Jama'at Schedule (Admin-only via GitHub khanqah-jamaat.html)

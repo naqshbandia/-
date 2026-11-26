@@ -16,10 +16,14 @@ import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
+import android.os.PowerManager;
 import android.provider.Settings;
 import android.webkit.DownloadListener;
 import android.webkit.JavascriptInterface;
 import android.webkit.URLUtil;
+import android.webkit.WebResourceError;
+import android.webkit.WebResourceRequest;
+import android.webkit.WebResourceResponse;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.widget.Toast;
@@ -27,6 +31,7 @@ import android.widget.Toast;
 import androidx.activity.OnBackPressedCallback;
 
 import com.getcapacitor.BridgeActivity;
+import com.getcapacitor.BridgeWebViewClient;
 
 import org.json.JSONObject;
 
@@ -69,6 +74,52 @@ public class MainActivity extends BridgeActivity {
             settings.setJavaScriptEnabled(true);
             settings.setCacheMode(WebSettings.LOAD_DEFAULT);
             settings.setMediaPlaybackRequiresUserGesture(false);
+
+            webView.setWebViewClient(new BridgeWebViewClient(this.bridge) {
+                @Override
+                public void onReceivedError(
+                    WebView view,
+                    WebResourceRequest request,
+                    WebResourceError error
+                ) {
+                    if (request != null && request.isForMainFrame()) {
+                        String failUrl = request.getUrl() != null ? request.getUrl().toString() : "";
+                        if (!failUrl.startsWith(LOCAL_BUNDLE_URL)) {
+                            view.post(() -> view.loadUrl(LOCAL_BUNDLE_URL));
+                            return;
+                        }
+                    }
+                    super.onReceivedError(view, request, error);
+                }
+
+                @Override
+                public void onReceivedHttpError(
+                    WebView view,
+                    WebResourceRequest request,
+                    WebResourceResponse errorResponse
+                ) {
+                    if (request != null && request.isForMainFrame() && errorResponse != null
+                        && errorResponse.getStatusCode() >= 400) {
+                        String failUrl = request.getUrl() != null ? request.getUrl().toString() : "";
+                        if (!failUrl.startsWith(LOCAL_BUNDLE_URL)) {
+                            view.post(() -> view.loadUrl(LOCAL_BUNDLE_URL));
+                            return;
+                        }
+                    }
+                    super.onReceivedHttpError(view, request, errorResponse);
+                }
+
+                @Override
+                public void onPageFinished(WebView view, String url) {
+                    super.onPageFinished(view, url);
+                    if (url != null && !url.startsWith(LOCAL_BUNDLE_URL)) {
+                        String t = view.getTitle();
+                        if (t != null && (t.contains("404") || t.contains("Page not found") || t.contains("Webpage not available"))) {
+                            view.loadUrl(LOCAL_BUNDLE_URL);
+                        }
+                    }
+                }
+            });
 
             webView.addJavascriptInterface(new KhanqahNativeBridge(), "Android");
 
@@ -161,8 +212,11 @@ public class MainActivity extends BridgeActivity {
         if (wv != null) {
             String curTitle = wv.getTitle();
             String curUrl = wv.getUrl();
-            if ((curTitle != null && curTitle.contains("404"))
-                || (curTitle != null && curTitle.contains("Page not found"))) {
+            boolean isBrokenPage =
+                (curTitle != null && (curTitle.contains("404") || curTitle.contains("Page not found") || curTitle.contains("Webpage not available")));
+            boolean offlineOnRemote =
+                !isNetworkAvailable() && curUrl != null && !curUrl.startsWith(LOCAL_BUNDLE_URL);
+            if (isBrokenPage || offlineOnRemote) {
                 wv.loadUrl(LOCAL_BUNDLE_URL);
             }
             wv.evaluateJavascript(
@@ -585,13 +639,14 @@ public class MainActivity extends BridgeActivity {
                 obj.put("isNative", true);
                 obj.put("dndGranted", PrayerSilentScheduler.hasDndPermission(MainActivity.this));
                 obj.put("exactAlarmGranted", PrayerSilentScheduler.hasExactAlarmPermission(MainActivity.this));
+                obj.put("batteryOptIgnored", isIgnoringBatteryOptimizations());
                 obj.put("enabled", PrayerSilentScheduler.isMasterEnabled(MainActivity.this));
                 obj.put("silentMode", PrayerSilentScheduler.getSilentMode(MainActivity.this));
                 obj.put("activeCount", PrayerSilentScheduler.getActiveScheduledCount(MainActivity.this));
                 obj.put("currentlySilent", PrayerSilentScheduler.isCurrentlySilent(MainActivity.this));
                 return obj.toString();
             } catch (Exception e) {
-                return "{\"isNative\":true,\"dndGranted\":false,\"exactAlarmGranted\":true,\"enabled\":false,\"silentMode\":\"silent\",\"activeCount\":0,\"currentlySilent\":false}";
+                return "{\"isNative\":true,\"dndGranted\":false,\"exactAlarmGranted\":true,\"batteryOptIgnored\":false,\"enabled\":false,\"silentMode\":\"silent\",\"activeCount\":0,\"currentlySilent\":false}";
             }
         }
 
@@ -684,6 +739,35 @@ public class MainActivity extends BridgeActivity {
         @JavascriptInterface
         public boolean setSilentNow(boolean silent) {
             return PrayerSilentScheduler.applySilentState(MainActivity.this, silent);
+        }
+
+        @JavascriptInterface
+        public boolean isIgnoringBatteryOptimizations() {
+            try {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                    PowerManager pm = (PowerManager) getSystemService(Context.POWER_SERVICE);
+                    return pm != null && pm.isIgnoringBatteryOptimizations(getPackageName());
+                }
+            } catch (Exception ignored) {
+            }
+            return true;
+        }
+
+        @JavascriptInterface
+        public void requestBatteryOptimizationExemption() {
+            runOnUiThread(() -> {
+                try {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !isIgnoringBatteryOptimizations()) {
+                        Intent intent = new Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS);
+                        intent.setData(Uri.parse("package:" + getPackageName()));
+                        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                        startActivity(intent);
+                        return;
+                    }
+                } catch (Exception ignored) {
+                }
+                openAppBatterySettings();
+            });
         }
 
         @JavascriptInterface
