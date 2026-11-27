@@ -1022,6 +1022,20 @@ public class MainActivity extends BridgeActivity {
                 ? hostname.trim()
                 : "family.adguard-dns.com";
             runOnUiThread(() -> {
+                String mfg = Build.MANUFACTURER != null ? Build.MANUFACTURER.toLowerCase() : "";
+                boolean hidesDnsInWireless =
+                    mfg.contains("infinix")
+                        || mfg.contains("tecno")
+                        || mfg.contains("itel")
+                        || mfg.contains("transsion")
+                        || mfg.contains("samsung")
+                        || mfg.contains("xiaomi")
+                        || mfg.contains("redmi")
+                        || mfg.contains("poco")
+                        || mfg.contains("oppo")
+                        || mfg.contains("realme")
+                        || mfg.contains("vivo");
+
                 try {
                     ClipboardManager cm =
                         (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
@@ -1030,19 +1044,57 @@ public class MainActivity extends BridgeActivity {
                     }
                     Toast.makeText(
                         MainActivity.this,
-                        dnsHost + " کاپی ہو گیا! اب Private DNS میں جا کر پیسٹ اور Save کریں",
+                        hidesDnsInWireless
+                            ? dnsHost + " کاپی ہو گیا! سیٹنگ میں 'More connections' (یا سرچ 🔍) سے Private DNS کھول کر پیسٹ کریں"
+                            : dnsHost + " کاپی ہو گیا! اب Private DNS میں جا کر پیسٹ اور Save کریں",
                         Toast.LENGTH_LONG
                     ).show();
                 } catch (Exception ignored) {
                 }
 
+                // 1. Try direct Private DNS or More Connections OEM activities first
+                Intent[] directCandidates = new Intent[]{
+                    new Intent("android.settings.PRIVATE_DNS_SETTINGS"),
+                    new Intent().setClassName(
+                        "com.android.settings",
+                        "com.android.settings.Settings$PrivateDnsSettingsActivity"
+                    ),
+                    new Intent().setClassName(
+                        "com.android.settings",
+                        "com.android.settings.Settings$MoreConnectionSettingsActivity"
+                    ),
+                    new Intent().setClassName(
+                        "com.android.settings",
+                        "com.android.settings.Settings$MoreConnectionsActivity"
+                    ),
+                    new Intent().setClassName(
+                        "com.samsung.android.settings",
+                        "com.samsung.android.settings.connection.MoreConnectionSettingsActivity"
+                    )
+                };
+                for (Intent candidate : directCandidates) {
+                    try {
+                        candidate.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                        if (candidate.resolveActivity(getPackageManager()) != null) {
+                            startActivity(candidate);
+                            return;
+                        }
+                    } catch (Exception ignored) {
+                    }
+                }
+
+                // 2. On Infinix/Tecno HiOS, Samsung, Xiaomi, etc., ACTION_WIRELESS_SETTINGS hides Private DNS,
+                // so open Main Settings (has both More connections & top Search bar)
+                if (hidesDnsInWireless) {
+                    try {
+                        launchSettingsIntent(Settings.ACTION_SETTINGS);
+                        return;
+                    } catch (Exception ignored) {
+                    }
+                }
+
                 try {
                     launchSettingsIntent(Settings.ACTION_WIRELESS_SETTINGS);
-                    return;
-                } catch (Exception ignored) {
-                }
-                try {
-                    launchSettingsIntent(Settings.ACTION_WIFI_SETTINGS);
                     return;
                 } catch (Exception ignored) {
                 }

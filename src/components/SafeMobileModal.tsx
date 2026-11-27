@@ -268,7 +268,7 @@ export const SafeMobileModal: React.FC<Props> = ({
               📋 صرف 10 سیکنڈ کا آسان طریقہ:
             </div>
             <div>
-              <strong>1.</strong> اوپر بٹن دبا کر کھلنے والی سیٹنگ میں <strong>Private DNS</strong> (پرائیویٹ ڈی این ایس) پر جائیں۔
+              <strong>1.</strong> اوپر بٹن دبا کر کھلنے والی سیٹنگ میں <strong>More connections</strong> (یا <strong>Network &amp; Internet</strong> / اوپر سرچ 🔍) میں <strong>Private DNS</strong> کھولیں۔
             </div>
             <div>
               <strong>2.</strong> تیسرا آپشن <strong>Private DNS provider hostname</strong> منتخب کریں۔
