@@ -474,7 +474,8 @@ public class KhanqahNotificationHelper {
         String html = fetchUrl(URL_MESSAGE_HTML + "?_t=" + System.currentTimeMillis());
         if (html == null || html.isEmpty()) return null;
 
-        int idx = html.indexOf("class=\"message\"");
+        int idx = html.indexOf("id=\"khanqah-messages\"");
+        if (idx < 0) idx = html.indexOf("class=\"message\"");
         if (idx < 0) idx = html.indexOf("id=\"khanqah-message\"");
         if (idx < 0) return null;
 
