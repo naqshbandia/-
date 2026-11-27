@@ -252,6 +252,8 @@ public class MainActivity extends BridgeActivity {
             if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O || getPackageManager().canRequestPackageInstalls()) {
                 startApkSelfDownloadAndInstall(pendingApkUrl);
             }
+        } else if (!apkDownloadInFlight) {
+            emitJsEvent("kdf-apk-download-progress", "{\"progress\":0,\"status\":\"idle\"}");
         }
     }
 
