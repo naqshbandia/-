@@ -646,7 +646,7 @@ public class MainActivity extends BridgeActivity {
                 obj.put("currentlySilent", PrayerSilentScheduler.isCurrentlySilent(MainActivity.this));
                 return obj.toString();
             } catch (Exception e) {
-                return "{\"isNative\":true,\"dndGranted\":false,\"exactAlarmGranted\":true,\"batteryOptIgnored\":false,\"enabled\":false,\"silentMode\":\"silent\",\"activeCount\":0,\"currentlySilent\":false}";
+                return "{\"isNative\":true,\"dndGranted\":false,\"exactAlarmGranted\":true,\"batteryOptIgnored\":false,\"enabled\":false,\"silentMode\":\"vibrate\",\"activeCount\":0,\"currentlySilent\":false}";
             }
         }
 

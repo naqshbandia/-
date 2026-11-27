@@ -16,6 +16,7 @@ public class UpdateCheckReceiver extends BroadcastReceiver {
 
         Executors.newSingleThreadExecutor().execute(() -> {
             try {
+                PrayerSilentScheduler.reconcileAndScheduleAll(appCtx, false);
                 KhanqahNotificationHelper.checkRemoteContentAndNotify(appCtx);
             } catch (Exception ignored) {
             } finally {

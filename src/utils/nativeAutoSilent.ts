@@ -137,7 +137,7 @@ export function getNativeAutoSilentStatus(): NativeAutoSilentStatus {
     exactAlarmGranted: true,
     batteryOptIgnored: true,
     enabled: false,
-    silentMode: 'silent',
+    silentMode: 'vibrate',
     activeCount: 0,
     currentlySilent: false,
   };
@@ -146,7 +146,7 @@ export function getNativeAutoSilentStatus(): NativeAutoSilentStatus {
     if (typeof bridge.getAutoSilentStatus === 'function') {
       const parsed = JSON.parse(bridge.getAutoSilentStatus());
       const silentMode: PrayerSilentMode =
-        parsed?.silentMode === 'vibrate' ? 'vibrate' : 'silent';
+        parsed?.silentMode === 'silent' ? 'silent' : 'vibrate';
       return {
         isNative: Boolean(parsed?.isNative ?? true),
         dndGranted: Boolean(parsed?.dndGranted),
@@ -228,15 +228,14 @@ export function loadAutoSilentConfig(
       return {
         masterEnabled: true,
         customized: false,
-        silentMode: 'silent',
+        silentMode: 'vibrate',
         slots: defaults,
       };
     }
     const parsed = JSON.parse(raw) as Partial<StoredAutoSilentConfig>;
     const masterEnabled = parsed.masterEnabled !== false;
     const customized = Boolean(parsed.customized);
-    const silentMode: PrayerSilentMode =
-      parsed.silentMode === 'vibrate' ? 'vibrate' : 'silent';
+    const silentMode: PrayerSilentMode = 'vibrate';
     if (!customized || !Array.isArray(parsed.slots) || parsed.slots.length === 0) {
       return {
         masterEnabled,
@@ -271,7 +270,7 @@ export function loadAutoSilentConfig(
     return {
       masterEnabled: true,
       customized: false,
-      silentMode: 'silent',
+      silentMode: 'vibrate',
       slots: defaults,
     };
   }
@@ -280,8 +279,12 @@ export function loadAutoSilentConfig(
 export function saveAndSyncAutoSilentConfig(
   config: StoredAutoSilentConfig
 ): { saved: boolean; nativeResult: string } {
+  const normalized: StoredAutoSilentConfig = {
+    ...config,
+    silentMode: 'vibrate',
+  };
   try {
-    localStorage.setItem(AUTO_SILENT_STORAGE_KEY, JSON.stringify(config));
+    localStorage.setItem(AUTO_SILENT_STORAGE_KEY, JSON.stringify(normalized));
   } catch {
     // Ignore storage quota errors
   }
@@ -293,9 +296,9 @@ export function saveAndSyncAutoSilentConfig(
 
   try {
     const payload = JSON.stringify({
-      enabled: config.masterEnabled,
-      silentMode: config.silentMode || 'silent',
-      slots: config.slots,
+      enabled: normalized.masterEnabled,
+      silentMode: 'vibrate',
+      slots: normalized.slots,
     });
     const res = bridge.saveAutoSilentSchedule(payload) || 'OK';
     return { saved: true, nativeResult: res };

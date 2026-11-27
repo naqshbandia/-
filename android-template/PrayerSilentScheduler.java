@@ -27,8 +27,10 @@ public class PrayerSilentScheduler {
     public static final String KEY_LAST_ENTERED_WINDOW_ID = "last_entered_window_id";
     public static final String KEY_PREV_FILTER = "prev_interruption_filter";
     public static final String KEY_PREV_RINGER = "prev_ringer_mode";
+    public static final String KEY_PREV_RING_VOL = "prev_ring_volume";
     public static final String KEY_PENDING_END_VERIFY = "pending_end_verify";
-    public static final String KEY_SILENT_MODE = "silent_mode"; // "silent" | "vibrate"
+    public static final String KEY_END_VERIFY_AT_MS = "end_verify_at_ms";
+    public static final String KEY_SILENT_MODE = "silent_mode"; // "vibrate" | "silent"
 
     public static final String ACTION_SILENT_TRIGGER = "com.khanqahdarulfalah.app.ACTION_PRAYER_SILENT";
     public static final String ACTION_MANUAL_EXIT_SILENT = "com.khanqahdarulfalah.app.ACTION_MANUAL_EXIT_SILENT";
@@ -84,8 +86,8 @@ public class PrayerSilentScheduler {
 
     public static String getSilentMode(Context context) {
         SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
-        String mode = prefs.getString(KEY_SILENT_MODE, "silent");
-        return "vibrate".equalsIgnoreCase(mode) ? "vibrate" : "silent";
+        String mode = prefs.getString(KEY_SILENT_MODE, "vibrate");
+        return "silent".equalsIgnoreCase(mode) ? "silent" : "vibrate";
     }
 
     public static boolean isCurrentlySilent(Context context) {
@@ -122,9 +124,9 @@ public class PrayerSilentScheduler {
         try {
             JSONObject obj = new JSONObject(jsonConfig);
             boolean enabled = obj.optBoolean("enabled", true);
-            String silentMode = "vibrate".equalsIgnoreCase(obj.optString("silentMode", "silent"))
-                ? "vibrate"
-                : "silent";
+            String silentMode = "silent".equalsIgnoreCase(obj.optString("silentMode", "vibrate"))
+                ? "silent"
+                : "vibrate";
             JSONArray slots = obj.optJSONArray("slots");
             String nextSlotsJson = slots != null ? slots.toString() : null;
             String prevSlotsJson = prefs.getString(KEY_SLOTS_JSON, "");
@@ -199,8 +201,9 @@ public class PrayerSilentScheduler {
         ActiveWindowInfo activeNow = getActiveWindowInfo(context, now);
         boolean currentlyMarkedSilenced = prefs.getBoolean(KEY_IS_SILENCED, false);
         boolean pendingEndVerify = prefs.getBoolean(KEY_PENDING_END_VERIFY, false);
+        long endVerifyAt = prefs.getLong(KEY_END_VERIFY_AT_MS, 0L);
 
-        if (!activeNow.active && (currentlyMarkedSilenced || pendingEndVerify)) {
+        if (!activeNow.active && (currentlyMarkedSilenced || (pendingEndVerify && (now - endVerifyAt) > 2500L))) {
             // Self-heal: prayer window already ended while phone was asleep/off -> immediately restore normal sound
             applySilentState(context, false);
             currentlyMarkedSilenced = false;
@@ -223,6 +226,20 @@ public class PrayerSilentScheduler {
         try {
             JSONArray arr = new JSONArray(raw);
             int limit = Math.min(arr.length(), MAX_SLOTS);
+
+            long soonestStartMillis = Long.MAX_VALUE;
+            for (int i = 0; i < limit; i++) {
+                JSONObject slot = arr.optJSONObject(i);
+                if (slot == null || !slot.optBoolean("enabled", true)) continue;
+                String key = slot.optString("key", "Prayer" + i);
+                int[] startParts = parseTimeParts(slot.optString("start", ""));
+                int[] endParts = parseTimeParts(slot.optString("end", ""));
+                if (startParts == null || endParts == null) continue;
+                long candidateStart = computeNextTriggerMillis(startParts, "Jummah".equalsIgnoreCase(key), now);
+                if (candidateStart > now && candidateStart < soonestStartMillis) {
+                    soonestStartMillis = candidateStart;
+                }
+            }
 
             for (int i = 0; i < limit; i++) {
                 JSONObject slot = arr.optJSONObject(i);
@@ -249,6 +266,7 @@ public class PrayerSilentScheduler {
                     : computeNextEndMillis(startParts, endParts, isFridayOnly, now);
 
                 if (nextStartMillis > now) {
+                    boolean isSoonestStart = (nextStartMillis == soonestStartMillis);
                     armAlarm(
                         context,
                         am,
@@ -259,12 +277,12 @@ public class PrayerSilentScheduler {
                         label,
                         i,
                         nextEndMillis,
-                        false
+                        isSoonestStart
                     );
                 }
 
                 if (nextEndMillis > now) {
-                    // Use highest-priority AlarmClock when this slot is currently active (never deferred by Doze/MIUI!)
+                    // Use highest-priority AlarmClock when this slot is currently active (never deferred by Doze/HiOS!)
                     boolean preferAlarmClock = (activeSlotEnd > 0) || currentlyMarkedSilenced;
                     armAlarm(
                         context,
@@ -641,8 +659,9 @@ public class PrayerSilentScheduler {
         if (!hasDndPermission(context)) return;
 
         SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+        boolean isVibrateMode = "vibrate".equals(getSilentMode(context));
         int prevRinger = prefs.getInt(KEY_PREV_RINGER, AudioManager.RINGER_MODE_NORMAL);
-        final int targetRinger = (prevRinger == AudioManager.RINGER_MODE_VIBRATE)
+        final int targetRinger = (!isVibrateMode && prevRinger == AudioManager.RINGER_MODE_VIBRATE)
             ? AudioManager.RINGER_MODE_VIBRATE
             : AudioManager.RINGER_MODE_NORMAL;
 
@@ -650,12 +669,13 @@ public class PrayerSilentScheduler {
             .putBoolean(KEY_IS_SILENCED, false)
             .putLong(KEY_SILENCED_UNTIL_MS, 0L)
             .putBoolean(KEY_PENDING_END_VERIFY, true)
+            .putLong(KEY_END_VERIFY_AT_MS, System.currentTimeMillis())
             .commit();
 
         applyNormalSoundPass(context, targetRinger);
 
         // OEM (Transsion HiOS/XOS, Xiaomi MIUI / HyperOS & Samsung OneUI) race verification:
-        // Some OEMs reset or delay DND change right after ringer mode transition; enforce ALL again cleanly.
+        // Some OEMs reset or delay DND/Vibrate change right after ringer transition; enforce NORMAL again cleanly.
         final Context appCtx = context.getApplicationContext();
         Handler mainHandler = new Handler(Looper.getMainLooper());
         mainHandler.postDelayed(() -> verifyAndClearDnd(appCtx, targetRinger, false), 250L);
@@ -678,7 +698,29 @@ public class PrayerSilentScheduler {
 
         try {
             if (am != null) {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && targetRinger == AudioManager.RINGER_MODE_NORMAL) {
+                    try {
+                        am.adjustStreamVolume(AudioManager.STREAM_RING, AudioManager.ADJUST_UNMUTE, 0);
+                    } catch (Exception ignored) {
+                    }
+                }
                 am.setRingerMode(targetRinger);
+
+                // Android / Transsion HiOS reverts RINGER_MODE_NORMAL back to VIBRATE if STREAM_RING volume is 0
+                if (targetRinger == AudioManager.RINGER_MODE_NORMAL) {
+                    int curVol = am.getStreamVolume(AudioManager.STREAM_RING);
+                    if (curVol <= 0) {
+                        int maxVol = Math.max(1, am.getStreamMaxVolume(AudioManager.STREAM_RING));
+                        int fallbackVol = Math.max(1, (maxVol * 2) / 3);
+                        int savedVol = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+                            .getInt(KEY_PREV_RING_VOL, fallbackVol);
+                        if (savedVol <= 0) savedVol = fallbackVol;
+                        am.setStreamVolume(AudioManager.STREAM_RING, Math.min(savedVol, maxVol), 0);
+                    }
+                    if (am.getRingerMode() != AudioManager.RINGER_MODE_NORMAL) {
+                        am.setRingerMode(AudioManager.RINGER_MODE_NORMAL);
+                    }
+                }
             }
         } catch (SecurityException ignored) {
         } catch (Exception ignored) {
@@ -700,7 +742,9 @@ public class PrayerSilentScheduler {
             filterClear = (f == NotificationManager.INTERRUPTION_FILTER_ALL
                 || f == NotificationManager.INTERRUPTION_FILTER_UNKNOWN);
         }
-        boolean ringerClear = am == null || am.getRingerMode() != AudioManager.RINGER_MODE_SILENT;
+        boolean ringerClear = am == null || (targetRinger == AudioManager.RINGER_MODE_NORMAL
+            ? am.getRingerMode() == AudioManager.RINGER_MODE_NORMAL
+            : am.getRingerMode() != AudioManager.RINGER_MODE_SILENT);
         return filterClear && ringerClear;
     }
 
@@ -712,7 +756,10 @@ public class PrayerSilentScheduler {
 
             boolean isClear = applyNormalSoundPass(context, targetRinger);
             if (isClear && markDoneIfClear) {
-                prefs.edit().putBoolean(KEY_PENDING_END_VERIFY, false).commit();
+                prefs.edit()
+                    .putBoolean(KEY_PENDING_END_VERIFY, false)
+                    .putLong(KEY_END_VERIFY_AT_MS, 0L)
+                    .commit();
             }
         } catch (Exception ignored) {
         }
@@ -721,11 +768,17 @@ public class PrayerSilentScheduler {
     public static void completePendingEndVerification(Context context) {
         stopSilentMonitorService(context);
         SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
-        if (!prefs.getBoolean(KEY_PENDING_END_VERIFY, false) && !prefs.getBoolean(KEY_IS_SILENCED, false)) {
+        AudioManager am = (AudioManager) context.getSystemService(Context.AUDIO_SERVICE);
+        boolean stillVibrateWhilePending = prefs.getBoolean(KEY_PENDING_END_VERIFY, false)
+            && am != null && am.getRingerMode() != AudioManager.RINGER_MODE_NORMAL;
+        if (!prefs.getBoolean(KEY_PENDING_END_VERIFY, false)
+            && !prefs.getBoolean(KEY_IS_SILENCED, false)
+            && !stillVibrateWhilePending) {
             return;
         }
+        boolean isVibrateMode = "vibrate".equals(getSilentMode(context));
         int prevRinger = prefs.getInt(KEY_PREV_RINGER, AudioManager.RINGER_MODE_NORMAL);
-        int targetRinger = (prevRinger == AudioManager.RINGER_MODE_VIBRATE)
+        int targetRinger = (!isVibrateMode && prevRinger == AudioManager.RINGER_MODE_VIBRATE)
             ? AudioManager.RINGER_MODE_VIBRATE
             : AudioManager.RINGER_MODE_NORMAL;
         applyNormalSoundPass(context, targetRinger);
@@ -733,6 +786,7 @@ public class PrayerSilentScheduler {
             .putBoolean(KEY_IS_SILENCED, false)
             .putLong(KEY_SILENCED_UNTIL_MS, 0L)
             .putBoolean(KEY_PENDING_END_VERIFY, false)
+            .putLong(KEY_END_VERIFY_AT_MS, 0L)
             .commit();
     }
 
@@ -759,12 +813,19 @@ public class PrayerSilentScheduler {
                         || (useVibrateMode && currentRinger == AudioManager.RINGER_MODE_VIBRATE)) {
                         currentRinger = AudioManager.RINGER_MODE_NORMAL;
                     }
-                    prefs.edit()
+                    SharedPreferences.Editor ed = prefs.edit()
                         .putBoolean(KEY_IS_SILENCED, true)
                         .putBoolean(KEY_PENDING_END_VERIFY, false)
+                        .putLong(KEY_END_VERIFY_AT_MS, 0L)
                         .putInt(KEY_PREV_FILTER, NotificationManager.INTERRUPTION_FILTER_ALL)
-                        .putInt(KEY_PREV_RINGER, currentRinger)
-                        .commit();
+                        .putInt(KEY_PREV_RINGER, currentRinger);
+                    if (am != null) {
+                        int ringVol = am.getStreamVolume(AudioManager.STREAM_RING);
+                        if (ringVol > 0) {
+                            ed.putInt(KEY_PREV_RING_VOL, ringVol);
+                        }
+                    }
+                    ed.commit();
                 } else {
                     prefs.edit().putBoolean(KEY_PENDING_END_VERIFY, false).commit();
                 }
