@@ -43,6 +43,7 @@ public class PrayerSilentScheduler {
     private static final int BASE_REQUEST_CODE = 2000;
     private static final int SAFETY_END_REQUEST_CODE = 2999;
     private static final int SAFETY_END_2_REQUEST_CODE = 2998;
+    private static final int SAFETY_END_3_REQUEST_CODE = 2997;
     private static final int MAX_SLOTS = 8;
 
     public static class ActiveWindowInfo {
@@ -86,8 +87,8 @@ public class PrayerSilentScheduler {
 
     public static String getSilentMode(Context context) {
         SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
-        String mode = prefs.getString(KEY_SILENT_MODE, "vibrate");
-        return "silent".equalsIgnoreCase(mode) ? "silent" : "vibrate";
+        String mode = prefs.getString(KEY_SILENT_MODE, "silent");
+        return "vibrate".equalsIgnoreCase(mode) ? "vibrate" : "silent";
     }
 
     public static boolean isCurrentlySilent(Context context) {
@@ -124,9 +125,9 @@ public class PrayerSilentScheduler {
         try {
             JSONObject obj = new JSONObject(jsonConfig);
             boolean enabled = obj.optBoolean("enabled", true);
-            String silentMode = "silent".equalsIgnoreCase(obj.optString("silentMode", "vibrate"))
-                ? "silent"
-                : "vibrate";
+            String silentMode = "vibrate".equalsIgnoreCase(obj.optString("silentMode", "silent"))
+                ? "vibrate"
+                : "silent";
             JSONArray slots = obj.optJSONArray("slots");
             String nextSlotsJson = slots != null ? slots.toString() : null;
             String prevSlotsJson = prefs.getString(KEY_SLOTS_JSON, "");
@@ -183,6 +184,7 @@ public class PrayerSilentScheduler {
         }
         cancelAlarm(context, am, SAFETY_END_REQUEST_CODE, "SAFETY_END", 99);
         cancelAlarm(context, am, SAFETY_END_2_REQUEST_CODE, "SAFETY_END", 98);
+        cancelAlarm(context, am, SAFETY_END_3_REQUEST_CODE, "SAFETY_END", 97);
 
         SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
         boolean enabled = prefs.getBoolean(KEY_ENABLED, false);
@@ -228,16 +230,25 @@ public class PrayerSilentScheduler {
             int limit = Math.min(arr.length(), MAX_SLOTS);
 
             long soonestStartMillis = Long.MAX_VALUE;
+            long soonestEndMillis = Long.MAX_VALUE;
             for (int i = 0; i < limit; i++) {
                 JSONObject slot = arr.optJSONObject(i);
                 if (slot == null || !slot.optBoolean("enabled", true)) continue;
                 String key = slot.optString("key", "Prayer" + i);
+                boolean isFridayOnly = "Jummah".equalsIgnoreCase(key);
                 int[] startParts = parseTimeParts(slot.optString("start", ""));
                 int[] endParts = parseTimeParts(slot.optString("end", ""));
                 if (startParts == null || endParts == null) continue;
-                long candidateStart = computeNextTriggerMillis(startParts, "Jummah".equalsIgnoreCase(key), now);
+                long candidateStart = computeNextTriggerMillis(startParts, isFridayOnly, now);
                 if (candidateStart > now && candidateStart < soonestStartMillis) {
                     soonestStartMillis = candidateStart;
+                }
+                long activeEnd = findActiveSlotEndMillis(startParts, endParts, isFridayOnly, now);
+                long candidateEnd = activeEnd > 0
+                    ? activeEnd
+                    : computeNextEndMillis(startParts, endParts, isFridayOnly, now);
+                if (candidateEnd > now && candidateEnd < soonestEndMillis) {
+                    soonestEndMillis = candidateEnd;
                 }
             }
 
@@ -282,8 +293,8 @@ public class PrayerSilentScheduler {
                 }
 
                 if (nextEndMillis > now) {
-                    // Use highest-priority AlarmClock when this slot is currently active (never deferred by Doze/HiOS!)
-                    boolean preferAlarmClock = (activeSlotEnd > 0) || currentlyMarkedSilenced;
+                    // Always use highest-priority AlarmClock for active slot END or soonest upcoming END
+                    boolean preferAlarmClock = (activeSlotEnd > 0) || currentlyMarkedSilenced || (nextEndMillis == soonestEndMillis);
                     armAlarm(
                         context,
                         am,
@@ -299,13 +310,14 @@ public class PrayerSilentScheduler {
                 }
             }
 
-            // Always arm two safety verification END alarms (+30s & +120s) so Doze/OEM never leaves DND stuck
+            // Always arm three safety verification END alarms (+30s, +120s, +300s) so Doze/OEM never leaves DND stuck
             boolean stillSilencedOrPending =
                 prefs.getBoolean(KEY_IS_SILENCED, false) || prefs.getBoolean(KEY_PENDING_END_VERIFY, false);
             if (activeNow.active || stillSilencedOrPending) {
                 long baseEnd = activeNow.active ? activeNow.endMillis : now;
                 long safetyTarget = baseEnd + 30_000L;
                 long safetyTarget2 = baseEnd + 120_000L;
+                long safetyTarget3 = baseEnd + 300_000L;
                 if (safetyTarget > now) {
                     armAlarm(
                         context,
@@ -331,6 +343,20 @@ public class PrayerSilentScheduler {
                         "واپس نارمل موڈ",
                         98,
                         safetyTarget2,
+                        true
+                    );
+                }
+                if (safetyTarget3 > now) {
+                    armAlarm(
+                        context,
+                        am,
+                        SAFETY_END_3_REQUEST_CODE,
+                        safetyTarget3,
+                        "SAFETY_END",
+                        "SafetyEnd3",
+                        "واپس نارمل موڈ",
+                        97,
+                        safetyTarget3,
                         true
                     );
                 }
@@ -841,14 +867,13 @@ public class PrayerSilentScheduler {
                         }
                     }
                 } else {
-                    if (am != null) {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                        nm.setInterruptionFilter(NotificationManager.INTERRUPTION_FILTER_ALARMS);
+                    } else if (am != null) {
                         try {
                             am.setRingerMode(AudioManager.RINGER_MODE_SILENT);
                         } catch (SecurityException ignored) {
                         }
-                    }
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                        nm.setInterruptionFilter(NotificationManager.INTERRUPTION_FILTER_ALARMS);
                     }
                 }
 

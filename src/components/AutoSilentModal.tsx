@@ -3,7 +3,7 @@ import {
   Share2,
   ExternalLink,
   ShieldCheck,
-  Vibrate,
+  VolumeX,
 } from 'lucide-react';
 import { OFFICIAL_APK_URL } from '../data/appConfig';
 import { BaseModal } from './Modals';
@@ -77,9 +77,11 @@ export const AutoSilentModal: React.FC<Props> = ({
       const latest = loadAutoSilentConfig(officialSchedule, prayerData);
       setConfig(latest);
       saveAndSyncAutoSilentConfig(latest);
-      setNativeStatus(getNativeAutoSilentStatus());
+      const updated = getNativeAutoSilentStatus();
+      setNativeStatus(updated);
+      maybePromptBatteryExemptionOnce(updated);
     }
-  }, [officialSchedule, prayerData]);
+  }, [officialSchedule, prayerData, maybePromptBatteryExemptionOnce]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -88,6 +90,7 @@ export const AutoSilentModal: React.FC<Props> = ({
     saveAndSyncAutoSilentConfig(latest);
     const updated = getNativeAutoSilentStatus();
     setNativeStatus(updated);
+    maybePromptBatteryExemptionOnce(updated);
 
     const handleResume = () => {
       refreshNativeAndSync();
@@ -105,14 +108,14 @@ export const AutoSilentModal: React.FC<Props> = ({
       window.removeEventListener('focus', handleResume);
       document.removeEventListener('visibilitychange', handleVisibility);
     };
-  }, [isOpen, officialSchedule, prayerData, refreshNativeAndSync]);
+  }, [isOpen, officialSchedule, prayerData, refreshNativeAndSync, maybePromptBatteryExemptionOnce]);
 
   const slots = config.slots;
 
   const handleToggleMaster = () => {
     const next = {
       ...config,
-      silentMode: 'vibrate' as const,
+      silentMode: 'silent' as const,
       masterEnabled: !config.masterEnabled,
     };
     setConfig(next);
@@ -124,10 +127,10 @@ export const AutoSilentModal: React.FC<Props> = ({
         getAndroidBridge()?.requestDndPermission?.();
       } else {
         maybePromptBatteryExemptionOnce(updated);
-        onNotify?.('خودکار نماز وائبریشن موڈ آن کر دیا گیا!');
+        onNotify?.('خودکار نماز ڈونٹ ڈسٹرب (آٹو سائلنٹ) آن کر دیا گیا!');
       }
     } else {
-      onNotify?.('آٹو وائبریشن شیڈول عارضی طور پر بند کر دیا گیا۔');
+      onNotify?.('آٹو سائلنٹ شیڈول عارضی طور پر بند کر دیا گیا۔');
     }
   };
 
@@ -137,7 +140,7 @@ export const AutoSilentModal: React.FC<Props> = ({
     );
     const next = {
       ...config,
-      silentMode: 'vibrate' as const,
+      silentMode: 'silent' as const,
       customized: true,
       slots: nextSlots,
     };
@@ -157,7 +160,7 @@ export const AutoSilentModal: React.FC<Props> = ({
     );
     const next = {
       ...config,
-      silentMode: 'vibrate' as const,
+      silentMode: 'silent' as const,
       customized: true,
       slots: nextSlots,
     };
@@ -170,7 +173,7 @@ export const AutoSilentModal: React.FC<Props> = ({
     const next = {
       ...config,
       masterEnabled: true,
-      silentMode: 'vibrate' as const,
+      silentMode: 'silent' as const,
       customized: true,
     };
     setConfig(next);
@@ -182,7 +185,7 @@ export const AutoSilentModal: React.FC<Props> = ({
       getAndroidBridge()?.requestDndPermission?.();
     } else {
       maybePromptBatteryExemptionOnce(updated);
-      onNotify?.('تمام نمازوں کا آٹو وائبریشن شیڈول محفوظ و فعال ہو گیا!');
+      onNotify?.('تمام نمازوں کا خودکار ڈونٹ ڈسٹرب شیڈول محفوظ و فعال ہو گیا!');
     }
   };
 
@@ -196,9 +199,9 @@ export const AutoSilentModal: React.FC<Props> = ({
 
   const appShareMessage = useMemo(() => {
     return [
-      '📳 *نماز آٹو وائبریشن موڈ — خانقاہ دارالفلاح ایپ (صدقۂ جاریہ)*',
+      '🔕 *نماز آٹو سائلنٹ موڈ — خانقاہ دارالفلاح ایپ (صدقۂ جاریہ)*',
       '',
-      'مسجد میں نماز کے دوران موبائل کی گھنٹی سے بچنے کے لیے نیچے دیے گئے لنک سے خانقاہ دارالفلاح ایپ انسٹال کریں، اور ایپ کھول کر *"آٹو وائبریشن موڈ"* میں اپنی نمازوں کا وقت آن کر لیں — موبائل خودکار وائبریشن پر ہو کر وقت پر خود نارمل موڈ پر آ جائے گا:',
+      'مسجد میں نماز کے دوران موبائل کی گھنٹی سے بچنے کے لیے نیچے دیے گئے لنک سے خانقاہ دارالفلاح ایپ انسٹال کریں، اور ایپ کھول کر *"آٹو سائلنٹ موڈ"* میں اپنی نمازوں کا وقت آن کر لیں — موبائل خودکار خاموش ہو کر وقت پر خود نارمل ہو جائے گا:',
       '',
       '📲 *ایپ ڈاؤنلوڈ لنک (APK):*',
       OFFICIAL_APK_URL,
@@ -212,7 +215,7 @@ export const AutoSilentModal: React.FC<Props> = ({
     if (typeof navigator !== 'undefined' && typeof navigator.share === 'function') {
       try {
         await navigator.share({
-          title: 'خانقاہ دارالفلاح — نماز آٹو وائبریشن موڈ',
+          title: 'خانقاہ دارالفلاح — نماز آٹو سائلنٹ موڈ',
           text: appShareMessage,
           url: OFFICIAL_APK_URL,
         });
@@ -235,13 +238,13 @@ export const AutoSilentModal: React.FC<Props> = ({
     <BaseModal
       isOpen={isOpen}
       onClose={onClose}
-      title="📳 نماز آٹو وائبریشن موڈ"
+      title="🔕 نماز آٹو سائلنٹ (Do Not Disturb)"
       isDark={isDark}
       lang={lang}
       compact
     >
       <div className="space-y-3 text-xs" dir={dir}>
-        {/* CLEAN VIBRATION-ONLY STATUS CARD */}
+        {/* CLEAN DO NOT DISTURB STATUS CARD */}
         <div
           className={`p-3 rounded-2xl border-2 border-[#d4af37]/80 space-y-2 shadow-sm ${
             isDark
@@ -253,7 +256,7 @@ export const AutoSilentModal: React.FC<Props> = ({
             <>
               <div className="flex items-center justify-between gap-2">
                 <div className="flex items-center gap-1.5 min-w-0">
-                  <Vibrate
+                  <VolumeX
                     className={`w-4 h-4 shrink-0 ${
                       nativeStatus.dndGranted ? 'text-[#00e676]' : 'text-[#d4af37]'
                     }`}
@@ -261,9 +264,9 @@ export const AutoSilentModal: React.FC<Props> = ({
                   <span className="font-extrabold text-xs sm:text-[13px] truncate">
                     {nativeStatus.dndGranted
                       ? config.masterEnabled
-                        ? 'آٹو وائبریشن سسٹم فعال ہے ✅'
-                        : 'آٹو وائبریشن عارضی طور پر بند ہے'
-                      : 'ایک بار آٹو وائبریشن کی اجازت دیں'}
+                        ? 'آٹو سائلنٹ (DND) فعال ہے ✅'
+                        : 'آٹو سائلنٹ عارضی طور پر بند ہے'
+                      : 'ایک بار خودکار سائلنٹ کی اجازت دیں'}
                   </span>
                 </div>
 
@@ -286,8 +289,8 @@ export const AutoSilentModal: React.FC<Props> = ({
                 <div className="space-y-2">
                   <p className="text-[11px] leading-relaxed opacity-90">
                     صرف ایک بار نیچے <strong>اجازت دیں (Allow)</strong> بٹن دبا کر کھلنے والی فہرست میں{' '}
-                    <strong>Khanqah Darul Falah</strong> کو آن کر دیں — اس کے بعد تمام نمازوں میں موبائل خودکار{' '}
-                    <strong>وائبریشن موڈ</strong> پر جا کر وقت پر واپس <strong>نارمل موڈ</strong> پر آ جایا کرے گا۔
+                    <strong>Khanqah Darul Falah</strong> کو آن کر دیں — اس کے بعد تمام نمازوں میں موبائل آف لائن بھی خودکار{' '}
+                    <strong>Do Not Disturb</strong> ہو کر وقت پر واپس <strong>نارمل موڈ</strong> پر آ جایا کرے گا۔
                   </p>
                   <button
                     type="button"
@@ -302,7 +305,7 @@ export const AutoSilentModal: React.FC<Props> = ({
               ) : (
                 <div className="space-y-2">
                   <p className="text-[11.5px] leading-relaxed opacity-90">
-                    ہر نماز کے وقت موبائل خودکار طور پر <strong>📳 وائبریشن موڈ</strong> پر چلا جائے گا اور نماز کے بعد خودکار واپس <strong>🔊 نارمل موڈ</strong> پر آ جائے گا۔
+                    ہر نماز کے وقت موبائل خودکار طور پر <strong>🔕 Do Not Disturb</strong> پر چلا جائے گا اور نماز کے بعد خودکار واپس <strong>🔊 نارمل موڈ</strong> پر آ جائے گا (آف لائن بھی کام کرتا ہے)۔
                   </p>
 
                   {!nativeStatus.exactAlarmGranted && (
@@ -311,7 +314,7 @@ export const AutoSilentModal: React.FC<Props> = ({
                       onClick={() => getAndroidBridge()?.requestExactAlarmPermission?.()}
                       className="w-full py-1.5 px-2.5 rounded-xl bg-amber-500/20 border border-[#d4af37] text-[#8c6514] dark:text-[#f7e7a9] font-bold text-[11px] cursor-pointer"
                     >
-                      ⏱️ عین وقت پر وائبریشن کے لیے Alarms اجازت آن کریں
+                      ⏱️ عین وقت پر سائلنٹ کے لیے Alarms اجازت آن کریں
                     </button>
                   )}
                 </div>
@@ -320,16 +323,16 @@ export const AutoSilentModal: React.FC<Props> = ({
           ) : (
             <div className="space-y-1 text-center py-0.5">
               <p className="font-extrabold text-[#064326] dark:text-[#d4af37] text-xs">
-                📳 مسجد میں نماز کے دوران خودکار وائبریشن موڈ
+                🔕 مسجد میں نماز کے دوران خودکار Do Not Disturb
               </p>
               <p className="text-[11px] opacity-90 leading-relaxed">
-                آفیشل اینڈرائڈ ایپ میں نماز کے وقت موبائل خودکار وائبریشن موڈ پر چلا جاتا ہے اور نماز کے بعد خودکار نارمل موڈ پر واپس آ جاتا ہے۔
+                آفیشل اینڈرائڈ ایپ میں نماز کے وقت موبائل خودکار خاموش (DND) ہو جاتا ہے اور نماز کے بعد خودکار نارمل موڈ پر واپس آ جاتا ہے۔
               </p>
             </div>
           )}
         </div>
 
-        {/* 6-PRAYER VIBRATION SCHEDULE */}
+        {/* 6-PRAYER SCHEDULE */}
         <div
           className={`p-3.5 rounded-2xl border-2 border-[#d4af37]/55 space-y-3 shadow-sm ${
             isDark ? 'bg-[#08180f] text-emerald-50' : 'bg-white text-[#11261b]'
@@ -337,7 +340,7 @@ export const AutoSilentModal: React.FC<Props> = ({
         >
           <div className="pb-1.5 border-b border-[#d4af37]/25 text-center">
             <span className="font-extrabold text-sm text-[#064326] dark:text-[#d4af37]">
-              🕌 تمام 6 نمازوں کے خودکار وائبریشن اوقات
+              🕌 تمام 6 نمازوں کے خودکار سائلنٹ اوقات
             </span>
           </div>
 
@@ -400,7 +403,7 @@ export const AutoSilentModal: React.FC<Props> = ({
             onClick={handleSaveCustomSlots}
             className="w-full py-2.5 px-3 rounded-xl bg-[#064326] hover:bg-[#095c34] text-white font-extrabold text-xs sm:text-sm border border-[#d4af37] shadow-sm active:scale-95 transition-all cursor-pointer"
           >
-            ✓ وائبریشن شیڈول محفوظ کریں
+            ✓ شیڈول محفوظ کریں
           </button>
         </div>
 
@@ -416,7 +419,7 @@ export const AutoSilentModal: React.FC<Props> = ({
             📌 اہم نوٹ: مسجد کے امام صاحب کے وقت کی تبدیلی کا خیال رکھیں
           </div>
           <p className="text-[11.5px] sm:text-xs leading-relaxed opacity-95">
-            اگر آپ کی مسجد کے امام صاحب کسی نماز کی جماعت کا وقت تبدیل فرمائیں، تو آپ بھی اپنے موبائل میں اس نماز کا وقت ضرور تبدیل کر لیں تاکہ ہر نماز میں موبائل بروقت وائبریشن پر رہے۔
+            اگر آپ کی مسجد کے امام صاحب کسی نماز کی جماعت کا وقت تبدیل فرمائیں، تو آپ بھی اپنے موبائل میں اس نماز کا وقت ضرور تبدیل کر لیں تاکہ ہر نماز میں موبائل بروقت خاموش رہے۔
           </p>
         </div>
 
@@ -427,7 +430,7 @@ export const AutoSilentModal: React.FC<Props> = ({
           }`}
         >
           <p className="text-[11px] opacity-85 text-center leading-relaxed">
-            🤲 ثواب کی نیت سے اپنے دوست احباب کے ساتھ شیئر کریں تاکہ وہ بھی ایپ انسٹال کر کے نمازوں کے دوران خودکار وائبریشن موڈ آن کر سکیں۔
+            🤲 ثواب کی نیت سے اپنے دوست احباب کے ساتھ شیئر کریں تاکہ وہ بھی ایپ انسٹال کر کے نمازوں کے دوران خودکار سائلنٹ موڈ آن کر سکیں۔
           </p>
           <button
             type="button"

@@ -37,8 +37,8 @@ public class KhanqahNotificationHelper {
 
     public static final String CHANNEL_UPDATES_ID = "kdf_updates_channel";
     public static final String CHANNEL_UPDATES_NAME = "نئے بیانات، کتب اور خانقاہ پیغامات";
-    public static final String CHANNEL_SILENT_ID = "kdf_prayer_status_channel";
-    public static final String CHANNEL_SILENT_NAME = "نماز آٹو سائلنٹ اطلاع";
+    public static final String CHANNEL_SILENT_ID = "kdf_prayer_silent_min";
+    public static final String CHANNEL_SILENT_NAME = "نماز آٹو سائلنٹ (پسِ پردہ)";
 
     private static final String PREFS_NAME = "kdf_notif_state_prefs";
     private static final String KEY_LAST_MSG_SIG = "last_msg_sig";
@@ -89,11 +89,12 @@ public class KhanqahNotificationHelper {
                 NotificationChannel silentChannel = new NotificationChannel(
                     CHANNEL_SILENT_ID,
                     CHANNEL_SILENT_NAME,
-                    NotificationManager.IMPORTANCE_DEFAULT
+                    NotificationManager.IMPORTANCE_MIN
                 );
-                silentChannel.setDescription("نماز کے دوران آٹو سائلنٹ کی حالت");
+                silentChannel.setDescription("نماز کے دوران خودکار سائلنٹ کی خاموش حفاظت");
                 silentChannel.setSound(null, null);
                 silentChannel.enableVibration(false);
+                silentChannel.setShowBadge(false);
                 nm.createNotificationChannel(silentChannel);
             }
         }

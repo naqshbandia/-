@@ -43,6 +43,12 @@ jobs:
             sudo apt-get update && sudo apt-get install -y imagemagick
           fi
 
+      - name: Cache Android signing keystore (enables Play-Store-like in-place app updates)
+        uses: actions/cache@v4
+        with:
+          path: ~/.android/debug.keystore
+          key: android-debug-keystore-${{ github.repository_id }}-v1
+
       - name: Install dependencies
         run: npm install --legacy-peer-deps
 
@@ -63,7 +69,12 @@ jobs:
           else
             export KDF_LIVE_WEB_URL="https://${OWNER}.github.io/${REPO}/"
           fi
+          export KDF_VERSION_CODE=$((GITHUB_RUN_NUMBER + 100))
+          export KDF_VERSION_NAME="1.0.${GITHUB_RUN_NUMBER}"
+          export KDF_APK_VERSION_JSON_URL="https://github.com/${GITHUB_REPOSITORY}/releases/download/apk-latest/apk-version.json"
+          export KDF_APK_DOWNLOAD_URL="https://github.com/${GITHUB_REPOSITORY}/releases/download/apk-latest/Khanqah-Darul-Falah.apk"
           echo "Configured OTA Live Web URL: $KDF_LIVE_WEB_URL"
+          echo "Configured APK Version: $KDF_VERSION_NAME ($KDF_VERSION_CODE)"
           rm -rf android
           npx cap add android
           node scripts/setup-android-apk.mjs
@@ -76,6 +87,18 @@ jobs:
           ./gradlew assembleDebug --no-daemon
           cp app/build/outputs/apk/debug/app-debug.apk ../Khanqah-Darul-Falah.apk
 
+      - name: Generate APK version metadata
+        run: |
+          V_CODE=$((GITHUB_RUN_NUMBER + 100))
+          V_NAME="1.0.${GITHUB_RUN_NUMBER}"
+          cat <<EOF > apk-version.json
+          {
+            "versionCode": ${V_CODE},
+            "versionName": "${V_NAME}",
+            "apkUrl": "https://github.com/${GITHUB_REPOSITORY}/releases/download/apk-latest/Khanqah-Darul-Falah.apk"
+          }
+          EOF
+
       - name: Upload APK Workflow Artifact
         uses: actions/upload-artifact@v4
         with:
@@ -83,15 +106,15 @@ jobs:
           path: Khanqah-Darul-Falah.apk
           retention-days: 30
 
-      - name: Publish Direct Download APK Release (Mobile 1-Tap Download)
+      - name: Publish Direct Download APK Release (Mobile 1-Tap & In-App Self-Updater)
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           TAG="apk-latest"
           TITLE="Khanqah Darul Falah Official Android APK"
-          NOTES="خانقاہ دارالفلاح آفیشل اینڈرائڈ ایپ — ڈاؤنلوڈ کرنے کے لیے نیچے Khanqah-Darul-Falah.apk پر کلک کریں۔"
+          NOTES="خانقاہ دارالفلاح آفیشل اینڈرائڈ ایپ — ورژن 1.0.${GITHUB_RUN_NUMBER}"
           if gh release view "$TAG" >/dev/null 2>&1; then
-            gh release upload "$TAG" Khanqah-Darul-Falah.apk --clobber
+            gh release upload "$TAG" Khanqah-Darul-Falah.apk apk-version.json --clobber
           else
-            gh release create "$TAG" Khanqah-Darul-Falah.apk --target "${{ github.ref_name }}" --title "$TITLE" --notes "$NOTES"
+            gh release create "$TAG" Khanqah-Darul-Falah.apk apk-version.json --target "${{ github.ref_name }}" --title "$TITLE" --notes "$NOTES"
           fi

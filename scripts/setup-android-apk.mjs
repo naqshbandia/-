@@ -53,6 +53,7 @@ if (fs.existsSync(manifestPath)) {
     'android.permission.POST_NOTIFICATIONS',
     'android.permission.RECEIVE_BOOT_COMPLETED',
     'android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS',
+    'android.permission.REQUEST_INSTALL_PACKAGES',
     'android.permission.SCHEDULE_EXACT_ALARM',
     'android.permission.USE_EXACT_ALARM',
     'android.permission.WAKE_LOCK',
@@ -73,6 +74,13 @@ if (fs.existsSync(manifestPath)) {
     manifest = manifest.replace(
       '<application',
       '<application\n        android:usesCleartextTraffic="true"'
+    );
+  }
+
+  if (!manifest.includes('androidx.core.content.FileProvider')) {
+    manifest = manifest.replace(
+      '</application>',
+      `\n        <provider\n            android:name="androidx.core.content.FileProvider"\n            android:authorities="\${applicationId}.fileprovider"\n            android:exported="false"\n            android:grantUriPermissions="true">\n            <meta-data\n                android:name="android.support.FILE_PROVIDER_PATHS"\n                android:resource="@xml/file_paths" />\n        </provider>\n    </application>`
     );
   }
 
@@ -128,29 +136,68 @@ if (fs.existsSync(manifestPath)) {
   }
 
   fs.writeFileSync(manifestPath, manifest, 'utf8');
-  console.log('✓ Updated AndroidManifest.xml with DND, Foreground Service, Exact Alarm & Boot receivers');
+  console.log('✓ Updated AndroidManifest.xml with DND, Foreground Service, Exact Alarm, Package Installer & Boot receivers');
 }
 
-// 3. Configure Live Over-The-Air (OTA) GitHub Pages URL for automatic customer updates inside APK
+// 2b. Ensure res/xml/file_paths.xml supports cache-path & files-path for in-app APK updates
+const xmlDir = path.join(resDir, 'xml');
+fs.mkdirSync(xmlDir, { recursive: true });
+fs.writeFileSync(
+  path.join(xmlDir, 'file_paths.xml'),
+  `<?xml version="1.0" encoding="utf-8"?>
+<paths xmlns:android="http://schemas.android.com/apk/res/android">
+    <cache-path name="cache" path="." />
+    <files-path name="internal_files" path="." />
+    <external-cache-path name="external_cache_files" path="." />
+    <external-files-path name="external_file_path" path="." />
+    <external-path name="external_files" path="." />
+</paths>
+`,
+  'utf8'
+);
+
+// 2c. Patch android/app/build.gradle versionCode & versionName for Play-Store-style version comparison
+const gradlePath = path.join(appDir, 'build.gradle');
+if (fs.existsSync(gradlePath)) {
+  const versionCode = Number(process.env.KDF_VERSION_CODE || 101);
+  const versionName = (process.env.KDF_VERSION_NAME || '1.0.1').trim();
+  let gradle = fs.readFileSync(gradlePath, 'utf8');
+  gradle = gradle
+    .replace(/versionCode\s+\d+/, `versionCode ${versionCode}`)
+    .replace(/versionName\s+"[^"]+"/, `versionName "${versionName}"`);
+  fs.writeFileSync(gradlePath, gradle, 'utf8');
+  console.log(`✓ Set Android versionCode=${versionCode}, versionName=${versionName}`);
+}
+
+// 3. Configure Live Over-The-Air (OTA) GitHub Pages & In-App APK Update URLs
 const liveWebUrl = (
   process.env.KDF_LIVE_WEB_URL || 'https://naqshbandia.github.io/-/'
 ).trim();
-const escapedLiveUrl = liveWebUrl
-  .replace(/&/g, '&amp;')
-  .replace(/</g, '&lt;')
-  .replace(/>/g, '&gt;');
+const apkVersionJsonUrl = (
+  process.env.KDF_APK_VERSION_JSON_URL ||
+  'https://github.com/naqshbandia/-/releases/download/apk-latest/apk-version.json'
+).trim();
+const apkDownloadUrl = (
+  process.env.KDF_APK_DOWNLOAD_URL ||
+  'https://github.com/naqshbandia/-/releases/download/apk-latest/Khanqah-Darul-Falah.apk'
+).trim();
+const escapeXml = (str) =>
+  str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 const valuesDir = path.join(resDir, 'values');
 fs.mkdirSync(valuesDir, { recursive: true });
 fs.writeFileSync(
   path.join(valuesDir, 'kdf_ota.xml'),
   `<?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="kdf_live_web_url" translatable="false">${escapedLiveUrl}</string>
+    <string name="kdf_live_web_url" translatable="false">${escapeXml(liveWebUrl)}</string>
+    <string name="kdf_apk_version_json_url" translatable="false">${escapeXml(apkVersionJsonUrl)}</string>
+    <string name="kdf_apk_download_url" translatable="false">${escapeXml(apkDownloadUrl)}</string>
 </resources>
 `,
   'utf8'
 );
 console.log(`✓ Configured Live OTA Web URL: ${liveWebUrl}`);
+console.log(`✓ Configured In-App APK Update JSON URL: ${apkVersionJsonUrl}`);
 
 // 3b. Install crisp monochrome Android status-bar notification icon (required for Android 8-15 smallIcon)
 const drawableDir = path.join(resDir, 'drawable');

@@ -168,23 +168,16 @@ public class PrayerSilentService extends Service {
             : PendingIntent.FLAG_UPDATE_CURRENT;
         PendingIntent contentPi = PendingIntent.getActivity(this, 4481, openIntent, piFlags);
 
-        Intent exitIntent = new Intent(this, PrayerSilentReceiver.class);
-        exitIntent.setAction(PrayerSilentScheduler.ACTION_MANUAL_EXIT_SILENT);
-        PendingIntent exitPi = PendingIntent.getBroadcast(this, 4482, exitIntent, piFlags);
-
         int iconRes = getResources().getIdentifier("ic_stat_khanqah", "drawable", getPackageName());
         if (iconRes == 0) {
             iconRes = android.R.drawable.ic_lock_silent_mode;
         }
 
         String endStr = formatEndTimeUrdu(targetEndMillis);
-        boolean isVibrate = "vibrate".equals(PrayerSilentScheduler.getSilentMode(this));
-        String title = isVibrate
-            ? "📳 نماز وائبریشن موڈ فعال (" + activeSlotLabel + ")"
-            : "🔕 نماز آٹو سائلنٹ فعال (" + activeSlotLabel + ")";
+        String title = "🔕 نماز آٹو سائلنٹ موڈ (" + activeSlotLabel + ")";
         String body = endStr.isEmpty()
             ? "نماز کے بعد فون خودکار نارمل ہو جائے گا"
-            : endStr + " پر فون خودکار نارمل موڈ پر بحال ہو جائے گا";
+            : endStr + " پر خودکار نارمل موڈ بحال ہو جائے گا";
 
         Notification.Builder builder = Build.VERSION.SDK_INT >= Build.VERSION_CODES.O
             ? new Notification.Builder(this, KhanqahNotificationHelper.CHANNEL_SILENT_ID)
@@ -195,18 +188,15 @@ public class PrayerSilentService extends Service {
             .setContentText(body)
             .setOngoing(true)
             .setOnlyAlertOnce(true)
-            .setContentIntent(contentPi)
-            .addAction(
-                new Notification.Action.Builder(
-                    android.R.drawable.ic_lock_silent_mode_off,
-                    "🔊 ابھی نارمل کریں",
-                    exitPi
-                ).build()
-            );
+            .setContentIntent(contentPi);
+
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) {
+            builder.setPriority(Notification.PRIORITY_MIN);
+        }
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
             builder.setColor(0xFF064326);
-            builder.setVisibility(Notification.VISIBILITY_PUBLIC);
+            builder.setVisibility(Notification.VISIBILITY_SECRET);
         }
         return builder.build();
     }
@@ -232,13 +222,11 @@ public class PrayerSilentService extends Service {
             screenUnlockReceiver = new BroadcastReceiver() {
                 @Override
                 public void onReceive(Context context, Intent intent) {
-                    long now = System.currentTimeMillis();
-                    if (targetEndMillis > 0L && now >= targetEndMillis) {
-                        restoreAndStop();
-                    }
+                    periodicGuardRunnable.run();
                 }
             };
             IntentFilter filter = new IntentFilter();
+            filter.addAction(Intent.ACTION_TIME_TICK);
             filter.addAction(Intent.ACTION_SCREEN_ON);
             filter.addAction(Intent.ACTION_USER_PRESENT);
             if (Build.VERSION.SDK_INT >= 33) {

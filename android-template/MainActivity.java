@@ -6,6 +6,7 @@ import android.content.ClipboardManager;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.net.ConnectivityManager;
 import android.net.LinkProperties;
@@ -29,6 +30,7 @@ import android.webkit.WebView;
 import android.widget.Toast;
 
 import androidx.activity.OnBackPressedCallback;
+import androidx.core.content.FileProvider;
 
 import com.getcapacitor.BridgeActivity;
 import com.getcapacitor.BridgeWebViewClient;
@@ -36,6 +38,9 @@ import com.getcapacitor.BridgeWebViewClient;
 import org.json.JSONObject;
 
 import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
@@ -46,6 +51,10 @@ import java.util.concurrent.Executors;
 public class MainActivity extends BridgeActivity {
 
     private static final String DEFAULT_LIVE_WEB_URL = "https://naqshbandia.github.io/-/";
+    private static final String DEFAULT_APK_VERSION_JSON_URL =
+        "https://github.com/naqshbandia/-/releases/download/apk-latest/apk-version.json";
+    private static final String DEFAULT_APK_DOWNLOAD_URL =
+        "https://github.com/naqshbandia/-/releases/download/apk-latest/Khanqah-Darul-Falah.apk";
     private static final String LOCAL_BUNDLE_URL = "http://localhost/";
     private static final String OTA_PREFS_NAME = "kdf_ota_prefs";
     private static final String KEY_LAST_OTA_FINGERPRINT = "last_ota_fingerprint";
@@ -53,8 +62,15 @@ public class MainActivity extends BridgeActivity {
     private static final long OTA_CHECK_INTERVAL_MS = 10 * 60 * 1000L;
 
     private final ExecutorService otaExecutor = Executors.newSingleThreadExecutor();
+    private final ExecutorService apkUpdateExecutor = Executors.newSingleThreadExecutor();
     private volatile long lastOtaCheckAtMs = 0L;
     private volatile boolean otaCheckInFlight = false;
+    private volatile boolean apkCheckInFlight = false;
+    private volatile boolean apkDownloadInFlight = false;
+    private volatile boolean pendingApkInstallOnResume = false;
+    private volatile String pendingApkUrl = DEFAULT_APK_DOWNLOAD_URL;
+    private volatile String availableApkVersionName = "";
+    private volatile long availableApkVersionCode = 0L;
 
     private static final int REQ_CODE_POST_NOTIFICATIONS = 7001;
 
@@ -229,6 +245,14 @@ public class MainActivity extends BridgeActivity {
             checkAndLoadLiveUpdate(false, false);
         }
         KhanqahNotificationHelper.checkRemoteUpdatesAsync(this, false);
+        checkApkUpdateAsync(false);
+
+        if (pendingApkInstallOnResume) {
+            pendingApkInstallOnResume = false;
+            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O || getPackageManager().canRequestPackageInstalls()) {
+                startApkSelfDownloadAndInstall(pendingApkUrl);
+            }
+        }
     }
 
     @Override
@@ -273,6 +297,7 @@ public class MainActivity extends BridgeActivity {
     @Override
     public void onDestroy() {
         otaExecutor.shutdownNow();
+        apkUpdateExecutor.shutdownNow();
         super.onDestroy();
     }
 
@@ -288,6 +313,284 @@ public class MainActivity extends BridgeActivity {
         } catch (Exception ignored) {
         }
         return DEFAULT_LIVE_WEB_URL;
+    }
+
+    private String getApkVersionJsonUrl() {
+        try {
+            int resId = getResources().getIdentifier("kdf_apk_version_json_url", "string", getPackageName());
+            if (resId != 0) {
+                String val = getString(resId);
+                if (val != null && val.startsWith("https://")) {
+                    return val;
+                }
+            }
+        } catch (Exception ignored) {
+        }
+        return DEFAULT_APK_VERSION_JSON_URL;
+    }
+
+    private String getApkDownloadUrl() {
+        try {
+            int resId = getResources().getIdentifier("kdf_apk_download_url", "string", getPackageName());
+            if (resId != 0) {
+                String val = getString(resId);
+                if (val != null && val.startsWith("https://")) {
+                    return val;
+                }
+            }
+        } catch (Exception ignored) {
+        }
+        return DEFAULT_APK_DOWNLOAD_URL;
+    }
+
+    private long getInstalledVersionCode() {
+        try {
+            PackageInfo info = getPackageManager().getPackageInfo(getPackageName(), 0);
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                return info.getLongVersionCode();
+            }
+            return info.versionCode;
+        } catch (Exception e) {
+            return 1L;
+        }
+    }
+
+    private String getInstalledVersionName() {
+        try {
+            PackageInfo info = getPackageManager().getPackageInfo(getPackageName(), 0);
+            return info.versionName != null ? info.versionName : "1.0";
+        } catch (Exception e) {
+            return "1.0";
+        }
+    }
+
+    private void emitJsEvent(String eventName, String jsonDetail) {
+        runOnUiThread(() -> {
+            if (isFinishing() || isDestroyed()) return;
+            WebView wv = this.bridge != null ? this.bridge.getWebView() : null;
+            if (wv != null) {
+                wv.evaluateJavascript(
+                    "window.dispatchEvent(new CustomEvent('" + eventName + "', { detail: " + jsonDetail + " }));",
+                    null
+                );
+            }
+        });
+    }
+
+    private void checkApkUpdateAsync(boolean isManual) {
+        if (apkCheckInFlight || !isNetworkAvailable()) return;
+        apkCheckInFlight = true;
+        final String versionJsonUrl = getApkVersionJsonUrl() + "?_t=" + System.currentTimeMillis();
+        final long installedCode = getInstalledVersionCode();
+
+        apkUpdateExecutor.execute(() -> {
+            HttpURLConnection conn = null;
+            BufferedReader reader = null;
+            try {
+                URL url = new URL(versionJsonUrl);
+                conn = (HttpURLConnection) url.openConnection();
+                conn.setRequestMethod("GET");
+                conn.setConnectTimeout(4500);
+                conn.setReadTimeout(4500);
+                conn.setInstanceFollowRedirects(true);
+                conn.setUseCaches(false);
+                if (conn.getResponseCode() == HttpURLConnection.HTTP_OK) {
+                    reader = new BufferedReader(new InputStreamReader(conn.getInputStream(), StandardCharsets.UTF_8));
+                    StringBuilder sb = new StringBuilder();
+                    String line;
+                    while ((line = reader.readLine()) != null) {
+                        sb.append(line);
+                    }
+                    JSONObject obj = new JSONObject(sb.toString());
+                    long remoteCode = obj.optLong("versionCode", 0L);
+                    String remoteName = obj.optString("versionName", "");
+                    String remoteApkUrl = obj.optString("apkUrl", getApkDownloadUrl());
+
+                    if (remoteCode > installedCode) {
+                        availableApkVersionCode = remoteCode;
+                        availableApkVersionName = remoteName;
+                        pendingApkUrl = remoteApkUrl;
+
+                        JSONObject detail = new JSONObject();
+                        detail.put("available", true);
+                        detail.put("versionCode", remoteCode);
+                        detail.put("versionName", remoteName);
+                        detail.put("installedVersionCode", installedCode);
+                        detail.put("apkUrl", remoteApkUrl);
+                        emitJsEvent("kdf-apk-update-available", detail.toString());
+                    } else if (isManual) {
+                        JSONObject detail = new JSONObject();
+                        detail.put("available", false);
+                        detail.put("installedVersionCode", installedCode);
+                        emitJsEvent("kdf-apk-update-available", detail.toString());
+                    }
+                }
+            } catch (Exception ignored) {
+            } finally {
+                if (reader != null) {
+                    try {
+                        reader.close();
+                    } catch (Exception ignored) {
+                    }
+                }
+                if (conn != null) {
+                    try {
+                        conn.disconnect();
+                    } catch (Exception ignored) {
+                    }
+                }
+                apkCheckInFlight = false;
+            }
+        });
+    }
+
+    private void startApkSelfDownloadAndInstall(String targetUrl) {
+        if (apkDownloadInFlight) return;
+        final String downloadUrl = (targetUrl != null && targetUrl.startsWith("https://"))
+            ? targetUrl
+            : getApkDownloadUrl();
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && !getPackageManager().canRequestPackageInstalls()) {
+            pendingApkUrl = downloadUrl;
+            pendingApkInstallOnResume = true;
+            runOnUiThread(() -> {
+                Toast.makeText(
+                    MainActivity.this,
+                    "براہ کرم 'Allow from this source' آن کر کے واپس آئیں تاکہ اپڈیٹ انسٹال ہو سکے",
+                    Toast.LENGTH_LONG
+                ).show();
+                try {
+                    Intent intent = new Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES);
+                    intent.setData(Uri.parse("package:" + getPackageName()));
+                    intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                    startActivity(intent);
+                } catch (Exception e) {
+                    launchSettingsIntent(Settings.ACTION_SECURITY_SETTINGS);
+                }
+            });
+            return;
+        }
+
+        if (!isNetworkAvailable()) {
+            runOnUiThread(() ->
+                Toast.makeText(MainActivity.this, "اپڈیٹ ڈاؤنلوڈ کرنے کے لیے انٹرنیٹ آن کریں", Toast.LENGTH_SHORT).show()
+            );
+            return;
+        }
+
+        apkDownloadInFlight = true;
+        emitJsEvent("kdf-apk-download-progress", "{\"progress\":1,\"status\":\"downloading\"}");
+
+        apkUpdateExecutor.execute(() -> {
+            HttpURLConnection conn = null;
+            InputStream in = null;
+            FileOutputStream out = null;
+            try {
+                File updateDir = new File(getCacheDir(), "updates");
+                if (!updateDir.exists()) updateDir.mkdirs();
+                File apkFile = new File(updateDir, "Khanqah-Darul-Falah.apk");
+                if (apkFile.exists()) apkFile.delete();
+
+                // Follow GitHub release redirects cleanly
+                String curUrl = downloadUrl;
+                for (int hops = 0; hops < 5; hops++) {
+                    URL u = new URL(curUrl);
+                    conn = (HttpURLConnection) u.openConnection();
+                    conn.setRequestMethod("GET");
+                    conn.setConnectTimeout(15000);
+                    conn.setReadTimeout(30000);
+                    conn.setInstanceFollowRedirects(false);
+                    int code = conn.getResponseCode();
+                    if (code == HttpURLConnection.HTTP_MOVED_TEMP || code == HttpURLConnection.HTTP_MOVED_PERM || code == 307 || code == 308) {
+                        String loc = conn.getHeaderField("Location");
+                        conn.disconnect();
+                        if (loc == null || loc.isEmpty()) break;
+                        curUrl = loc;
+                    } else {
+                        break;
+                    }
+                }
+
+                if (conn == null || conn.getResponseCode() != HttpURLConnection.HTTP_OK) {
+                    throw new IllegalStateException("APK download failed");
+                }
+
+                long totalBytes = Build.VERSION.SDK_INT >= Build.VERSION_CODES.N
+                    ? conn.getContentLengthLong()
+                    : conn.getContentLength();
+                in = conn.getInputStream();
+                out = new FileOutputStream(apkFile);
+                byte[] buffer = new byte[16384];
+                long downloaded = 0L;
+                int lastPct = 1;
+                int read;
+                while ((read = in.read(buffer)) != -1) {
+                    out.write(buffer, 0, read);
+                    downloaded += read;
+                    if (totalBytes > 0) {
+                        int pct = (int) Math.min(99L, (downloaded * 100L) / totalBytes);
+                        if (pct >= lastPct + 5) {
+                            lastPct = pct;
+                            emitJsEvent("kdf-apk-download-progress", "{\"progress\":" + pct + ",\"status\":\"downloading\"}");
+                        }
+                    }
+                }
+                out.flush();
+                out.close();
+                out = null;
+
+                emitJsEvent("kdf-apk-download-progress", "{\"progress\":100,\"status\":\"installing\"}");
+
+                Uri apkUri = FileProvider.getUriForFile(
+                    MainActivity.this,
+                    getPackageName() + ".fileprovider",
+                    apkFile
+                );
+                Intent installIntent = new Intent(Intent.ACTION_VIEW);
+                installIntent.setDataAndType(apkUri, "application/vnd.android.package-archive");
+                installIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_ACTIVITY_NEW_TASK);
+                runOnUiThread(() -> {
+                    try {
+                        startActivity(installIntent);
+                    } catch (Exception e) {
+                        Toast.makeText(
+                            MainActivity.this,
+                            "انسٹالر کھولنے میں دشواری پیش آئی۔",
+                            Toast.LENGTH_SHORT
+                        ).show();
+                    }
+                });
+            } catch (Exception e) {
+                emitJsEvent("kdf-apk-download-progress", "{\"progress\":0,\"status\":\"error\"}");
+                runOnUiThread(() ->
+                    Toast.makeText(
+                        MainActivity.this,
+                        "اپڈیٹ ڈاؤنلوڈ نہیں ہو سکا — براہ کرم انٹرنیٹ چیک کر کے دوبارہ کوشش کریں",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                );
+            } finally {
+                if (in != null) {
+                    try {
+                        in.close();
+                    } catch (Exception ignored) {
+                    }
+                }
+                if (out != null) {
+                    try {
+                        out.close();
+                    } catch (Exception ignored) {
+                    }
+                }
+                if (conn != null) {
+                    try {
+                        conn.disconnect();
+                    } catch (Exception ignored) {
+                    }
+                }
+                apkDownloadInFlight = false;
+            }
+        });
     }
 
     private boolean isNetworkAvailable() {
@@ -471,6 +774,7 @@ public class MainActivity extends BridgeActivity {
         @JavascriptInterface
         public void checkLiveUpdate() {
             checkAndLoadLiveUpdate(true, false);
+            checkApkUpdateAsync(false);
         }
 
         @JavascriptInterface
@@ -478,7 +782,28 @@ public class MainActivity extends BridgeActivity {
             SharedPreferences prefs = getSharedPreferences(OTA_PREFS_NAME, MODE_PRIVATE);
             prefs.edit().remove(KEY_LAST_OTA_FINGERPRINT).apply();
             KhanqahNotificationHelper.checkRemoteUpdatesAsync(MainActivity.this, true);
+            checkApkUpdateAsync(true);
             checkAndLoadLiveUpdate(true, true);
+        }
+
+        @JavascriptInterface
+        public long getAppVersionCode() {
+            return getInstalledVersionCode();
+        }
+
+        @JavascriptInterface
+        public String getAppVersionName() {
+            return getInstalledVersionName();
+        }
+
+        @JavascriptInterface
+        public void checkApkUpdate() {
+            checkApkUpdateAsync(true);
+        }
+
+        @JavascriptInterface
+        public void downloadAndInstallApkUpdate() {
+            startApkSelfDownloadAndInstall(pendingApkUrl);
         }
 
         @JavascriptInterface
@@ -646,7 +971,7 @@ public class MainActivity extends BridgeActivity {
                 obj.put("currentlySilent", PrayerSilentScheduler.isCurrentlySilent(MainActivity.this));
                 return obj.toString();
             } catch (Exception e) {
-                return "{\"isNative\":true,\"dndGranted\":false,\"exactAlarmGranted\":true,\"batteryOptIgnored\":false,\"enabled\":false,\"silentMode\":\"vibrate\",\"activeCount\":0,\"currentlySilent\":false}";
+                return "{\"isNative\":true,\"dndGranted\":false,\"exactAlarmGranted\":true,\"batteryOptIgnored\":false,\"enabled\":false,\"silentMode\":\"silent\",\"activeCount\":0,\"currentlySilent\":false}";
             }
         }
 

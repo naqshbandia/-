@@ -259,6 +259,15 @@ function AppContent() {
     }
   });
   const [isExitConfirmOpen, setIsExitConfirmOpen] = useState(false);
+  const [apkUpdateInfo, setApkUpdateInfo] = useState<{
+    available: boolean;
+    versionName: string;
+    versionCode: number;
+  } | null>(null);
+  const [apkDownloadState, setApkDownloadState] = useState<{
+    progress: number;
+    status: 'idle' | 'downloading' | 'installing' | 'error';
+  }>({ progress: 0, status: 'idle' });
 
   const cachedPrayerData = React.useMemo<PrayerCache | null>(() => {
     try {
@@ -292,6 +301,56 @@ function AppContent() {
       document.removeEventListener('visibilitychange', handleVisibility);
     };
   }, [cachedKhanqahSchedule, cachedPrayerData]);
+
+  // Listen for native Play-Store-style In-App APK updates & download progress
+  useEffect(() => {
+    const handleApkUpdate = (ev: Event) => {
+      const detail = (ev as CustomEvent<{
+        available?: boolean;
+        versionName?: string;
+        versionCode?: number;
+      }>).detail;
+      if (!detail) return;
+      if (detail.available) {
+        setApkUpdateInfo({
+          available: true,
+          versionName: detail.versionName || '',
+          versionCode: Number(detail.versionCode || 0),
+        });
+      } else {
+        setApkUpdateInfo(null);
+      }
+    };
+
+    const handleApkProgress = (ev: Event) => {
+      const detail = (ev as CustomEvent<{
+        progress?: number;
+        status?: 'idle' | 'downloading' | 'installing' | 'error';
+      }>).detail;
+      if (!detail) return;
+      setApkDownloadState({
+        progress: Number(detail.progress || 0),
+        status: detail.status || 'downloading',
+      });
+    };
+
+    window.addEventListener('kdf-apk-update-available', handleApkUpdate as EventListener);
+    window.addEventListener('kdf-apk-download-progress', handleApkProgress as EventListener);
+
+    const timer = window.setTimeout(() => {
+      try {
+        getAndroidBridge()?.checkApkUpdate?.();
+      } catch {
+        // Ignore bridge errors on web
+      }
+    }, 1200);
+
+    return () => {
+      window.clearTimeout(timer);
+      window.removeEventListener('kdf-apk-update-available', handleApkUpdate as EventListener);
+      window.removeEventListener('kdf-apk-download-progress', handleApkProgress as EventListener);
+    };
+  }, []);
 
   // Trigger beautiful native notification whenever a strictly new Bayan, Book, or Poster is uploaded
   useEffect(() => {
@@ -704,6 +763,50 @@ function AppContent() {
 
       {/* PWA 1-Click Android App Install Banner */}
       <PWAInstallBanner isDark={isDark} onNotify={showNotification} lang={lang} />
+
+      {/* Play-Store-Style 1-Tap In-App APK Update Banner (shown only when a newer APK build is released) */}
+      {apkUpdateInfo?.available && (
+        <div
+          dir={getDir(lang)}
+          className={`w-full px-3 py-2 border-b flex flex-col gap-1.5 shadow-sm z-30 ${
+            isDark
+              ? 'bg-[#0b2a1b] border-[#d4af37]/50 text-emerald-50'
+              : 'bg-[#edf7f1] border-[#064326]/25 text-[#064326]'
+          }`}
+        >
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2 min-w-0">
+              <DownloadCloud className="w-4 h-4 shrink-0 text-[#d4af37]" />
+              <span className="text-xs sm:text-sm font-bold truncate">
+                🆕 نیا ایپ ورژن {apkUpdateInfo.versionName ? `(${apkUpdateInfo.versionName})` : ''} دستیاب ہے
+              </span>
+            </div>
+            <button
+              type="button"
+              disabled={apkDownloadState.status === 'downloading'}
+              onClick={() => {
+                setApkDownloadState({ progress: 1, status: 'downloading' });
+                getAndroidBridge()?.downloadAndInstallApkUpdate?.();
+              }}
+              className="shrink-0 px-3 py-1.5 rounded-lg bg-[#064326] hover:bg-[#095c34] disabled:opacity-75 text-white border border-[#d4af37] text-xs font-bold cursor-pointer transition-colors"
+            >
+              {apkDownloadState.status === 'downloading'
+                ? `ڈاؤنلوڈ... ${apkDownloadState.progress}%`
+                : apkDownloadState.status === 'installing'
+                ? 'انسٹال کھل رہا ہے...'
+                : '⬇️ اپڈیٹ کریں'}
+            </button>
+          </div>
+          {apkDownloadState.status === 'downloading' && (
+            <div className="w-full h-1.5 rounded-full bg-black/15 dark:bg-white/15 overflow-hidden">
+              <div
+                className="h-full bg-[#d4af37] transition-all duration-200"
+                style={{ width: `${Math.max(4, Math.min(100, apkDownloadState.progress))}%` }}
+              />
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Smart Search Bar */}
       <div className="relative">
