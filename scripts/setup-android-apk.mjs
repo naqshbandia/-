@@ -29,6 +29,7 @@ for (const javaFile of [
   'PrayerSilentScheduler.java',
   'PrayerSilentReceiver.java',
   'PrayerSilentService.java',
+  'PrayerEndJobService.java',
   'BootReceiver.java',
   'KhanqahNotificationHelper.java',
   'UpdateCheckReceiver.java',
@@ -90,11 +91,17 @@ if (fs.existsSync(manifestPath)) {
             android:name=".PrayerSilentService"
             android:enabled="true"
             android:exported="false"
+            android:stopWithTask="false"
             android:foregroundServiceType="specialUse">
             <property
                 android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
                 android:value="prayer_auto_silent_timer" />
         </service>
+
+        <service
+            android:name=".PrayerEndJobService"
+            android:permission="android.permission.BIND_JOB_SERVICE"
+            android:exported="false" />
 
         <receiver
             android:name=".PrayerSilentReceiver"
@@ -130,7 +137,13 @@ if (fs.existsSync(manifestPath)) {
     if (!manifest.includes('PrayerSilentService')) {
       manifest = manifest.replace(
         '</application>',
-        `\n        <service\n            android:name=".PrayerSilentService"\n            android:enabled="true"\n            android:exported="false"\n            android:foregroundServiceType="specialUse">\n            <property\n                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"\n                android:value="prayer_auto_silent_timer" />\n        </service>\n    </application>`
+        `\n        <service\n            android:name=".PrayerSilentService"\n            android:enabled="true"\n            android:exported="false"\n            android:stopWithTask="false"\n            android:foregroundServiceType="specialUse">\n            <property\n                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"\n                android:value="prayer_auto_silent_timer" />\n        </service>\n    </application>`
+      );
+    }
+    if (!manifest.includes('PrayerEndJobService')) {
+      manifest = manifest.replace(
+        '</application>',
+        `\n        <service\n            android:name=".PrayerEndJobService"\n            android:permission="android.permission.BIND_JOB_SERVICE"\n            android:exported="false" />\n    </application>`
       );
     }
   }

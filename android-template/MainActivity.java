@@ -958,6 +958,11 @@ public class MainActivity extends BridgeActivity {
         }
 
         @JavascriptInterface
+        public String getAutoSilentConfigJson() {
+            return PrayerSilentScheduler.getConfigJsonForJs(MainActivity.this);
+        }
+
+        @JavascriptInterface
         public String getAutoSilentStatus() {
             try {
                 JSONObject obj = new JSONObject();

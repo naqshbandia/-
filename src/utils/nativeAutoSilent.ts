@@ -61,6 +61,7 @@ interface AndroidBridge {
   sendTestNotification?: () => boolean;
   showUpdateNotification?: (title: string, body: string, subText: string) => void;
   saveAutoSilentSchedule?: (jsonConfig: string) => string;
+  getAutoSilentConfigJson?: () => string;
   getAutoSilentStatus?: () => string;
   setSilentNow?: (silent: boolean) => boolean;
   isIgnoringBatteryOptimizations?: () => boolean;
@@ -226,9 +227,68 @@ export function loadAutoSilentConfig(
   prayerData?: PrayerCache | null
 ): StoredAutoSilentConfig {
   const defaults = buildDefaultAutoSilentSlots(officialSchedule, prayerData);
+
+  // Check current origin's localStorage first
+  let localParsed: Partial<StoredAutoSilentConfig> | null = null;
   try {
     const raw = localStorage.getItem(AUTO_SILENT_STORAGE_KEY);
-    if (!raw) {
+    if (raw) {
+      localParsed = JSON.parse(raw) as Partial<StoredAutoSilentConfig>;
+    }
+  } catch {
+    localParsed = null;
+  }
+
+  // CRITICAL: WebView loads https://naqshbandia.github.io online and http://localhost offline.
+  // Those two origins have separate localStorage stores, so always treat native SharedPreferences as source of truth
+  // whenever the current origin hasn't explicitly customized yet (or when running inside native APK).
+  const bridge = getAndroidBridge();
+  if (bridge && typeof bridge.getAutoSilentConfigJson === 'function') {
+    try {
+      const nativeRaw = bridge.getAutoSilentConfigJson();
+      if (nativeRaw) {
+        const nativeObj = JSON.parse(nativeRaw) as {
+          hasSaved?: boolean;
+          enabled?: boolean;
+          slots?: AutoSilentSlot[];
+        };
+        if (nativeObj?.hasSaved && Array.isArray(nativeObj.slots) && nativeObj.slots.length > 0) {
+          const byKey = new Map<string, AutoSilentSlot>();
+          for (const s of nativeObj.slots) {
+            if (s && s.key) byKey.set(s.key, s);
+          }
+          const mergedFromNative = defaults.map((def) => {
+            const saved = byKey.get(def.key);
+            if (!saved) return def;
+            return {
+              key: def.key,
+              labelUrdu: def.labelUrdu,
+              start: saved.start || def.start,
+              end: saved.end || def.end,
+              enabled: saved.enabled !== false,
+            };
+          });
+          const resolved: StoredAutoSilentConfig = {
+            masterEnabled: nativeObj.enabled !== false,
+            customized: true,
+            silentMode: 'silent',
+            slots: mergedFromNative,
+          };
+          try {
+            localStorage.setItem(AUTO_SILENT_STORAGE_KEY, JSON.stringify(resolved));
+          } catch {
+            // Ignore storage errors
+          }
+          return resolved;
+        }
+      }
+    } catch {
+      // Fallback cleanly to localStorage below
+    }
+  }
+
+  try {
+    if (!localParsed) {
       return {
         masterEnabled: true,
         customized: false,
@@ -236,11 +296,10 @@ export function loadAutoSilentConfig(
         slots: defaults,
       };
     }
-    const parsed = JSON.parse(raw) as Partial<StoredAutoSilentConfig>;
-    const masterEnabled = parsed.masterEnabled !== false;
-    const customized = Boolean(parsed.customized);
+    const masterEnabled = localParsed.masterEnabled !== false;
+    const customized = Boolean(localParsed.customized);
     const silentMode: PrayerSilentMode = 'silent';
-    if (!customized || !Array.isArray(parsed.slots) || parsed.slots.length === 0) {
+    if (!customized || !Array.isArray(localParsed.slots) || localParsed.slots.length === 0) {
       return {
         masterEnabled,
         customized: false,
@@ -250,7 +309,7 @@ export function loadAutoSilentConfig(
     }
     // Merge saved overrides with canonical slot keys so nothing is ever missing
     const byKey = new Map<string, AutoSilentSlot>();
-    for (const s of parsed.slots) {
+    for (const s of localParsed.slots) {
       if (s && s.key) byKey.set(s.key, s);
     }
     const mergedSlots = defaults.map((def) => {

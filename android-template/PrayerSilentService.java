@@ -18,6 +18,8 @@ public class PrayerSilentService extends Service {
     public static final String EXTRA_END_MILLIS = "end_millis";
     public static final String EXTRA_SLOT_LABEL = "slot_label";
     public static final String EXTRA_SLOT_KEY = "slot_key";
+    public static final String ACTION_ALARM_END_TRIGGER =
+        "com.khanqahdarulfalah.app.ACTION_ALARM_END_TRIGGER";
     public static final int FOREGROUND_NOTIF_ID = 4488;
 
     private final Handler handler = new Handler(Looper.getMainLooper());
@@ -74,11 +76,8 @@ public class PrayerSilentService extends Service {
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
+        String action = intent != null ? intent.getAction() : null;
         if (intent != null) {
-            if (PrayerSilentScheduler.ACTION_MANUAL_EXIT_SILENT.equals(intent.getAction())) {
-                restoreAndStop();
-                return START_NOT_STICKY;
-            }
             long endFromIntent = intent.getLongExtra(EXTRA_END_MILLIS, 0L);
             if (endFromIntent > 0L) {
                 targetEndMillis = endFromIntent;
@@ -107,6 +106,32 @@ public class PrayerSilentService extends Service {
         } catch (Throwable ignored) {
         }
 
+        if (PrayerSilentScheduler.ACTION_MANUAL_EXIT_SILENT.equals(action)) {
+            restoreAndStop();
+            return START_NOT_STICKY;
+        }
+
+        if (ACTION_ALARM_END_TRIGGER.equals(action)) {
+            long now = System.currentTimeMillis();
+            PrayerSilentScheduler.ActiveWindowInfo other =
+                PrayerSilentScheduler.getOverlappingActiveWindowExcluding(
+                    this,
+                    now,
+                    activeSlotKey,
+                    targetEndMillis
+                );
+            if (other.active && other.endMillis > now + 60_000L) {
+                targetEndMillis = other.endMillis;
+                activeSlotKey = other.slotKey;
+                activeSlotLabel = other.slotLabel;
+                updateForegroundNotification();
+                scheduleNextCheck(now);
+                return START_STICKY;
+            }
+            restoreAndStop();
+            return START_NOT_STICKY;
+        }
+
         long now = System.currentTimeMillis();
         if (targetEndMillis > 0L && now >= targetEndMillis) {
             restoreAndStop();
@@ -115,6 +140,15 @@ public class PrayerSilentService extends Service {
 
         scheduleNextCheck(now);
         return START_STICKY;
+    }
+
+    @Override
+    public void onTaskRemoved(Intent rootIntent) {
+        try {
+            PrayerSilentScheduler.reconcileAndScheduleAll(getApplicationContext(), false);
+        } catch (Exception ignored) {
+        }
+        super.onTaskRemoved(rootIntent);
     }
 
     private void scheduleNextCheck(long now) {

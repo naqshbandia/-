@@ -3,6 +3,9 @@ package com.khanqahdarulfalah.app;
 import android.app.AlarmManager;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
+import android.app.job.JobInfo;
+import android.app.job.JobScheduler;
+import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
@@ -41,9 +44,11 @@ public class PrayerSilentScheduler {
     public static final String EXTRA_WINDOW_ID = "window_id";
 
     private static final int BASE_REQUEST_CODE = 2000;
+    private static final int END_FGS_REQUEST_CODE_BASE = 2500;
     private static final int SAFETY_END_REQUEST_CODE = 2999;
     private static final int SAFETY_END_2_REQUEST_CODE = 2998;
     private static final int SAFETY_END_3_REQUEST_CODE = 2997;
+    private static final int JOB_ID_PRAYER_END = 7701;
     private static final int MAX_SLOTS = 8;
 
     public static class ActiveWindowInfo {
@@ -120,6 +125,26 @@ public class PrayerSilentScheduler {
         return prefs.getBoolean(KEY_IS_SILENCED, false);
     }
 
+    public static String getConfigJsonForJs(Context context) {
+        SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+        try {
+            JSONObject obj = new JSONObject();
+            String rawSlots = prefs.getString(KEY_SLOTS_JSON, "");
+            boolean hasSaved = rawSlots != null && rawSlots.trim().startsWith("[") && rawSlots.trim().length() > 2;
+            obj.put("hasSaved", hasSaved);
+            obj.put("enabled", prefs.getBoolean(KEY_ENABLED, true));
+            obj.put("silentMode", getSilentMode(context));
+            if (hasSaved) {
+                obj.put("slots", new JSONArray(rawSlots));
+            } else {
+                obj.put("slots", new JSONArray());
+            }
+            return obj.toString();
+        } catch (Exception e) {
+            return "{\"hasSaved\":false}";
+        }
+    }
+
     public static void saveConfigAndSchedule(Context context, String jsonConfig) {
         SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
         try {
@@ -140,7 +165,7 @@ public class PrayerSilentScheduler {
                     editor.remove(KEY_LAST_ENTERED_WINDOW_ID);
                 }
             }
-            editor.apply();
+            editor.commit();
         } catch (Exception ignored) {
         }
         reconcileAndScheduleAll(context, true);
@@ -177,14 +202,16 @@ public class PrayerSilentScheduler {
         AlarmManager am = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
         if (am == null) return;
 
-        // Cancel all previously armed prayer alarms (START, END, and SAFETY_END)
+        // Cancel all previously armed prayer alarms (START, END, FGS END backups, SAFETY_END, JobScheduler)
         for (int i = 0; i < MAX_SLOTS; i++) {
             cancelAlarm(context, am, BASE_REQUEST_CODE + (i * 2), "START", i);
             cancelAlarm(context, am, BASE_REQUEST_CODE + (i * 2) + 1, "END", i);
+            cancelEndFgsAlarm(context, am, i);
         }
         cancelAlarm(context, am, SAFETY_END_REQUEST_CODE, "SAFETY_END", 99);
         cancelAlarm(context, am, SAFETY_END_2_REQUEST_CODE, "SAFETY_END", 98);
         cancelAlarm(context, am, SAFETY_END_3_REQUEST_CODE, "SAFETY_END", 97);
+        cancelEndJob(context);
 
         SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
         boolean enabled = prefs.getBoolean(KEY_ENABLED, false);
@@ -294,7 +321,7 @@ public class PrayerSilentScheduler {
 
                 if (nextEndMillis > now) {
                     // Always use highest-priority AlarmClock for active slot END or soonest upcoming END
-                    boolean preferAlarmClock = (activeSlotEnd > 0) || currentlyMarkedSilenced || (nextEndMillis == soonestEndMillis);
+                    boolean isPriorityEnd = (activeSlotEnd > 0) || currentlyMarkedSilenced || (nextEndMillis == soonestEndMillis);
                     armAlarm(
                         context,
                         am,
@@ -305,9 +332,19 @@ public class PrayerSilentScheduler {
                         label,
                         i,
                         nextEndMillis,
-                        preferAlarmClock
+                        isPriorityEnd
                     );
+                    if (isPriorityEnd) {
+                        armEndFgsBackupAlarm(context, am, i, nextEndMillis + 3_000L, key, label, nextEndMillis);
+                    }
                 }
+            }
+
+            long jobTargetMillis = activeNow.active
+                ? activeNow.endMillis
+                : (soonestEndMillis < Long.MAX_VALUE ? soonestEndMillis : 0L);
+            if (jobTargetMillis > now) {
+                scheduleEndBackupJob(context, jobTargetMillis + 6_000L);
             }
 
             // Always arm three safety verification END alarms (+30s, +120s, +300s) so Doze/OEM never leaves DND stuck
@@ -470,7 +507,7 @@ public class PrayerSilentScheduler {
 
             long s = startCal.getTimeInMillis();
             long e = endCal.getTimeInMillis();
-            if (nowMillis >= (s - 10_000L) && nowMillis < (e - 2_000L)) {
+            if (nowMillis >= (s - 10_000L) && nowMillis < (e - 500L)) {
                 return e;
             }
             return -1L;
@@ -487,7 +524,7 @@ public class PrayerSilentScheduler {
 
             boolean todayOk = !isFridayOnly || todayStart.get(Calendar.DAY_OF_WEEK) == Calendar.FRIDAY;
             if (todayOk && nowMillis >= (todayStart.getTimeInMillis() - 10_000L)
-                && nowMillis < (tomorrowEnd.getTimeInMillis() - 2_000L)) {
+                && nowMillis < (tomorrowEnd.getTimeInMillis() - 500L)) {
                 return tomorrowEnd.getTimeInMillis();
             }
 
@@ -502,7 +539,7 @@ public class PrayerSilentScheduler {
 
             boolean yesterdayOk = !isFridayOnly || yesterdayStart.get(Calendar.DAY_OF_WEEK) == Calendar.FRIDAY;
             if (yesterdayOk && nowMillis >= (yesterdayStart.getTimeInMillis() - 10_000L)
-                && nowMillis < (todayEnd.getTimeInMillis() - 2_000L)) {
+                && nowMillis < (todayEnd.getTimeInMillis() - 500L)) {
                 return todayEnd.getTimeInMillis();
             }
 
@@ -522,11 +559,11 @@ public class PrayerSilentScheduler {
             while (cal.get(Calendar.DAY_OF_WEEK) != Calendar.FRIDAY) {
                 cal.add(Calendar.DAY_OF_YEAR, 1);
             }
-            if (cal.getTimeInMillis() <= nowMillis + 2_000L) {
+            if (cal.getTimeInMillis() <= nowMillis + 200L) {
                 cal.add(Calendar.DAY_OF_YEAR, 7);
             }
         } else {
-            if (cal.getTimeInMillis() <= nowMillis + 2_000L) {
+            if (cal.getTimeInMillis() <= nowMillis + 200L) {
                 cal.add(Calendar.DAY_OF_YEAR, 1);
             }
         }
@@ -617,7 +654,7 @@ public class PrayerSilentScheduler {
         boolean canExact = Build.VERSION.SDK_INT < Build.VERSION_CODES.S || am.canScheduleExactAlarms();
 
         try {
-            if (preferAlarmClock && canExact && Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            if (preferAlarmClock && Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
                 Intent showIntent = new Intent(context, MainActivity.class);
                 showIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_SINGLE_TOP);
                 PendingIntent showPi = PendingIntent.getActivity(context, 9001, showIntent, flags);
@@ -643,6 +680,96 @@ public class PrayerSilentScheduler {
                 }
             } catch (Exception ignored) {
             }
+        }
+    }
+
+    private static void armEndFgsBackupAlarm(
+        Context context,
+        AlarmManager am,
+        int slotIndex,
+        long triggerAtMillis,
+        String slotKey,
+        String slotLabel,
+        long endMillis
+    ) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return;
+        try {
+            int reqCode = END_FGS_REQUEST_CODE_BASE + slotIndex;
+            Intent svcIntent = new Intent(context, PrayerSilentService.class);
+            svcIntent.setAction(PrayerSilentService.ACTION_ALARM_END_TRIGGER);
+            svcIntent.setData(buildAlarmDataUri("END_FGS", slotIndex, reqCode));
+            svcIntent.putExtra(PrayerSilentService.EXTRA_END_MILLIS, endMillis);
+            svcIntent.putExtra(PrayerSilentService.EXTRA_SLOT_KEY, slotKey);
+            svcIntent.putExtra(PrayerSilentService.EXTRA_SLOT_LABEL, slotLabel);
+
+            int flags = PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE;
+            PendingIntent fgsPi = PendingIntent.getForegroundService(context, reqCode, svcIntent, flags);
+
+            Intent showIntent = new Intent(context, MainActivity.class);
+            showIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+            PendingIntent showPi = PendingIntent.getActivity(context, 9001, showIntent, flags);
+            AlarmManager.AlarmClockInfo info = new AlarmManager.AlarmClockInfo(triggerAtMillis, showPi);
+            am.setAlarmClock(info, fgsPi);
+        } catch (Throwable t) {
+            try {
+                int reqCode = END_FGS_REQUEST_CODE_BASE + slotIndex;
+                Intent svcIntent = new Intent(context, PrayerSilentService.class);
+                svcIntent.setAction(PrayerSilentService.ACTION_ALARM_END_TRIGGER);
+                svcIntent.setData(buildAlarmDataUri("END_FGS", slotIndex, reqCode));
+                svcIntent.putExtra(PrayerSilentService.EXTRA_END_MILLIS, endMillis);
+                svcIntent.putExtra(PrayerSilentService.EXTRA_SLOT_KEY, slotKey);
+                svcIntent.putExtra(PrayerSilentService.EXTRA_SLOT_LABEL, slotLabel);
+                int flags = PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE;
+                PendingIntent fgsPi = PendingIntent.getForegroundService(context, reqCode, svcIntent, flags);
+                am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerAtMillis, fgsPi);
+            } catch (Throwable ignored) {
+            }
+        }
+    }
+
+    private static void cancelEndFgsAlarm(Context context, AlarmManager am, int slotIndex) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return;
+        try {
+            int reqCode = END_FGS_REQUEST_CODE_BASE + slotIndex;
+            Intent svcIntent = new Intent(context, PrayerSilentService.class);
+            svcIntent.setAction(PrayerSilentService.ACTION_ALARM_END_TRIGGER);
+            svcIntent.setData(buildAlarmDataUri("END_FGS", slotIndex, reqCode));
+            int flags = PendingIntent.FLAG_NO_CREATE | PendingIntent.FLAG_IMMUTABLE;
+            PendingIntent existing = PendingIntent.getForegroundService(context, reqCode, svcIntent, flags);
+            if (existing != null) {
+                am.cancel(existing);
+                existing.cancel();
+            }
+        } catch (Throwable ignored) {
+        }
+    }
+
+    private static void scheduleEndBackupJob(Context context, long triggerAtMillis) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.LOLLIPOP) return;
+        try {
+            JobScheduler js = (JobScheduler) context.getSystemService(Context.JOB_SCHEDULER_SERVICE);
+            if (js == null) return;
+            long delay = Math.max(1_000L, triggerAtMillis - System.currentTimeMillis());
+            JobInfo.Builder builder = new JobInfo.Builder(
+                JOB_ID_PRAYER_END,
+                new ComponentName(context, PrayerEndJobService.class)
+            )
+                .setMinimumLatency(delay)
+                .setOverrideDeadline(delay + 5_000L)
+                .setPersisted(true);
+            js.schedule(builder.build());
+        } catch (Throwable ignored) {
+        }
+    }
+
+    private static void cancelEndJob(Context context) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.LOLLIPOP) return;
+        try {
+            JobScheduler js = (JobScheduler) context.getSystemService(Context.JOB_SCHEDULER_SERVICE);
+            if (js != null) {
+                js.cancel(JOB_ID_PRAYER_END);
+            }
+        } catch (Throwable ignored) {
         }
     }
 
@@ -685,11 +812,7 @@ public class PrayerSilentScheduler {
         if (!hasDndPermission(context)) return;
 
         SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
-        boolean isVibrateMode = "vibrate".equals(getSilentMode(context));
-        int prevRinger = prefs.getInt(KEY_PREV_RINGER, AudioManager.RINGER_MODE_NORMAL);
-        final int targetRinger = (!isVibrateMode && prevRinger == AudioManager.RINGER_MODE_VIBRATE)
-            ? AudioManager.RINGER_MODE_VIBRATE
-            : AudioManager.RINGER_MODE_NORMAL;
+        final int targetRinger = AudioManager.RINGER_MODE_NORMAL;
 
         prefs.edit()
             .putBoolean(KEY_IS_SILENCED, false)
@@ -698,7 +821,10 @@ public class PrayerSilentScheduler {
             .putLong(KEY_END_VERIFY_AT_MS, System.currentTimeMillis())
             .commit();
 
-        applyNormalSoundPass(context, targetRinger);
+        boolean clearedImmediately = applyNormalSoundPass(context, targetRinger);
+        if (clearedImmediately) {
+            cancelEndJob(context);
+        }
 
         // OEM (Transsion HiOS/XOS, Xiaomi MIUI / HyperOS & Samsung OneUI) race verification:
         // Some OEMs reset or delay DND/Vibrate change right after ringer transition; enforce NORMAL again cleanly.
@@ -802,17 +928,16 @@ public class PrayerSilentScheduler {
             && !stillVibrateWhilePending) {
             return;
         }
-        boolean isVibrateMode = "vibrate".equals(getSilentMode(context));
-        int prevRinger = prefs.getInt(KEY_PREV_RINGER, AudioManager.RINGER_MODE_NORMAL);
-        int targetRinger = (!isVibrateMode && prevRinger == AudioManager.RINGER_MODE_VIBRATE)
-            ? AudioManager.RINGER_MODE_VIBRATE
-            : AudioManager.RINGER_MODE_NORMAL;
-        applyNormalSoundPass(context, targetRinger);
+        final int targetRinger = AudioManager.RINGER_MODE_NORMAL;
+        boolean cleared = applyNormalSoundPass(context, targetRinger);
+        if (cleared) {
+            cancelEndJob(context);
+        }
         prefs.edit()
             .putBoolean(KEY_IS_SILENCED, false)
             .putLong(KEY_SILENCED_UNTIL_MS, 0L)
-            .putBoolean(KEY_PENDING_END_VERIFY, false)
-            .putLong(KEY_END_VERIFY_AT_MS, 0L)
+            .putBoolean(KEY_PENDING_END_VERIFY, !cleared)
+            .putLong(KEY_END_VERIFY_AT_MS, cleared ? 0L : System.currentTimeMillis())
             .commit();
     }
 
